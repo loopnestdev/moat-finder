@@ -1,0 +1,34 @@
+# Binary output
+*.exe
+*.out
+
+node_modules/
+dist/
+.env
+
+# Go build cache
+*.o
+*.a
+*.so
+
+# Go module cache
+vendor/
+
+# Test output
+*.test
+*.prof
+coverage.out
+
+# Log files
+logs/
+*.log
+*.txt
+
+# macOS
+.DS_Store
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
