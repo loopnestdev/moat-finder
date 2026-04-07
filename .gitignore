@@ -1,10 +1,16 @@
 # Binary output
 *.exe
 *.out
+*.zip
 
+# Exclude build artifacts and dependencies
 node_modules/
 dist/
+
+# Exclude all .env files anywhere in the project
 .env
+**/.env
+**/.env.*
 
 # Go build cache
 *.o
