@@ -31,6 +31,7 @@ export interface ReportJson {
   hot_sector_match: string[];
   valuation_table: ValuationRow[];
   catalysts: string[];
+  risk_factors: string[];
   macro_summary: string;
   sentiment_summary: string;
   pipeline_steps_raw: Record<string, unknown>;
@@ -68,4 +69,63 @@ export interface SSEEvent {
   label: string;
   status: 'complete' | 'error';
   data?: Record<string, unknown>;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  role: 'admin' | 'approved' | 'pending' | 'rejected';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Ticker {
+  id: string;
+  symbol: string;
+  company_name: string | null;
+  sector: string | null;
+  industry: string | null;
+  first_researched_at: string;
+  last_researched_at: string;
+  research_count: number;
+}
+
+export interface ResearchReport {
+  id: string;
+  ticker_id: string;
+  ticker_symbol: string;
+  score: number | null;
+  report_json: ReportJson;
+  diagram_json: DiagramJson;
+  version: number;
+  researched_by: string | null;
+  created_at: string;
+  updated_at: string;
+  tickers?: Ticker;
+}
+
+export interface ResearchVersion {
+  id: string;
+  ticker_id: string;
+  ticker_symbol: string;
+  version: number;
+  score: number | null;
+  report_json: ReportJson;
+  diagram_json: DiagramJson;
+  diff_json: DiffJson | null;
+  researched_by: string | null;
+  created_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  ticker_symbol: string | null;
+  user_id: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
 }
