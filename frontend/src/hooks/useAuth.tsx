@@ -53,33 +53,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthContextValue>(initialState);
 
   useEffect(() => {
-    // Shared logic: fetch role from DB and update state for a given auth user.
+    // Shared logic: fetch role from auth.jwt() app_metadata and update state.
     // setTimeout(0) avoids Supabase deadlock when called inside onAuthStateChange.
     const loadUser = (authUser: { id: string; email?: string }, defer: boolean) => {
       const run = () => {
-        void supabase
-          .from('users')
-          .select('role, display_name')
-          .eq('id', authUser.id)
-          .single()
-          .then(({ data }) => {
-            const role = (data as { role?: string } | null)?.role ?? 'pending';
-            const displayName =
-              (data as { display_name?: string | null } | null)?.display_name ??
-              null;
-            setState({
-              user: {
-                id: authUser.id,
-                email: authUser.email ?? '',
-                displayName,
-              },
-              role,
-              isLoading: false,
-              isApproved: role === 'approved' || role === 'admin',
-              isAdmin: role === 'admin',
-              signOut: signOutFn,
-            });
+        void supabase.auth.getUser().then(({ data }) => {
+          const user = data.user;
+          // Role is stored in app_metadata by the server (RLS policy reads it from
+          // auth.jwt()); never query public.users for role — causes infinite recursion.
+          const role =
+            typeof user?.app_metadata['role'] === 'string'
+              ? user.app_metadata['role']
+              : 'pending';
+          const meta = user?.user_metadata;
+          const displayName =
+            typeof meta?.['full_name'] === 'string'
+              ? meta['full_name']
+              : typeof meta?.['name'] === 'string'
+                ? meta['name']
+                : null;
+          setState({
+            user: {
+              id: authUser.id,
+              email: authUser.email ?? '',
+              displayName,
+            },
+            role,
+            isLoading: false,
+            isApproved: role === 'approved' || role === 'admin',
+            isAdmin: role === 'admin',
+            signOut: signOutFn,
           });
+        });
       };
       if (defer) {
         setTimeout(run, 0);
