@@ -7,16 +7,32 @@ export default function AuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    void (async () => {
-      const { error } = await supabase.auth.exchangeCodeForSession(
-        window.location.href,
-      );
-      if (error) {
-        void navigate('/?error=auth_failed', { replace: true });
-      } else {
-        void navigate('/', { replace: true });
-      }
-    })();
+    // Check for error params in the URL immediately.
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('error')) {
+      void navigate('/?error=auth_failed', { replace: true });
+      return;
+    }
+
+    // The Supabase client (detectSessionInUrl: true, flowType: 'pkce') handles
+    // the PKCE code exchange automatically on init. Just wait for SIGNED_IN.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === 'SIGNED_IN') {
+          void navigate('/', { replace: true });
+        }
+      },
+    );
+
+    // Safety timeout — redirect after 10 s if event never fires.
+    const timer = setTimeout(() => {
+      void navigate('/?error=auth_failed', { replace: true });
+    }, 10_000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
   }, [navigate]);
 
   return (
