@@ -73,6 +73,15 @@ router.patch('/admin/users/:id', async (req, res) => {
       return;
     }
 
+    const { error: authError } = await adminClient.auth.admin.updateUserById(id, {
+      app_metadata: { role: parsed.data.role },
+    });
+
+    if (authError) {
+      res.status(500).json({ error: 'Failed to update user auth metadata', code: 'DB_ERROR' });
+      return;
+    }
+
     const action = parsed.data.role === 'approved' ? 'user_approved' : 'user_rejected';
     void logAudit(action, req, { metadata: { target_user_id: id } });
 
