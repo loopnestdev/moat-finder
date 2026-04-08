@@ -175,6 +175,8 @@ router.post(
       }
 
       const { report, diagram } = pipelineResult;
+      console.log(`[research POST] pipeline complete for ${normalised} — report keys: ${Object.keys(report).join(', ')}`);
+
       const score = typeof report.sector_heat === 'number' ? report.sector_heat : null;
 
       const { data: savedReport, error: reportErr } = await adminClient
@@ -191,13 +193,20 @@ router.post(
         .select('id')
         .single();
 
-      if (reportErr ?? !savedReport) {
-        emit({ step: 0, label: 'Error', status: 'error', data: { message: 'Failed to save report' } });
+      if (reportErr) {
+        console.error('[research POST] research_reports insert failed:', reportErr);
+        emit({ step: 0, label: 'Error', status: 'error', data: { message: `Failed to save report: ${reportErr.message}` } });
+        res.end();
+        return;
+      }
+      if (!savedReport) {
+        console.error('[research POST] research_reports insert returned no data');
+        emit({ step: 0, label: 'Error', status: 'error', data: { message: 'Failed to save report: no data returned' } });
         res.end();
         return;
       }
 
-      await adminClient.from('research_versions').insert({
+      const { error: versionsErr } = await adminClient.from('research_versions').insert({
         ticker_id: tickerRow.id,
         ticker_symbol: normalised,
         version: 1,
@@ -207,6 +216,12 @@ router.post(
         diff_json: null,
         researched_by: req.user?.id ?? null,
       });
+      if (versionsErr) {
+        console.error('[research POST] research_versions insert failed:', versionsErr);
+        emit({ step: 0, label: 'Error', status: 'error', data: { message: `Failed to save version: ${versionsErr.message}` } });
+        res.end();
+        return;
+      }
 
       await adminClient
         .from('tickers')

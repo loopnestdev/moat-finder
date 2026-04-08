@@ -118,6 +118,7 @@ Use web search for current information. Return only the JSON object.`,
 
   const result = JSON.parse(extractJson(text)) as Step1Output;
   emit({ step: 1, label: 'Discovery', status: 'complete', data: { company_name: result.company_name } });
+  console.log(`[Step 1] complete — company: ${result.company_name}, industry: ${result.industry}, sector: ${result.sector}`);
   return result;
 }
 
@@ -148,6 +149,7 @@ Use web search for current information. Return only the JSON object.`,
 
   const result = JSON.parse(extractJson(text)) as Step2Output;
   emit({ step: 2, label: 'Deep Dive', status: 'complete' });
+  console.log(`[Step 2] complete — moat: ${result.moat.substring(0, 80)}, catalysts: ${result.catalysts.length}`);
   return result;
 }
 
@@ -189,6 +191,7 @@ Use web search for current financials. Return only the JSON object.`,
 
   const result = JSON.parse(extractJson(text)) as Step3Output;
   emit({ step: 3, label: 'Valuation & Financials', status: 'complete' });
+  console.log(`[Step 3] complete — target: $${result.napkin_math.target_price}, upside: ${result.napkin_math.upside_percent}%, rows: ${result.valuation_table.length}`);
   return result;
 }
 
@@ -221,6 +224,7 @@ Use web search for current short theses and risk disclosures. Return only the JS
 
   const result = JSON.parse(extractJson(text)) as Step4Output;
   emit({ step: 4, label: 'Risk Red Team', status: 'complete' });
+  console.log(`[Step 4] complete — risk_factors: ${result.risk_factors.length}, tail_risks: ${result.tail_risks.length}`);
   return result;
 }
 
@@ -253,6 +257,7 @@ Use web search for current macro context. Return only the JSON object.`,
 
   const result = JSON.parse(extractJson(text)) as Step5Output;
   emit({ step: 5, label: 'Macro & Sector', status: 'complete' });
+  console.log(`[Step 5] complete — sector_heat: ${result.sector_heat}/5, hot_matches: ${result.hot_sector_match.join(', ') || 'none'}`);
   return result;
 }
 
@@ -282,6 +287,7 @@ Use web search for current market data. Return only the JSON object.`,
 
   const result = JSON.parse(extractJson(text)) as Step6Output;
   emit({ step: 6, label: 'Sentiment & Technicals', status: 'complete' });
+  console.log(`[Step 6] complete — short_interest: ${result.short_interest}, ma_position: ${result.ma_position}`);
   return result;
 }
 
@@ -366,6 +372,7 @@ RS vs SPY: ${step6.rs_vs_spy}`;
   };
 
   emit({ step: 7, label: 'Synthesis & Diagram', status: 'complete' });
+  console.log(`[Step 7] complete — thesis: ${parsed.report.thesis.substring(0, 80)}, diagram nodes: ${parsed.diagram.nodes.length}, edges: ${parsed.diagram.edges.length}`);
   return { report: parsed.report, diagram: parsed.diagram };
 }
 
