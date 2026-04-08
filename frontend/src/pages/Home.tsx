@@ -25,7 +25,7 @@ function formatDate(iso: string): string {
 export default function Home() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user, isApproved } = useAuth();
+  const { user, isApproved, isAdmin } = useAuth();
   const pipeline = usePipeline();
   const { data: reportList, isLoading: listLoading } = useReportList();
 
@@ -89,6 +89,7 @@ export default function Home() {
           steps={pipeline.steps}
           isRunning={pipeline.isRunning}
           error={pipeline.error}
+          isAdmin={isAdmin}
         />
       </div>
     );

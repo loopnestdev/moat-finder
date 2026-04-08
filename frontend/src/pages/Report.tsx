@@ -29,7 +29,7 @@ export default function Report() {
   const { ticker = '' } = useParams<{ ticker: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { isApproved } = useAuth();
+  const { isApproved, isAdmin } = useAuth();
   const pipeline = usePipeline();
 
   const { data: report, isLoading, error } = useReport(ticker);
@@ -113,6 +113,7 @@ export default function Report() {
           steps={pipeline.steps}
           isRunning={pipeline.isRunning}
           error={pipeline.error}
+          isAdmin={isAdmin}
         />
       )}
 
