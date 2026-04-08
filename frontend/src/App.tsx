@@ -7,7 +7,6 @@ import Home from './pages/Home';
 import Report from './pages/Report';
 import Versions from './pages/Versions';
 import Admin from './pages/Admin';
-import AuthCallback from './pages/AuthCallback';
 import NotFound from './pages/NotFound';
 import Spinner from './components/ui/Spinner';
 
@@ -37,7 +36,6 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { path: '/', element: <Home /> },
-      { path: '/auth/callback', element: <AuthCallback /> },
       { path: '/research/:ticker', element: <Report /> },
       { path: '/research/:ticker/versions', element: <Versions /> },
       {
