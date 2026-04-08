@@ -3,7 +3,7 @@ import Nav from './Nav';
 
 export default function Layout() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-navy-900 font-body text-cream">
       <Nav />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Outlet />

@@ -1,6 +1,7 @@
 import { useRef, useCallback } from 'react';
 import ReactFlow, {
   Background,
+  BackgroundVariant,
   Controls,
   useNodesState,
   useEdgesState,
@@ -13,63 +14,128 @@ import 'reactflow/dist/style.css';
 import { toPng } from 'html-to-image';
 import type { DiagramJson } from '../../types/report.types';
 
-// ─── Custom node components ───────────────────────────────────────────────────
+// ─── Node colours ────────────────────────────────────────────────────────────
 
-const nodeBaseClass =
-  'px-3 py-2 rounded-lg border-2 text-sm font-medium shadow-sm min-w-[120px] text-center';
+const NODE_COLOURS: Record<string, string> = {
+  revenue:       '#10b981',
+  customer:      '#3b82f6',
+  moat:          '#f59e0b',
+  business_unit: '#8b5cf6',
+  risk:          '#ef4444',
+};
+
+// ─── Custom node components ───────────────────────────────────────────────────
 
 function RevenueNode({ data }: { data: { label: string; detail?: string } }) {
   return (
-    <div className={`${nodeBaseClass} bg-emerald-100 border-emerald-400 text-emerald-900`}>
-      <div>{data.label}</div>
-      {data.detail && <div className="text-xs font-normal mt-0.5 opacity-75">{data.detail}</div>}
+    <div
+      className="rounded-lg border border-emerald-500 bg-navy-900 px-3 py-2.5 min-w-[130px] text-center
+                 shadow-lg hover:shadow-emerald-500/30 transition-shadow cursor-default"
+    >
+      <div className="font-mono text-sm font-semibold text-emerald-400 leading-tight">
+        {data.label}
+      </div>
+      {data.detail && (
+        <div className="font-mono text-xs text-emerald-600 mt-1 leading-tight">{data.detail}</div>
+      )}
     </div>
   );
 }
 
 function CustomerNode({ data }: { data: { label: string; detail?: string } }) {
   return (
-    <div className={`${nodeBaseClass} bg-blue-100 border-blue-400 text-blue-900`}>
-      <div>{data.label}</div>
-      {data.detail && <div className="text-xs font-normal mt-0.5 opacity-75">{data.detail}</div>}
+    <div
+      className="rounded-full border-l-4 border-blue-500 bg-navy-900 border border-blue-500/40
+                 px-4 py-2 min-w-[130px] text-center
+                 shadow-lg hover:shadow-blue-500/30 transition-shadow cursor-default"
+    >
+      <div className="font-mono text-sm font-semibold text-blue-400 leading-tight">
+        {data.label}
+      </div>
+      {data.detail && (
+        <div className="font-mono text-xs text-blue-600 mt-1 leading-tight">{data.detail}</div>
+      )}
     </div>
   );
 }
 
 function MoatNode({ data }: { data: { label: string; detail?: string } }) {
   return (
-    <div className={`${nodeBaseClass} bg-orange-100 border-orange-400 text-orange-900`}>
-      <div>{data.label}</div>
-      {data.detail && <div className="text-xs font-normal mt-0.5 opacity-75">{data.detail}</div>}
+    <div className="text-center cursor-default">
+      <p className="font-mono text-[9px] text-amber-500/70 uppercase tracking-[0.25em] mb-1">
+        Moat
+      </p>
+      <div
+        className="rounded-lg border-2 border-amber-500 bg-navy-950 px-3 py-2.5 min-w-[130px]
+                   shadow-lg hover:shadow-amber-500/30 transition-shadow"
+      >
+        <div className="font-mono text-sm font-semibold text-amber-400 leading-tight">
+          {data.label}
+        </div>
+        {data.detail && (
+          <div className="font-mono text-xs text-amber-600 mt-1 leading-tight">{data.detail}</div>
+        )}
+      </div>
     </div>
   );
 }
 
 function BusinessUnitNode({ data }: { data: { label: string; detail?: string } }) {
   return (
-    <div className={`${nodeBaseClass} bg-purple-100 border-purple-400 text-purple-900`}>
-      <div>{data.label}</div>
-      {data.detail && <div className="text-xs font-normal mt-0.5 opacity-75">{data.detail}</div>}
+    <div
+      className="rounded-lg border border-purple-500/40 bg-navy-900 overflow-hidden min-w-[130px]
+                 shadow-lg hover:shadow-purple-500/30 transition-shadow cursor-default"
+    >
+      <div className="h-1 bg-purple-500 w-full" />
+      <div className="px-3 py-2.5 text-center">
+        <div className="font-mono text-sm font-semibold text-purple-400 leading-tight">
+          {data.label}
+        </div>
+        {data.detail && (
+          <div className="font-mono text-xs text-purple-600 mt-1 leading-tight">{data.detail}</div>
+        )}
+      </div>
     </div>
   );
 }
 
 function RiskNode({ data }: { data: { label: string; detail?: string } }) {
   return (
-    <div className={`${nodeBaseClass} bg-red-100 border-red-400 text-red-900`}>
-      <div>{data.label}</div>
-      {data.detail && <div className="text-xs font-normal mt-0.5 opacity-75">{data.detail}</div>}
+    <div
+      className="rounded-lg border border-red-500/40 border-l-4 border-l-red-500 bg-red-950/20
+                 px-3 py-2.5 min-w-[130px]
+                 shadow-lg hover:shadow-red-500/20 transition-shadow cursor-default"
+    >
+      <div className="flex items-start gap-1.5">
+        <svg className="h-3.5 w-3.5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+        </svg>
+        <div>
+          <div className="font-mono text-sm font-semibold text-red-400 leading-tight">
+            {data.label}
+          </div>
+          {data.detail && (
+            <div className="font-mono text-xs text-red-600 mt-1 leading-tight">{data.detail}</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
 const nodeTypes: NodeTypes = {
-  revenue: RevenueNode,
-  customer: CustomerNode,
-  moat: MoatNode,
+  revenue:       RevenueNode,
+  customer:      CustomerNode,
+  moat:          MoatNode,
   business_unit: BusinessUnitNode,
-  risk: RiskNode,
+  risk:          RiskNode,
 };
+
+// ─── Edge colour by source node type ────────────────────────────────────────
+
+function edgeColour(nodeType: string | undefined): string {
+  return NODE_COLOURS[nodeType ?? ''] ?? '#5a7aa8';
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -79,6 +145,12 @@ interface BusinessDiagramProps {
 
 function DiagramInner({ diagram }: BusinessDiagramProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Build a lookup of node id → type for edge colouring
+  const nodeTypeMap: Record<string, string> = {};
+  for (const n of diagram.nodes) {
+    nodeTypeMap[n.id] = n.type;
+  }
 
   const initialNodes: Node[] = diagram.nodes.map((n) => ({
     id: n.id,
@@ -92,7 +164,11 @@ function DiagramInner({ diagram }: BusinessDiagramProps) {
     source: e.source,
     target: e.target,
     label: e.label,
-    animated: false,
+    type: 'smoothstep',
+    animated: true,
+    style: { stroke: edgeColour(nodeTypeMap[e.source]), strokeWidth: 1.5, opacity: 0.7 },
+    labelStyle: { fill: '#b8b0a0', fontSize: 10, fontFamily: '"JetBrains Mono", monospace' },
+    labelBgStyle: { fill: '#0f1729', fillOpacity: 0.8 },
   }));
 
   const [nodes, , onNodesChange] = useNodesState(initialNodes);
@@ -112,8 +188,8 @@ function DiagramInner({ diagram }: BusinessDiagramProps) {
     <div className="relative">
       <div
         ref={containerRef}
-        className="w-full rounded-lg border border-gray-200 overflow-hidden"
-        style={{ height: 400 }}
+        className="w-full rounded-xl overflow-hidden border border-navy-700"
+        style={{ height: 500, background: '#0f1729' }}
       >
         <ReactFlow
           nodes={nodes}
@@ -125,14 +201,25 @@ function DiagramInner({ diagram }: BusinessDiagramProps) {
           panOnScroll={false}
           zoomOnPinch
           panOnDrag
+          style={{ background: '#0f1729' }}
         >
-          <Background />
-          <Controls />
+          <Background
+            variant={BackgroundVariant.Dots}
+            color="#1e2d47"
+            gap={20}
+            size={1}
+          />
+          <Controls
+            style={{ background: '#162035', borderColor: '#1e2d47', color: '#b8b0a0' }}
+          />
         </ReactFlow>
       </div>
+
+      {/* Export button */}
       <button
         onClick={handleExport}
-        className="mt-2 text-xs text-gray-500 hover:text-gray-700 underline"
+        className="absolute bottom-4 right-4 rounded-full border border-gold/60 text-gold text-xs font-mono px-4 py-1.5
+                   hover:bg-gold hover:text-navy-950 transition-colors z-10"
         aria-label="Export diagram as PNG"
       >
         Export PNG

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
@@ -10,7 +10,6 @@ import ScoreBadge from '../components/report/ScoreBadge';
 import PipelineProgress from '../components/research/PipelineProgress';
 import Modal from '../components/ui/Modal';
 import Button from '../components/ui/Button';
-import Badge from '../components/ui/Badge';
 import Spinner from '../components/ui/Spinner';
 import type { ResearchReport } from '../types/report.types';
 
@@ -37,7 +36,7 @@ export default function Home() {
   const [showMessage, setShowMessage] = useState('');
   const [pipelineActive, setPipelineActive] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const result = tickerSchema.safeParse(input);
     if (!result.success) {
@@ -51,11 +50,9 @@ export default function Home() {
     setShowMessage('');
     try {
       await apiFetch(`/api/v1/research/${ticker}`);
-      // Cache hit — navigate directly
       void navigate(`/research/${ticker}`);
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
-        // Cache miss
         if (!user) {
           setShowMessage('Log in to research new tickers.');
         } else if (isApproved) {
@@ -82,9 +79,13 @@ export default function Home() {
   if (pipelineActive) {
     return (
       <div className="max-w-lg mx-auto py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 font-mono">
-          Researching {pendingTicker}
+        <h1 className="text-2xl font-bold text-cream mb-1 font-mono">
+          Researching{' '}
+          <span className="text-gold">{pendingTicker}</span>
         </h1>
+        <p className="text-cream-subtle text-sm mb-6 font-body">
+          Running 7-step AI research pipeline…
+        </p>
         <PipelineProgress
           steps={pipeline.steps}
           isRunning={pipeline.isRunning}
@@ -97,14 +98,18 @@ export default function Home() {
 
   return (
     <div className="space-y-10">
-      {/* Hero search */}
-      <div className="text-center pt-10 sm:pt-16">
-        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">
+      {/* Hero */}
+      <div className="rounded-2xl bg-navy-950 border border-navy-700 px-6 py-12 sm:px-12 sm:py-16 text-center">
+        <p className="text-gold font-mono text-xs tracking-[0.3em] uppercase mb-4">
+          AI-Powered Investment Research
+        </p>
+        <h1 className="font-display text-4xl sm:text-5xl font-bold text-cream mb-4 leading-tight">
           Find the Moat
         </h1>
-        <p className="text-gray-500 mb-8 text-sm sm:text-base">
-          AI-powered research on any stock ticker.
+        <p className="text-cream-muted font-body text-base sm:text-lg mb-10 max-w-md mx-auto leading-relaxed">
+          Deep-dive research on any stock — competitive moats, valuation, macro, and sentiment in one report.
         </p>
+
         <form
           onSubmit={(e) => { void handleSubmit(e); }}
           className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto"
@@ -122,13 +127,14 @@ export default function Home() {
               maxLength={10}
               aria-label="Stock ticker"
               className={[
-                'w-full rounded-md border px-4 py-3 text-lg font-mono tracking-wider',
-                'focus:outline-none focus:ring-2 focus:ring-blue-500',
-                inputError ? 'border-red-300' : 'border-gray-300',
+                'w-full rounded-lg border px-4 py-3 text-lg font-mono tracking-wider',
+                'bg-navy-800 text-cream placeholder:text-cream-subtle',
+                'focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold',
+                inputError ? 'border-red-500' : 'border-navy-600',
               ].join(' ')}
             />
             {inputError && (
-              <p className="mt-1 text-sm text-red-600 text-left">{inputError}</p>
+              <p className="mt-1 text-sm text-red-400 text-left">{inputError}</p>
             )}
           </div>
           <Button
@@ -137,12 +143,12 @@ export default function Home() {
             isLoading={isChecking}
             className="whitespace-nowrap"
           >
-            Search
+            Research
           </Button>
         </form>
 
         {showMessage && (
-          <p className="mt-4 text-sm text-gray-600 bg-yellow-50 border border-yellow-200 rounded-md px-4 py-3 max-w-md mx-auto">
+          <p className="mt-4 text-sm text-cream-muted bg-navy-800 border border-navy-600 rounded-lg px-4 py-3 max-w-md mx-auto">
             {showMessage}
           </p>
         )}
@@ -150,7 +156,7 @@ export default function Home() {
 
       {/* Ticker grid */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <h2 className="font-display text-xl text-cream mb-5">
           Previously Researched
         </h2>
         {listLoading ? (
@@ -163,32 +169,34 @@ export default function Home() {
               <button
                 key={report.id}
                 onClick={() => { void navigate(`/research/${report.ticker_symbol}`); }}
-                className="text-left rounded-lg border border-gray-200 bg-white p-4 hover:shadow-md hover:border-gray-300 transition-all"
+                className="text-left rounded-xl border border-navy-700 bg-navy-800 p-5 hover:border-gold/50 hover:bg-navy-750 transition-all group"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <span className="text-xl font-bold font-mono text-gray-900">
+                  <span className="text-2xl font-bold font-mono text-gold group-hover:text-gold-light transition-colors">
                     {report.ticker_symbol}
                   </span>
                   <ScoreBadge score={report.score} />
                 </div>
                 {report.tickers?.company_name && (
-                  <p className="text-sm text-gray-600 mb-2 truncate">
+                  <p className="text-sm text-cream-muted mb-3 truncate font-body">
                     {report.tickers.company_name}
                   </p>
                 )}
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 mb-3">
                   {report.tickers?.sector && (
-                    <Badge variant="blue">{report.tickers.sector}</Badge>
+                    <span className="text-xs border border-gold/40 text-gold/80 px-2 py-0.5 rounded-full font-mono">
+                      {report.tickers.sector}
+                    </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-400 mt-3">
+                <p className="text-xs text-cream-subtle font-mono">
                   {formatDate(report.updated_at)}
                 </p>
               </button>
             ))}
           </div>
         ) : (
-          <p className="text-gray-500 text-sm">
+          <p className="text-cream-subtle text-sm font-body">
             No research yet. Be the first to research a ticker.
           </p>
         )}
@@ -200,9 +208,9 @@ export default function Home() {
         onClose={() => setShowConfirm(false)}
         title={`Research ${pendingTicker}?`}
       >
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-cream-muted mb-6 font-body leading-relaxed">
           This will run the 7-step AI research pipeline for{' '}
-          <strong className="font-mono">{pendingTicker}</strong> and use AI
+          <strong className="font-mono text-gold">{pendingTicker}</strong> and use AI
           credits. This may take a minute.
         </p>
         <div className="flex gap-3 justify-end">

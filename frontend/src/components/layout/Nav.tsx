@@ -48,13 +48,13 @@ export default function Nav() {
   };
 
   return (
-    <nav className="bg-white border-b border-gray-200">
+    <nav className="bg-navy-950 border-b border-navy-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center h-16 gap-4">
           {/* Logo */}
           <Link
             to="/"
-            className="flex-shrink-0 text-xl font-bold text-gray-900 font-mono"
+            className="flex-shrink-0 text-xl font-bold text-gold font-mono tracking-tight"
           >
             moat-finder
           </Link>
@@ -75,12 +75,13 @@ export default function Nav() {
                   aria-label="Search ticker"
                   className={[
                     'w-full rounded-md border px-3 py-2 text-sm font-mono',
-                    'placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                    searchError ? 'border-red-300' : 'border-gray-300',
+                    'bg-navy-800 text-cream placeholder:text-cream-subtle',
+                    'focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold',
+                    searchError ? 'border-red-500' : 'border-navy-600',
                   ].join(' ')}
                 />
                 {searchError && (
-                  <p className="absolute top-full mt-1 text-xs text-red-600">
+                  <p className="absolute top-full mt-1 text-xs text-red-400">
                     {searchError}
                   </p>
                 )}
@@ -99,11 +100,11 @@ export default function Nav() {
               <div className="relative">
                 <button
                   onClick={() => setUserMenuOpen((o) => !o)}
-                  className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
+                  className="flex items-center gap-2 text-sm text-cream-muted hover:text-cream transition-colors"
                   aria-expanded={userMenuOpen}
                   aria-haspopup="true"
                 >
-                  <span className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-medium text-xs">
+                  <span className="h-8 w-8 rounded-full bg-navy-700 border border-gold/40 flex items-center justify-center text-gold font-medium text-xs font-mono">
                     {user.email[0]?.toUpperCase() ?? '?'}
                   </span>
                   <span className="hidden md:block max-w-32 truncate">
@@ -111,12 +112,12 @@ export default function Nav() {
                   </span>
                 </button>
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg border border-gray-200 z-20">
+                  <div className="absolute right-0 mt-2 w-48 rounded-md bg-navy-800 shadow-xl border border-navy-600 z-20">
                     {isAdmin && (
                       <Link
                         to="/admin"
                         onClick={() => setUserMenuOpen(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        className="block px-4 py-2 text-sm text-cream-muted hover:text-cream hover:bg-navy-700 transition-colors"
                       >
                         Admin panel
                       </Link>
@@ -126,7 +127,7 @@ export default function Nav() {
                         setUserMenuOpen(false);
                         void signOut();
                       }}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="w-full text-left px-4 py-2 text-sm text-cream-muted hover:text-cream hover:bg-navy-700 transition-colors"
                     >
                       Sign out
                     </button>
@@ -136,7 +137,7 @@ export default function Nav() {
             ) : (
               <button
                 onClick={handleSignIn}
-                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="rounded-md border border-gold/70 px-4 py-2 text-sm font-medium text-gold hover:bg-gold hover:text-navy-950 transition-colors"
               >
                 Log in
               </button>
@@ -149,7 +150,7 @@ export default function Nav() {
               onClick={() => setMenuOpen((o) => !o)}
               aria-label={menuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={menuOpen}
-              className="p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+              className="p-2 rounded-md text-cream-muted hover:text-cream hover:bg-navy-800 transition-colors"
             >
               {menuOpen ? (
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -167,7 +168,7 @@ export default function Nav() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="sm:hidden border-t border-gray-200 bg-white px-4 py-4 space-y-4">
+        <div className="sm:hidden border-t border-navy-700 bg-navy-950 px-4 py-4 space-y-4">
           <form onSubmit={handleSearch}>
             <input
               type="text"
@@ -181,26 +182,30 @@ export default function Nav() {
               aria-label="Search ticker"
               className={[
                 'w-full rounded-md border px-3 py-2 text-sm font-mono',
-                'focus:outline-none focus:ring-2 focus:ring-blue-500',
-                searchError ? 'border-red-300' : 'border-gray-300',
+                'bg-navy-800 text-cream placeholder:text-cream-subtle',
+                'focus:outline-none focus:ring-1 focus:ring-gold',
+                searchError ? 'border-red-500' : 'border-navy-600',
               ].join(' ')}
             />
             {searchError && (
-              <p className="mt-1 text-xs text-red-600">{searchError}</p>
+              <p className="mt-1 text-xs text-red-400">{searchError}</p>
             )}
-            <button type="submit" className="mt-2 w-full rounded-md bg-blue-600 py-2 text-sm text-white font-medium">
+            <button
+              type="submit"
+              className="mt-2 w-full rounded-md border border-gold/70 py-2 text-sm text-gold font-medium hover:bg-gold hover:text-navy-950 transition-colors"
+            >
               Search
             </button>
           </form>
 
           {user ? (
             <div className="space-y-1">
-              <p className="text-sm text-gray-600 truncate">{user.email}</p>
+              <p className="text-sm text-cream-muted truncate">{user.email}</p>
               {isAdmin && (
                 <Link
                   to="/admin"
                   onClick={() => setMenuOpen(false)}
-                  className="block py-2 text-sm text-gray-700"
+                  className="block py-2 text-sm text-cream-muted hover:text-cream"
                 >
                   Admin panel
                   {pendingCount != null && pendingCount > 0 && (
@@ -213,7 +218,7 @@ export default function Nav() {
                   setMenuOpen(false);
                   void signOut();
                 }}
-                className="w-full text-left py-2 text-sm text-gray-700"
+                className="w-full text-left py-2 text-sm text-cream-muted hover:text-cream"
               >
                 Sign out
               </button>
@@ -224,7 +229,7 @@ export default function Nav() {
                 setMenuOpen(false);
                 handleSignIn();
               }}
-              className="w-full rounded-md bg-blue-600 py-2 text-sm text-white font-medium"
+              className="w-full rounded-md border border-gold/70 py-2 text-sm text-gold font-medium hover:bg-gold hover:text-navy-950 transition-colors"
             >
               Log in
             </button>
