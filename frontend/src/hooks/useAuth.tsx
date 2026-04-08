@@ -23,74 +23,93 @@ interface AuthContextValue {
   signOut: () => Promise<void>;
 }
 
+const signOutFn = async (): Promise<void> => {
+  await supabase.auth.signOut();
+};
+
 const initialState: AuthContextValue = {
   user: null,
   role: null,
   isLoading: true,
   isApproved: false,
   isAdmin: false,
-  signOut: async () => {},
+  signOut: signOutFn,
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+function buildSignedOutState(): AuthContextValue {
+  return {
+    user: null,
+    role: null,
+    isLoading: false,
+    isApproved: false,
+    isAdmin: false,
+    signOut: signOutFn,
+  };
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthContextValue>(initialState);
 
   useEffect(() => {
-    const handleSignOut = (): void => {
-      setState({
-        user: null,
-        role: null,
-        isLoading: false,
-        isApproved: false,
-        isAdmin: false,
-        signOut: async () => {
-          await supabase.auth.signOut();
-        },
-      });
+    // Shared logic: fetch role from DB and update state for a given auth user.
+    // setTimeout(0) avoids Supabase deadlock when called inside onAuthStateChange.
+    const loadUser = (authUser: { id: string; email?: string }, defer: boolean) => {
+      const run = () => {
+        void supabase
+          .from('users')
+          .select('role, display_name')
+          .eq('id', authUser.id)
+          .single()
+          .then(({ data }) => {
+            const role = (data as { role?: string } | null)?.role ?? 'pending';
+            const displayName =
+              (data as { display_name?: string | null } | null)?.display_name ??
+              null;
+            setState({
+              user: {
+                id: authUser.id,
+                email: authUser.email ?? '',
+                displayName,
+              },
+              role,
+              isLoading: false,
+              isApproved: role === 'approved' || role === 'admin',
+              isAdmin: role === 'admin',
+              signOut: signOutFn,
+            });
+          });
+      };
+      if (defer) {
+        setTimeout(run, 0);
+      } else {
+        run();
+      }
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (!session?.user) {
-          handleSignOut();
-          return;
-        }
+    // Explicitly load the current session on mount so that a session already
+    // established (e.g. after an OAuth PKCE redirect to '/') is detected even
+    // if onAuthStateChange fires before this effect runs.
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadUser(session.user, false);
+      } else {
+        setState(buildSignedOutState());
+      }
+    });
 
-        const authUser = session.user;
-
-        // Use setTimeout(0) to avoid Supabase deadlock from calling Supabase
-        // inside an onAuthStateChange callback synchronously
-        setTimeout(() => {
-          void supabase
-            .from('users')
-            .select('role, display_name')
-            .eq('id', authUser.id)
-            .single()
-            .then(({ data }) => {
-              const role = (data as { role?: string } | null)?.role ?? 'pending';
-              const displayName =
-                (data as { display_name?: string | null } | null)?.display_name ??
-                null;
-              setState({
-                user: {
-                  id: authUser.id,
-                  email: authUser.email ?? '',
-                  displayName,
-                },
-                role,
-                isLoading: false,
-                isApproved: role === 'approved' || role === 'admin',
-                isAdmin: role === 'admin',
-                signOut: async () => {
-                  await supabase.auth.signOut();
-                },
-              });
-            });
-        }, 0);
-      },
-    );
+    // Subscribe for subsequent auth events (sign-in, sign-out, token refresh).
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        setState(buildSignedOutState());
+        return;
+      }
+      // defer=true inside onAuthStateChange to avoid Supabase re-entrancy deadlock
+      loadUser(session.user, true);
+    });
 
     return () => {
       subscription.unsubscribe();
