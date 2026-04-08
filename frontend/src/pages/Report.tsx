@@ -17,6 +17,8 @@ import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import type { DiffJson } from '../types/report.types';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-AU', {
     day: 'numeric',
@@ -24,6 +26,44 @@ function formatDate(iso: string): string {
     year: 'numeric',
   });
 }
+
+/**
+ * Parse a paragraph into numbered segments.
+ * Tries "(1) …" / "1. …" patterns first; falls back to single-item array.
+ */
+function parseNumberedList(text: string): string[] {
+  // Pattern: (1) or (2) … anywhere in the string
+  const byParen = text.split(/\s*\(\d+\)\s*/).filter(Boolean);
+  if (byParen.length >= 2) return byParen;
+
+  // Pattern: standalone "1. " / "2. " at start of segment
+  const byDot = text.split(/(?:^|\s)\d+\.\s+/).filter(Boolean);
+  if (byDot.length >= 2) return byDot;
+
+  return [text];
+}
+
+/**
+ * Parse a paragraph into labelled bullets.
+ * Sentences containing a colon get the pre-colon text treated as a bold label.
+ * Otherwise the text is split by ". " into plain bullets.
+ */
+function parseBullets(text: string): Array<{ label: string | null; body: string }> {
+  // Split into sentences on ". " followed by a capital letter
+  const sentences = text.split(/\.\s+(?=[A-Z])/).filter(Boolean);
+
+  const bullets = sentences.map((s) => {
+    const colonIdx = s.indexOf(':');
+    if (colonIdx > 0 && colonIdx < 60) {
+      return { label: s.slice(0, colonIdx).trim(), body: s.slice(colonIdx + 1).trim() };
+    }
+    return { label: null, body: s.replace(/\.$/, '').trim() };
+  });
+
+  return bullets.filter((b) => b.body.length > 0);
+}
+
+// ─── Shared UI pieces ─────────────────────────────────────────────────────────
 
 /** Decorative gold-border section heading */
 function SectionHeading({ children }: { children: React.ReactNode }) {
@@ -33,6 +73,108 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
     </h2>
   );
 }
+
+/** Renders a parsed numbered list as gold-accented rows */
+function NumberedSegments({ items }: { items: string[] }) {
+  // Single item → just a paragraph
+  if (items.length === 1) {
+    return <p className="font-body text-cream-muted leading-relaxed">{items[0]}</p>;
+  }
+  return (
+    <ol className="space-y-4">
+      {items.map((item, i) => {
+        // Split on the first " — " or " - " to separate a segment name from its description
+        const dashMatch = item.match(/^([^—\-]{3,50})\s*[—\-]\s*(.+)$/s);
+        return (
+          <li key={i} className="flex gap-4 border-l-2 border-gold/30 pl-4 py-1">
+            <span className="font-mono text-lg font-bold text-gold/40 flex-shrink-0 w-7 leading-tight">
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <p className="font-body text-cream-muted leading-relaxed">
+              {dashMatch ? (
+                <>
+                  <span className="text-cream font-semibold">{dashMatch[1].trim()}</span>
+                  {' — '}
+                  {dashMatch[2].trim()}
+                </>
+              ) : (
+                item
+              )}
+            </p>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+/** Renders parsed bullets with gold dot and optional bold label */
+function BulletList({ bullets }: { bullets: Array<{ label: string | null; body: string }> }) {
+  if (bullets.length <= 1) {
+    // Fall back to paragraph if parsing didn't produce meaningful bullets
+    const text = bullets[0] ? (bullets[0].label ? `${bullets[0].label}: ${bullets[0].body}` : bullets[0].body) : '';
+    return <p className="font-body text-cream-muted leading-relaxed">{text}</p>;
+  }
+  return (
+    <ul className="space-y-3">
+      {bullets.map((b, i) => (
+        <li key={i} className="flex gap-3">
+          <span className="text-gold font-bold flex-shrink-0 mt-0.5 leading-tight">•</span>
+          <p className="font-body text-cream-muted leading-relaxed">
+            {b.label ? (
+              <>
+                <span className="text-cream font-semibold">{b.label}:</span>
+                {' '}
+                {b.body}
+              </>
+            ) : (
+              b.body
+            )}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Renders moat pillars as dark cards */
+function MoatPillars({ items, fallback }: { items: string[]; fallback: string }) {
+  if (items.length <= 1) {
+    return <p className="font-body text-cream-muted leading-relaxed">{fallback}</p>;
+  }
+  return (
+    <div className="space-y-3">
+      {items.map((item, i) => {
+        const dashMatch = item.match(/^([^—\-]{3,60})\s*[—\-]\s*(.+)$/s);
+        return (
+          <div key={i} className="rounded-lg bg-navy-800 border border-navy-600 p-4">
+            <div className="flex gap-3">
+              <span className="font-mono text-sm font-bold text-gold/50 flex-shrink-0 w-6 leading-tight">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+              <div>
+                {dashMatch ? (
+                  <>
+                    <p className="font-body font-semibold text-cream mb-1">
+                      {dashMatch[1].trim()}
+                    </p>
+                    <p className="font-body text-cream-muted text-sm leading-relaxed">
+                      {dashMatch[2].trim()}
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-body text-cream-muted leading-relaxed">{item}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Report() {
   const { ticker = '' } = useParams<{ ticker: string }>();
@@ -84,6 +226,12 @@ export default function Report() {
   }
 
   const rj = report.report_json;
+
+  // Pre-parse text fields
+  const businessModelSegments = parseNumberedList(rj.business_model);
+  const moatPillars = parseNumberedList(rj.moat);
+  const macroBullets = parseBullets(rj.macro_summary);
+  const sentimentBullets = parseBullets(rj.sentiment_summary);
 
   return (
     <div className="space-y-0">
@@ -149,16 +297,16 @@ export default function Report() {
         {/* ── Left column — narrative ─────────────────────────────────────── */}
         <div className="space-y-10 min-w-0">
 
-          {/* Business Model Diagram */}
+          {/* Fix 1: Business Model Canvas (pure React) */}
           <section>
             <SectionHeading>Business Model</SectionHeading>
             <BusinessDiagram diagram={report.diagram_json} />
           </section>
 
-          {/* Business Model Narrative */}
+          {/* Fix 2: How It Makes Money — numbered segments */}
           <section>
             <SectionHeading>How It Makes Money</SectionHeading>
-            <p className="font-body text-cream-muted leading-relaxed">{rj.business_model}</p>
+            <NumberedSegments items={businessModelSegments} />
           </section>
 
           {/* Catalysts */}
@@ -176,10 +324,12 @@ export default function Report() {
             </ol>
           </section>
 
-          {/* Moat & Competitors */}
+          {/* Fix 3: Moat — parsed pillars */}
           <section>
             <SectionHeading>Moat &amp; Competitors</SectionHeading>
-            <p className="font-body text-cream-muted leading-relaxed mb-4">{rj.moat}</p>
+            <div className="mb-5">
+              <MoatPillars items={moatPillars} fallback={rj.moat} />
+            </div>
             {rj.competitors.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {rj.competitors.map((c) => (
@@ -201,16 +351,16 @@ export default function Report() {
             <BearCase bearCase={rj.bear_case} riskFactors={rj.risk_factors ?? []} />
           </section>
 
-          {/* Macro */}
+          {/* Fix 4a: Macro — bullet list */}
           <section>
             <SectionHeading>Macro &amp; Policy</SectionHeading>
-            <p className="font-body text-cream-muted leading-relaxed">{rj.macro_summary}</p>
+            <BulletList bullets={macroBullets} />
           </section>
 
-          {/* Sentiment */}
+          {/* Fix 4b: Sentiment — bullet list */}
           <section>
             <SectionHeading>Sentiment &amp; Technicals</SectionHeading>
-            <p className="font-body text-cream-muted leading-relaxed">{rj.sentiment_summary}</p>
+            <BulletList bullets={sentimentBullets} />
           </section>
 
           {/* Changelog */}
@@ -225,17 +375,17 @@ export default function Report() {
         {/* ── Right column — data cards ────────────────────────────────────── */}
         <div className="space-y-6 lg:sticky lg:top-6">
 
-          {/* Napkin Math */}
+          {/* Fix 5: NapkinMath with hierarchical revenue guidance */}
           <NapkinMath data={rj.napkin_math} />
 
-          {/* Valuation Table */}
+          {/* Fix 6: ValuationTable card grid */}
           <div className="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
             <div className="px-4 py-3 border-b border-navy-700">
               <p className="font-mono text-xs text-gold/70 uppercase tracking-[0.2em]">
                 Valuation vs Peers
               </p>
             </div>
-            <div className="p-0">
+            <div className="p-3">
               <ValuationTable rows={rj.valuation_table} ticker={ticker} />
             </div>
           </div>

@@ -1,140 +1,237 @@
 import { useRef, useCallback } from 'react';
-import ReactFlow, {
-  Background,
-  BackgroundVariant,
-  Controls,
-  useNodesState,
-  useEdgesState,
-  ReactFlowProvider,
-  type NodeTypes,
-  type Node,
-  type Edge,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
 import { toPng } from 'html-to-image';
-import type { DiagramJson } from '../../types/report.types';
+import type { DiagramJson, DiagramNode } from '../../types/report.types';
 
-// ─── Node colours ────────────────────────────────────────────────────────────
+// ─── Zone helpers ─────────────────────────────────────────────────────────────
 
-const NODE_COLOURS: Record<string, string> = {
-  revenue:       '#10b981',
-  customer:      '#3b82f6',
-  moat:          '#f59e0b',
-  business_unit: '#8b5cf6',
-  risk:          '#ef4444',
-};
-
-// ─── Custom node components ───────────────────────────────────────────────────
-
-function RevenueNode({ data }: { data: { label: string; detail?: string } }) {
-  return (
-    <div
-      className="rounded-lg border border-emerald-500 bg-navy-900 px-3 py-2.5 min-w-[130px] text-center
-                 shadow-lg hover:shadow-emerald-500/30 transition-shadow cursor-default"
-    >
-      <div className="font-mono text-sm font-semibold text-emerald-400 leading-tight">
-        {data.label}
-      </div>
-      {data.detail && (
-        <div className="font-mono text-xs text-emerald-600 mt-1 leading-tight">{data.detail}</div>
-      )}
-    </div>
-  );
+function nodesByType(nodes: DiagramNode[], type: string): DiagramNode[] {
+  return nodes.filter((n) => n.type === type);
 }
 
-function CustomerNode({ data }: { data: { label: string; detail?: string } }) {
-  return (
-    <div
-      className="rounded-full border-l-4 border-blue-500 bg-navy-900 border border-blue-500/40
-                 px-4 py-2 min-w-[130px] text-center
-                 shadow-lg hover:shadow-blue-500/30 transition-shadow cursor-default"
-    >
-      <div className="font-mono text-sm font-semibold text-blue-400 leading-tight">
-        {data.label}
-      </div>
-      {data.detail && (
-        <div className="font-mono text-xs text-blue-600 mt-1 leading-tight">{data.detail}</div>
-      )}
-    </div>
-  );
-}
+// ─── Zone 1: Moat chips ───────────────────────────────────────────────────────
 
-function MoatNode({ data }: { data: { label: string; detail?: string } }) {
+function MoatZone({ nodes }: { nodes: DiagramNode[] }) {
+  if (nodes.length === 0) return null;
   return (
-    <div className="text-center cursor-default">
-      <p className="font-mono text-[9px] text-amber-500/70 uppercase tracking-[0.25em] mb-1">
-        Moat
+    <div className="rounded-xl border border-gold/50 bg-amber-950/30 px-4 py-4">
+      <p className="font-mono text-[10px] text-gold/60 uppercase tracking-[0.25em] mb-3">
+        The Moat
       </p>
-      <div
-        className="rounded-lg border-2 border-amber-500 bg-navy-950 px-3 py-2.5 min-w-[130px]
-                   shadow-lg hover:shadow-amber-500/30 transition-shadow"
-      >
-        <div className="font-mono text-sm font-semibold text-amber-400 leading-tight">
-          {data.label}
-        </div>
-        {data.detail && (
-          <div className="font-mono text-xs text-amber-600 mt-1 leading-tight">{data.detail}</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function BusinessUnitNode({ data }: { data: { label: string; detail?: string } }) {
-  return (
-    <div
-      className="rounded-lg border border-purple-500/40 bg-navy-900 overflow-hidden min-w-[130px]
-                 shadow-lg hover:shadow-purple-500/30 transition-shadow cursor-default"
-    >
-      <div className="h-1 bg-purple-500 w-full" />
-      <div className="px-3 py-2.5 text-center">
-        <div className="font-mono text-sm font-semibold text-purple-400 leading-tight">
-          {data.label}
-        </div>
-        {data.detail && (
-          <div className="font-mono text-xs text-purple-600 mt-1 leading-tight">{data.detail}</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function RiskNode({ data }: { data: { label: string; detail?: string } }) {
-  return (
-    <div
-      className="rounded-lg border border-red-500/40 border-l-4 border-l-red-500 bg-red-950/20
-                 px-3 py-2.5 min-w-[130px]
-                 shadow-lg hover:shadow-red-500/20 transition-shadow cursor-default"
-    >
-      <div className="flex items-start gap-1.5">
-        <svg className="h-3.5 w-3.5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-        </svg>
-        <div>
-          <div className="font-mono text-sm font-semibold text-red-400 leading-tight">
-            {data.label}
+      <div className="flex flex-wrap gap-2">
+        {nodes.map((n) => (
+          <div
+            key={n.id}
+            className="rounded-lg border border-gold/40 bg-navy-950 px-3 py-2 max-w-xs"
+          >
+            <p className="font-mono text-sm font-semibold text-amber-400 leading-tight">
+              {n.data.label}
+            </p>
+            {n.data.detail && (
+              <p className="font-body text-xs text-amber-600/80 mt-1 leading-snug">
+                {n.data.detail}
+              </p>
+            )}
           </div>
-          {data.detail && (
-            <div className="font-mono text-xs text-red-600 mt-1 leading-tight">{data.detail}</div>
-          )}
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Arrow divider ────────────────────────────────────────────────────────────
+
+function ArrowDivider({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 py-1 select-none">
+      <div className="w-px h-4 bg-navy-600" />
+      <span className="font-mono text-[10px] text-cream-subtle tracking-wide">{label}</span>
+      <svg
+        className="h-3 w-3 text-navy-600"
+        fill="currentColor"
+        viewBox="0 0 10 10"
+        aria-hidden="true"
+      >
+        <polygon points="5,10 0,0 10,0" />
+      </svg>
+    </div>
+  );
+}
+
+// ─── Zone 2: Business (3 columns) ────────────────────────────────────────────
+
+function BusinessZone({
+  units,
+  revenues,
+  products,
+}: {
+  units: DiagramNode[];
+  revenues: DiagramNode[];
+  products: DiagramNode[];
+}) {
+  return (
+    <div className="rounded-xl border border-navy-600 bg-navy-950 px-4 py-4">
+      <div className="grid grid-cols-3 gap-3">
+        {/* Business Units */}
+        <div>
+          <p className="font-mono text-[10px] text-purple-400/70 uppercase tracking-[0.2em] mb-2">
+            Business Units
+          </p>
+          <div className="space-y-2">
+            {units.length > 0 ? units.map((n) => (
+              <div
+                key={n.id}
+                className="rounded-lg border border-purple-500/30 bg-navy-800 overflow-hidden"
+              >
+                <div className="h-0.5 bg-purple-500" />
+                <div className="px-2.5 py-2">
+                  <p className="font-mono text-xs font-semibold text-purple-400 leading-tight">
+                    {n.data.label}
+                  </p>
+                  {n.data.detail && (
+                    <p className="font-body text-[11px] text-purple-600/80 mt-1 leading-snug">
+                      {n.data.detail}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )) : (
+              <p className="text-xs text-cream-subtle italic font-body">—</p>
+            )}
+          </div>
+        </div>
+
+        {/* Revenue Streams */}
+        <div>
+          <p className="font-mono text-[10px] text-emerald-400/70 uppercase tracking-[0.2em] mb-2">
+            Revenue Streams
+          </p>
+          <div className="space-y-2">
+            {revenues.length > 0 ? revenues.map((n) => (
+              <div
+                key={n.id}
+                className="rounded-lg border border-emerald-500/40 bg-navy-800 px-2.5 py-2"
+              >
+                <p className="font-mono text-xs font-semibold text-emerald-400 leading-tight">
+                  {n.data.label}
+                </p>
+                {n.data.detail && (
+                  <p className="font-mono text-[11px] text-emerald-600/80 mt-1 leading-snug">
+                    {n.data.detail}
+                  </p>
+                )}
+              </div>
+            )) : (
+              <p className="text-xs text-cream-subtle italic font-body">—</p>
+            )}
+          </div>
+        </div>
+
+        {/* Key Products / other nodes */}
+        <div>
+          <p className="font-mono text-[10px] text-blue-400/70 uppercase tracking-[0.2em] mb-2">
+            Key Products
+          </p>
+          <div className="space-y-2">
+            {products.length > 0 ? products.map((n) => (
+              <div
+                key={n.id}
+                className="rounded-lg border border-blue-500/30 border-l-2 border-l-blue-500 bg-navy-800 px-2.5 py-2"
+              >
+                <p className="font-mono text-xs font-semibold text-blue-400 leading-tight">
+                  {n.data.label}
+                </p>
+                {n.data.detail && (
+                  <p className="font-body text-[11px] text-blue-600/80 mt-1 leading-snug">
+                    {n.data.detail}
+                  </p>
+                )}
+              </div>
+            )) : (
+              <p className="text-xs text-cream-subtle italic font-body">—</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-const nodeTypes: NodeTypes = {
-  revenue:       RevenueNode,
-  customer:      CustomerNode,
-  moat:          MoatNode,
-  business_unit: BusinessUnitNode,
-  risk:          RiskNode,
-};
+// ─── Zone 3: Customers ────────────────────────────────────────────────────────
 
-// ─── Edge colour by source node type ────────────────────────────────────────
+function CustomerZone({ nodes }: { nodes: DiagramNode[] }) {
+  if (nodes.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-navy-600 bg-navy-900 px-4 py-4">
+      <p className="font-mono text-[10px] text-blue-400/60 uppercase tracking-[0.25em] mb-3">
+        Customers &amp; End Markets
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {nodes.map((n) => (
+          <div
+            key={n.id}
+            className="rounded-full border border-blue-500/40 bg-navy-800 px-3 py-1.5"
+          >
+            <p className="font-mono text-xs font-semibold text-blue-400 leading-tight">
+              {n.data.label}
+            </p>
+            {n.data.detail && (
+              <p className="font-body text-[10px] text-blue-600/70 leading-snug">
+                {n.data.detail}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-function edgeColour(nodeType: string | undefined): string {
-  return NODE_COLOURS[nodeType ?? ''] ?? '#5a7aa8';
+// ─── Zone 4: Risks ────────────────────────────────────────────────────────────
+
+function RiskZone({ nodes }: { nodes: DiagramNode[] }) {
+  if (nodes.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-red-900/50 bg-red-950/20 px-4 py-4">
+      <p className="font-mono text-[10px] text-red-400/60 uppercase tracking-[0.25em] mb-3">
+        Key Risks
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {nodes.map((n) => (
+          <div
+            key={n.id}
+            className="rounded-lg border border-red-500/30 border-l-2 border-l-red-500 bg-navy-900 px-3 py-2"
+          >
+            <div className="flex items-start gap-1.5">
+              <svg
+                className="h-3 w-3 text-red-400 flex-shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                />
+              </svg>
+              <div>
+                <p className="font-mono text-xs font-semibold text-red-400 leading-tight">
+                  {n.data.label}
+                </p>
+                {n.data.detail && (
+                  <p className="font-body text-[11px] text-red-600/80 mt-0.5 leading-snug">
+                    {n.data.detail}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -143,43 +240,24 @@ interface BusinessDiagramProps {
   diagram: DiagramJson;
 }
 
-function DiagramInner({ diagram }: BusinessDiagramProps) {
+export default function BusinessDiagram({ diagram }: BusinessDiagramProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Build a lookup of node id → type for edge colouring
-  const nodeTypeMap: Record<string, string> = {};
-  for (const n of diagram.nodes) {
-    nodeTypeMap[n.id] = n.type;
-  }
-
-  const initialNodes: Node[] = diagram.nodes.map((n) => ({
-    id: n.id,
-    type: n.type,
-    data: n.data,
-    position: n.position,
-  }));
-
-  const initialEdges: Edge[] = diagram.edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    label: e.label,
-    type: 'smoothstep',
-    animated: true,
-    style: { stroke: edgeColour(nodeTypeMap[e.source]), strokeWidth: 1.5, opacity: 0.7 },
-    labelStyle: { fill: '#b8b0a0', fontSize: 10, fontFamily: '"JetBrains Mono", monospace' },
-    labelBgStyle: { fill: '#0f1729', fillOpacity: 0.8 },
-  }));
-
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const moatNodes     = nodesByType(diagram.nodes, 'moat');
+  const unitNodes     = nodesByType(diagram.nodes, 'business_unit');
+  const revenueNodes  = nodesByType(diagram.nodes, 'revenue');
+  const customerNodes = nodesByType(diagram.nodes, 'customer');
+  const riskNodes     = nodesByType(diagram.nodes, 'risk');
+  // Any type not in the four known zones goes into "Key Products"
+  const known = new Set(['moat', 'business_unit', 'revenue', 'customer', 'risk']);
+  const productNodes = diagram.nodes.filter((n) => !known.has(n.type));
 
   const handleExport = useCallback(() => {
     if (!containerRef.current) return;
     void toPng(containerRef.current, { quality: 1 }).then((dataUrl) => {
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = 'business-diagram.png';
+      a.download = 'business-model.png';
       a.click();
     });
   }, []);
@@ -188,50 +266,38 @@ function DiagramInner({ diagram }: BusinessDiagramProps) {
     <div className="relative">
       <div
         ref={containerRef}
-        className="w-full rounded-xl overflow-hidden border border-navy-700"
-        style={{ height: 500, background: '#0f1729' }}
+        className="rounded-xl border border-navy-700 bg-navy-900 p-4 space-y-2 min-h-[400px]"
       >
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          fitView
-          panOnScroll={false}
-          zoomOnPinch
-          panOnDrag
-          style={{ background: '#0f1729' }}
-        >
-          <Background
-            variant={BackgroundVariant.Dots}
-            color="#1e2d47"
-            gap={20}
-            size={1}
-          />
-          <Controls
-            style={{ background: '#162035', borderColor: '#1e2d47', color: '#b8b0a0' }}
-          />
-        </ReactFlow>
+        <MoatZone nodes={moatNodes} />
+
+        {moatNodes.length > 0 && <ArrowDivider label="protects" />}
+
+        <BusinessZone
+          units={unitNodes}
+          revenues={revenueNodes}
+          products={productNodes}
+        />
+
+        <ArrowDivider label="serves" />
+
+        <CustomerZone nodes={customerNodes} />
+
+        {riskNodes.length > 0 && (
+          <>
+            <div className="pt-1" />
+            <RiskZone nodes={riskNodes} />
+          </>
+        )}
       </div>
 
-      {/* Export button */}
       <button
         onClick={handleExport}
-        className="absolute bottom-4 right-4 rounded-full border border-gold/60 text-gold text-xs font-mono px-4 py-1.5
-                   hover:bg-gold hover:text-navy-950 transition-colors z-10"
+        className="absolute bottom-6 right-6 rounded-full border border-gold/60 text-gold text-xs font-mono
+                   px-4 py-1.5 hover:bg-gold hover:text-navy-950 transition-colors bg-navy-900/80"
         aria-label="Export diagram as PNG"
       >
         Export PNG
       </button>
     </div>
-  );
-}
-
-export default function BusinessDiagram({ diagram }: BusinessDiagramProps) {
-  return (
-    <ReactFlowProvider>
-      <DiagramInner diagram={diagram} />
-    </ReactFlowProvider>
   );
 }

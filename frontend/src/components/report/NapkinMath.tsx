@@ -4,8 +4,21 @@ interface NapkinMathProps {
   data: NapkinMathType;
 }
 
+/**
+ * Extract the key dollar figure(s) from a revenue guidance string.
+ * Matches patterns like "$330M", "$330-340M", "$1.2B", "330M-340M".
+ * Returns null if nothing found.
+ */
+function extractGuideNumbers(guidance: string): string | null {
+  const match = guidance.match(
+    /\$?[\d,.]+\s*[BMKbmk]?\s*[-–]\s*\$?[\d,.]+\s*[BMKbmk]|\$[\d,.]+\s*[BMKbmk]/i,
+  );
+  return match ? match[0].trim() : null;
+}
+
 export default function NapkinMath({ data }: NapkinMathProps) {
   const upsidePositive = data.upside_percent >= 0;
+  const guideKey = extractGuideNumbers(data.revenue_guidance);
 
   return (
     <div className="rounded-xl bg-navy-950 border border-navy-700 p-5 sm:p-6">
@@ -23,10 +36,12 @@ export default function NapkinMath({ data }: NapkinMathProps) {
         </div>
         <div>
           <p className="font-mono text-xs text-cream-subtle mb-1">Upside</p>
-          <p className={[
-            'font-mono text-4xl font-bold leading-none',
-            upsidePositive ? 'text-emerald-400' : 'text-red-400',
-          ].join(' ')}>
+          <p
+            className={[
+              'font-mono text-4xl font-bold leading-none',
+              upsidePositive ? 'text-emerald-400' : 'text-red-400',
+            ].join(' ')}
+          >
             {upsidePositive ? '+' : ''}{data.upside_percent}%
           </p>
         </div>
@@ -34,10 +49,25 @@ export default function NapkinMath({ data }: NapkinMathProps) {
 
       {/* Supporting data */}
       <div className="grid grid-cols-2 gap-4 border-t border-navy-700 pt-4">
+        {/* Fix 5: Revenue guidance — key figure prominent, full text below */}
         <div>
           <p className="font-mono text-xs text-cream-subtle mb-1">Revenue Guidance</p>
-          <p className="font-body text-sm text-cream leading-snug">{data.revenue_guidance}</p>
+          {guideKey ? (
+            <>
+              <p className="font-mono text-xl font-bold text-gold leading-tight mb-1">
+                {guideKey}
+              </p>
+              <p className="font-body text-xs text-cream-subtle leading-snug">
+                {data.revenue_guidance}
+              </p>
+            </>
+          ) : (
+            <p className="font-body text-sm text-cream leading-snug">
+              {data.revenue_guidance}
+            </p>
+          )}
         </div>
+
         <div>
           <p className="font-mono text-xs text-cream-subtle mb-1">Comp Multiple</p>
           <p className="font-mono text-sm text-cream">
