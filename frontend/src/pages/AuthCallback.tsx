@@ -7,16 +7,22 @@ export default function AuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Wait for Supabase to exchange the PKCE code in the URL for a session,
-    // then redirect to the home page regardless of outcome.
-    void supabase.auth.getSession().then(() => {
-      void navigate('/', { replace: true });
-    });
+    void (async () => {
+      const { error } = await supabase.auth.exchangeCodeForSession(
+        window.location.href,
+      );
+      if (error) {
+        void navigate('/?error=auth_failed', { replace: true });
+      } else {
+        void navigate('/', { replace: true });
+      }
+    })();
   }, [navigate]);
 
   return (
-    <div className="flex justify-center items-center min-h-screen">
+    <div className="flex flex-col justify-center items-center min-h-screen gap-3">
       <Spinner size="lg" />
+      <p className="text-sm text-gray-500">Completing sign in...</p>
     </div>
   );
 }
