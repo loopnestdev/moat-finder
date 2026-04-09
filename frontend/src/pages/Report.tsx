@@ -270,7 +270,7 @@ export default function Report() {
               </Link>
             </p>
             {/* Thesis callout */}
-            <p className="font-body italic text-cream/90 text-lg leading-relaxed border-l-2 border-gold/40 pl-4">
+            <p className="block w-full font-body italic text-cream/90 text-lg leading-relaxed border-l-2 border-gold/40 pl-4 whitespace-normal break-words">
               {thesisText}
             </p>
           </div>
