@@ -34,7 +34,13 @@ export async function saveCheckpoint(
     );
 
   if (error) {
-    console.error(`[checkpoint] Failed to save step ${step.step_number} for ${tickerSymbol}:`, error.message);
+    console.error('CHECKPOINT SAVE FAILED:', {
+      table: 'research_checkpoints',
+      ticker: tickerSymbol,
+      step: step.step_number,
+      error: JSON.stringify(error),
+      hint: 'Check if table exists and service role has INSERT permission',
+    });
   } else {
     console.log(`[checkpoint] Saved step ${step.step_number} (${step.step_label}) for ${tickerSymbol} run ${runId}`);
   }

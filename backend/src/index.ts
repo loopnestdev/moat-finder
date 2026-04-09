@@ -7,6 +7,7 @@ import rateLimit from 'express-rate-limit';
 import healthRouter from './routes/health';
 import researchRouter from './routes/research';
 import adminRouter from './routes/admin';
+import { adminClient } from './services/supabase';
 
 const app = express();
 
@@ -53,6 +54,18 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 const port = process.env.PORT ?? 3001;
 app.listen(port, () => {
   console.log(`moat-finder backend listening on port ${String(port)}`);
+
+  void adminClient
+    .from('research_checkpoints')
+    .select('id')
+    .limit(1)
+    .then(({ error }) => {
+      if (error) {
+        console.error('❌ research_checkpoints table check failed:', error.message);
+      } else {
+        console.log('✅ research_checkpoints table OK');
+      }
+    });
 });
 
 export default app;
