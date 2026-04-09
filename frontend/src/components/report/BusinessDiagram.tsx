@@ -237,20 +237,21 @@ function RiskZone({ nodes }: { nodes: DiagramNode[] }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 interface BusinessDiagramProps {
-  diagram: DiagramJson;
+  diagram: DiagramJson | null | undefined;
 }
 
 export default function BusinessDiagram({ diagram }: BusinessDiagramProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const moatNodes     = nodesByType(diagram.nodes, 'moat');
-  const unitNodes     = nodesByType(diagram.nodes, 'business_unit');
-  const revenueNodes  = nodesByType(diagram.nodes, 'revenue');
-  const customerNodes = nodesByType(diagram.nodes, 'customer');
-  const riskNodes     = nodesByType(diagram.nodes, 'risk');
+  const safeNodes = diagram?.nodes ?? [];
+  const moatNodes     = nodesByType(safeNodes, 'moat');
+  const unitNodes     = nodesByType(safeNodes, 'business_unit');
+  const revenueNodes  = nodesByType(safeNodes, 'revenue');
+  const customerNodes = nodesByType(safeNodes, 'customer');
+  const riskNodes     = nodesByType(safeNodes, 'risk');
   // Any type not in the four known zones goes into "Key Products"
   const known = new Set(['moat', 'business_unit', 'revenue', 'customer', 'risk']);
-  const productNodes = diagram.nodes.filter((n) => !known.has(n.type));
+  const productNodes = safeNodes.filter((n) => !known.has(n.type));
 
   const handleExport = useCallback(() => {
     if (!containerRef.current) return;

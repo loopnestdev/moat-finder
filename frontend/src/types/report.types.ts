@@ -108,7 +108,7 @@ export interface ResearchReport {
   ticker_symbol: string;
   score: number | null;
   report_json: ReportJson;
-  diagram_json: DiagramJson;
+  diagram_json: DiagramJson | null;
   version: number;
   researched_by: string | null;
   created_at: string;
@@ -123,7 +123,7 @@ export interface ResearchVersion {
   version: number;
   score: number | null;
   report_json: ReportJson;
-  diagram_json: DiagramJson;
+  diagram_json: DiagramJson | null;
   diff_json: DiffJson | null;
   researched_by: string | null;
   created_at: string;
