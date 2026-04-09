@@ -171,9 +171,12 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
     "target_price": number,
     "upside_percent": number
   },
-  "financial_summary": "string"
+  "financial_summary": "string",
+  "quarterly_results": [
+    { "quarter": "string", "revenue_est": number_or_null, "revenue_act": number_or_null, "revenue_growth": number_or_null, "eps_est": number_or_null, "eps_act": number_or_null }
+  ]
 }
-Use null (not "null") for unknown numeric values.`;
+Use null (not "null") for unknown numeric values. Revenue values in millions (e.g. 340 = $340M). revenue_growth as a percentage (e.g. 18.2 = 18.2% YoY). quarterly_results must contain the last 4 reported quarters, most recent first.`;
 
   const text = await callClaude(
     system,
@@ -185,8 +188,9 @@ Provide:
 1. Relative valuation table vs 2–3 competitors: P/S, EV/EBITDA, gross margin, YoY revenue growth
 2. Napkin math: revenue guidance, best comparable ticker, their multiple, implied target price, upside %
 3. Brief financial summary (2–3 sentences)
+4. Last 4 reported quarters of earnings data (most recent first): for each quarter provide the quarter label (e.g. "Q4 2025"), revenue estimate (in millions), revenue actual (in millions), YoY revenue growth %, EPS estimate, and EPS actual. Use null for any values that cannot be found.
 
-Use web search for current financials. Return only the JSON object.`,
+Use web search for current financials and earnings results. Return only the JSON object.`,
   );
 
   const result = JSON.parse(extractJson(text)) as Step3Output;
@@ -370,6 +374,11 @@ RS vs SPY: ${step6.rs_vs_spy}`;
     step5,
     step6,
   };
+
+  // Carry quarterly results from Step 3 into the final report
+  if (step3.quarterly_results && step3.quarterly_results.length > 0) {
+    parsed.report.quarterly_results = step3.quarterly_results;
+  }
 
   emit({ step: 7, label: 'Synthesis & Diagram', status: 'complete' });
   console.log(`[Step 7] complete — thesis: ${parsed.report.thesis.substring(0, 80)}, diagram nodes: ${parsed.diagram.nodes.length}, edges: ${parsed.diagram.edges.length}`);

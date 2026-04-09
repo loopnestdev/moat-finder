@@ -15,6 +15,7 @@ import PipelineProgress from '../components/research/PipelineProgress';
 import DiffModal from '../components/research/DiffModal';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
+import QuarterlyResults from '../components/report/QuarterlyResults';
 import type { DiffJson } from '../types/report.types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -274,7 +275,7 @@ export default function Report() {
               <Button
                 variant="secondary"
                 onClick={() => { void handleUpdate(); }}
-                className="!bg-transparent !text-amber-400 border border-amber-400 hover:!bg-amber-400 hover:!text-navy-950 font-body font-medium tracking-wide px-6 py-2.5 rounded-md transition-all duration-200"
+                className="!bg-transparent !text-amber-400 !text-base border border-amber-400 hover:!bg-amber-400 hover:!text-navy-950 font-body font-medium tracking-wide px-6 py-2.5 rounded-md transition-all duration-200"
               >
                 Update Research
               </Button>
@@ -381,6 +382,9 @@ export default function Report() {
 
           {/* Fix 5: NapkinMath with hierarchical revenue guidance */}
           <NapkinMath data={rj.napkin_math} />
+
+          {/* Quarterly Results card */}
+          <QuarterlyResults results={rj.quarterly_results} />
 
           {/* Fix 6: ValuationTable card grid */}
           <div className="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">

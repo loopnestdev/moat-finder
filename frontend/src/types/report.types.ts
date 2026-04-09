@@ -1,3 +1,12 @@
+export interface QuarterlyResult {
+  quarter: string;
+  revenue_est: number | null;
+  revenue_act: number | null;
+  revenue_growth: number | null;
+  eps_est: number | null;
+  eps_act: number | null;
+}
+
 export interface NapkinMath {
   revenue_guidance: string;
   comp_ticker: string;
@@ -35,6 +44,7 @@ export interface ReportJson {
   macro_summary: string;
   sentiment_summary: string;
   pipeline_steps_raw: Record<string, unknown>;
+  quarterly_results?: QuarterlyResult[];
 }
 
 export interface DiagramNode {

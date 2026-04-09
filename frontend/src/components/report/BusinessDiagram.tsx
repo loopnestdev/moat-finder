@@ -169,13 +169,13 @@ function CustomerZone({ nodes }: { nodes: DiagramNode[] }) {
         {nodes.map((n) => (
           <div
             key={n.id}
-            className="rounded-full border border-blue-500/40 bg-navy-800 px-3 py-1.5"
+            className="rounded-lg border border-blue-500/40 bg-navy-800 px-2.5 py-2"
           >
             <p className="font-body text-base font-semibold text-blue-400 leading-tight">
               {n.data.label}
             </p>
             {n.data.detail && (
-              <p className="font-body text-sm text-blue-600/70 leading-snug">
+              <p className="font-body text-sm text-blue-600/80 mt-1 leading-snug">
                 {n.data.detail}
               </p>
             )}
