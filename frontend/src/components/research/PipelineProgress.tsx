@@ -42,8 +42,16 @@ export default function PipelineProgress({
   }
 
   const errorStep = steps.find((s) => s.status === 'error')?.step ?? null;
-  const lastCompleted = completedSteps.size > 0 ? Math.max(...completedSteps) : 0;
-  const currentStep = isRunning ? lastCompleted + 1 : null;
+
+  // Steps that have sent 'started' but not yet 'complete'/'cached'/'error' — may be many at once.
+  const startedStepNums = new Set(
+    steps
+      .filter((s) => s.status === 'started' && s.step >= 1 && s.step <= 7)
+      .map((s) => s.step),
+  );
+  const runningSteps = new Set(
+    [...startedStepNums].filter((n) => !completedSteps.has(n) && errorStep !== n),
+  );
 
   // Admin-only: which step's detail panel is open
   const [selectedStep, setSelectedStep] = useState<number | null>(null);
@@ -57,11 +65,9 @@ export default function PipelineProgress({
   const runningRef = useRef(false);
   const prevLengthRef = useRef(0);
 
-  // Record when the pipeline starts (= step 1 start time)
   useEffect(() => {
     if (isRunning && !runningRef.current) {
       runningRef.current = true;
-      startTimesRef.current[1] = Date.now();
     }
     if (!isRunning) {
       runningRef.current = false;
@@ -88,16 +94,14 @@ export default function PipelineProgress({
     const updates: Record<number, number> = {};
 
     for (const event of newSteps) {
+      if (event.status === 'started' && event.step >= 1 && event.step <= 7) {
+        // Record start time when each step signals it has begun
+        if (startTimesRef.current[event.step] === undefined) {
+          startTimesRef.current[event.step] = now;
+        }
+      }
       if ((event.status === 'complete' || event.status === 'cached') && event.step >= 1 && event.step <= 7) {
         updates[event.step] = now;
-        // Only derive next step start from sequential completion (step 1 → step 2 in full pipeline)
-        // For parallel steps 2-6, the server-emitted duration is authoritative.
-        if (event.step === 1) {
-          startTimesRef.current[2] = now;
-        }
-        if (event.step === 7) {
-          // no next step
-        }
       }
     }
 
@@ -132,7 +136,7 @@ export default function PipelineProgress({
         const label = STEP_LABELS[stepNum] ?? `Step ${stepNum}`;
         const isComplete = completedSteps.has(stepNum);
         const isCached = isComplete && completedStepEvents[stepNum]?.status === 'cached';
-        const isInProgress = currentStep === stepNum;
+        const isInProgress = runningSteps.has(stepNum);
         const isError = errorStep === stepNum;
         const isPending = !isComplete && !isInProgress && !isError;
         const isSelected = selectedStep === stepNum;

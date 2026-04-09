@@ -77,7 +77,7 @@ export interface DiffJson {
 export interface SSEEvent {
   step: number;
   label: string;
-  status: 'complete' | 'error' | 'cached' | 'saving';
+  status: 'started' | 'complete' | 'error' | 'cached' | 'saving';
   duration?: number;
   data?: Record<string, unknown>;
 }

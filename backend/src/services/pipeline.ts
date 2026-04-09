@@ -152,6 +152,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "primary_region": "string"
 }`;
 
+  emit({ step: 1, label: 'Discovery', status: 'started' });
   const startTime1 = Date.now();
   const text = await callClaude(
     system,
@@ -181,6 +182,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 }`;
 
   const ctx = formatStep1Context(step1);
+  emit({ step: 2, label: 'Deep Dive', status: 'started' });
   const startTime2 = Date.now();
   const text = await callClaudeWithCachedContext(
     system,
@@ -224,6 +226,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 Use null (not "null") for unknown numeric values. Revenue values in millions (e.g. 340 = $340M). revenue_growth as a percentage (e.g. 18.2 = 18.2% YoY). quarterly_results must contain the last 4 reported quarters, most recent first.`;
 
   const ctx = formatStep1Context(step1);
+  emit({ step: 3, label: 'Valuation & Financials', status: 'started' });
   const startTime3 = Date.now();
   const text = await callClaudeWithCachedContext(
     system,
@@ -256,6 +259,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 }`;
 
   const ctx = formatStep1Context(step1);
+  emit({ step: 4, label: 'Risk Red Team', status: 'started' });
   const startTime4 = Date.now();
   const text = await callClaudeWithCachedContext(
     system,
@@ -296,6 +300,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 sector_heat must be an integer 1–5 (1=cold, 5=very hot). hot_sector_match must be a subset of the provided hot sectors list.`;
 
   const ctx = formatStep1Context(step1);
+  emit({ step: 5, label: 'Macro & Sector', status: 'started' });
   const startTime5 = Date.now();
   const text = await callClaudeWithCachedContext(
     system,
@@ -330,6 +335,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 }`;
 
   const ctx = formatStep1Context(step1);
+  emit({ step: 6, label: 'Sentiment & Technicals', status: 'started' });
   const startTime6 = Date.now();
   const text = await callClaudeWithCachedContext(
     system,
@@ -425,6 +431,7 @@ SHORT INTEREST: ${step6.short_interest ?? ''}
 200-DAY MA: ${step6.ma_position ?? ''}
 RS vs SPY: ${step6.rs_vs_spy ?? ''}`;
 
+  emit({ step: 7, label: 'Synthesis & Diagram', status: 'started' });
   const startTime7 = Date.now();
   const text = await callClaude(
     system,
