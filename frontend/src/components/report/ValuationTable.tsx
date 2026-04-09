@@ -10,12 +10,20 @@ function fmt(value: number | null, suffix = ''): string {
   return `${value.toFixed(1)}${suffix}`;
 }
 
+/** Normalise a decimal or already-percentage value to a display percentage. */
+function normPct(value: number): number {
+  const asPct = value * 100;
+  // If multiplying by 100 gives an absurd result (>200%), the value was
+  // already stored as a percentage — use it directly.
+  return Math.abs(asPct) > 200 ? value : asPct;
+}
+
 function fmtGrowth(value: number | null): { text: string; colour: string } {
   if (value === null) return { text: '—', colour: 'text-cream-subtle' };
-  const pct = (value * 100).toFixed(1);
+  const pct = normPct(value);
   return {
-    text: `${value >= 0 ? '+' : ''}${pct}%`,
-    colour: value >= 0 ? 'text-emerald-400' : 'text-red-400',
+    text: `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`,
+    colour: pct >= 0 ? 'text-emerald-400' : 'text-red-400',
   };
 }
 
@@ -31,7 +39,7 @@ function MetricRow({ label, value, valueClass = 'text-cream-muted' }: MetricRowP
       <span className="font-mono text-[10px] text-cream-subtle uppercase tracking-wide flex-shrink-0">
         {label}
       </span>
-      <span className={`font-mono text-sm font-medium ${valueClass} text-right`}>
+      <span className={`font-mono text-sm font-medium ${valueClass} text-right min-w-0 truncate`}>
         {value}
       </span>
     </div>
@@ -59,14 +67,14 @@ export default function ValuationTable({ rows, ticker }: ValuationTableProps) {
         const { text: growthText, colour: growthColour } = fmtGrowth(row.yoy_growth);
         const grossPct =
           row.gross_margin !== null
-            ? `${(row.gross_margin * 100).toFixed(1)}%`
+            ? `${normPct(row.gross_margin).toFixed(1)}%`
             : '—';
 
         return (
           <div
             key={row.ticker}
             className={[
-              'rounded-lg p-3 border',
+              'rounded-lg p-3 border overflow-hidden min-w-0',
               isSubject
                 ? 'border-2 border-gold bg-gold/10'
                 : 'border-navy-600 bg-navy-900',

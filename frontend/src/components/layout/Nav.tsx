@@ -107,7 +107,7 @@ export default function Nav() {
                   <span className="h-8 w-8 rounded-full bg-navy-700 border border-gold/40 flex items-center justify-center text-gold font-medium text-xs font-mono">
                     {user.email[0]?.toUpperCase() ?? '?'}
                   </span>
-                  <span className="hidden md:block max-w-32 truncate">
+                  <span className="hidden md:block max-w-32 truncate font-body text-cream">
                     {user.displayName ?? user.email}
                   </span>
                 </button>
@@ -200,7 +200,7 @@ export default function Nav() {
 
           {user ? (
             <div className="space-y-1">
-              <p className="text-sm text-cream-muted truncate">{user.email}</p>
+              <p className="font-body text-sm text-cream-muted truncate">{user.email}</p>
               {isAdmin && (
                 <Link
                   to="/admin"

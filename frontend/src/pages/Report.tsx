@@ -271,7 +271,11 @@ export default function Report() {
             <ScoreBadge score={report.score} size="lg" />
             <SectorHeat heat={rj.sector_heat} sectors={rj.hot_sector_match} />
             {isApproved && !isUpdateRunning && (
-              <Button variant="secondary" onClick={() => { void handleUpdate(); }}>
+              <Button
+                variant="secondary"
+                onClick={() => { void handleUpdate(); }}
+                className="!bg-transparent !text-amber-400 border border-amber-400 hover:!bg-amber-400 hover:!text-navy-950 font-body font-medium tracking-wide px-6 py-2.5 rounded-md transition-all duration-200"
+              >
                 Update Research
               </Button>
             )}

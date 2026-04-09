@@ -23,11 +23,11 @@ function MoatZone({ nodes }: { nodes: DiagramNode[] }) {
             key={n.id}
             className="rounded-lg border border-gold/40 bg-navy-950 px-3 py-2 max-w-xs"
           >
-            <p className="font-mono text-sm font-semibold text-amber-400 leading-tight">
+            <p className="font-body text-base font-semibold text-amber-400 leading-tight">
               {n.data.label}
             </p>
             {n.data.detail && (
-              <p className="font-body text-xs text-amber-600/80 mt-1 leading-snug">
+              <p className="font-body text-sm text-amber-600/80 mt-1 leading-snug">
                 {n.data.detail}
               </p>
             )}
@@ -84,11 +84,11 @@ function BusinessZone({
               >
                 <div className="h-0.5 bg-purple-500" />
                 <div className="px-2.5 py-2">
-                  <p className="font-mono text-xs font-semibold text-purple-400 leading-tight">
+                  <p className="font-body text-base font-semibold text-purple-400 leading-tight">
                     {n.data.label}
                   </p>
                   {n.data.detail && (
-                    <p className="font-body text-[11px] text-purple-600/80 mt-1 leading-snug">
+                    <p className="font-body text-sm text-purple-600/80 mt-1 leading-snug">
                       {n.data.detail}
                     </p>
                   )}
@@ -111,11 +111,11 @@ function BusinessZone({
                 key={n.id}
                 className="rounded-lg border border-emerald-500/40 bg-navy-800 px-2.5 py-2"
               >
-                <p className="font-mono text-xs font-semibold text-emerald-400 leading-tight">
+                <p className="font-body text-base font-semibold text-emerald-400 leading-tight">
                   {n.data.label}
                 </p>
                 {n.data.detail && (
-                  <p className="font-mono text-[11px] text-emerald-600/80 mt-1 leading-snug">
+                  <p className="font-body text-sm text-emerald-600/80 mt-1 leading-snug">
                     {n.data.detail}
                   </p>
                 )}
@@ -137,11 +137,11 @@ function BusinessZone({
                 key={n.id}
                 className="rounded-lg border border-blue-500/30 border-l-2 border-l-blue-500 bg-navy-800 px-2.5 py-2"
               >
-                <p className="font-mono text-xs font-semibold text-blue-400 leading-tight">
+                <p className="font-body text-base font-semibold text-blue-400 leading-tight">
                   {n.data.label}
                 </p>
                 {n.data.detail && (
-                  <p className="font-body text-[11px] text-blue-600/80 mt-1 leading-snug">
+                  <p className="font-body text-sm text-blue-600/80 mt-1 leading-snug">
                     {n.data.detail}
                   </p>
                 )}
@@ -171,11 +171,11 @@ function CustomerZone({ nodes }: { nodes: DiagramNode[] }) {
             key={n.id}
             className="rounded-full border border-blue-500/40 bg-navy-800 px-3 py-1.5"
           >
-            <p className="font-mono text-xs font-semibold text-blue-400 leading-tight">
+            <p className="font-body text-base font-semibold text-blue-400 leading-tight">
               {n.data.label}
             </p>
             {n.data.detail && (
-              <p className="font-body text-[10px] text-blue-600/70 leading-snug">
+              <p className="font-body text-sm text-blue-600/70 leading-snug">
                 {n.data.detail}
               </p>
             )}
@@ -217,11 +217,11 @@ function RiskZone({ nodes }: { nodes: DiagramNode[] }) {
                 />
               </svg>
               <div>
-                <p className="font-mono text-xs font-semibold text-red-400 leading-tight">
+                <p className="font-body text-base font-semibold text-red-400 leading-tight">
                   {n.data.label}
                 </p>
                 {n.data.detail && (
-                  <p className="font-body text-[11px] text-red-600/80 mt-0.5 leading-snug">
+                  <p className="font-body text-sm text-red-600/80 mt-0.5 leading-snug">
                     {n.data.detail}
                   </p>
                 )}

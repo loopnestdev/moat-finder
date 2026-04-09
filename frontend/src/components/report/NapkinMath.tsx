@@ -57,7 +57,7 @@ export default function NapkinMath({ data }: NapkinMathProps) {
               <p className="font-mono text-xl font-bold text-gold leading-tight mb-1">
                 {guideKey}
               </p>
-              <p className="font-body text-xs text-cream-subtle leading-snug">
+              <p className="font-body text-sm text-cream-subtle leading-snug">
                 {data.revenue_guidance}
               </p>
             </>
