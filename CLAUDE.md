@@ -4,40 +4,39 @@
 
 ## Project Purpose
 
-A web application that takes an input of a stock ticker and generate a detailed report about requested company.
-
-The idea behind this web application is to find the companies that have asymmetric setup.
+A web application that takes an input of a stock ticker and generates a detailed AI-powered research
+report about the company — focused on finding asymmetric risk/reward opportunities.
 
 ---
 
 ## Architecture
-| Layer | Tools | Reason |
+
+| Layer | Tools | Notes |
 | --- | --- | --- |
-| Frontend | React + Tailwind CSS |
-| Frontend hosting | Vercel |
-| Backend | Node.js + Express |
-| Backend hosting | Render |
-| Security layer | CloudFlare |
-| Auth | Supabase Auth |
-| Database | Supabase (Postgres) |
-| Diagram | React Flow |
-| AI | Claude API + Web search |
+| Frontend | React 18 + Vite + Tailwind CSS v3 | Dark navy / cream / gold design system |
+| Frontend hosting | Vercel | |
+| Backend | Node.js v20 + Express 4 + TypeScript strict | |
+| Backend hosting | Render | |
+| Security layer | CloudFlare | DDoS, rate limiting, SSL, CF-Connecting-IP |
+| Auth | Supabase Auth (Google OAuth) | Role-based: admin / approved / pending / rejected |
+| Database | Supabase (Postgres) with RLS | |
+| Diagram | Pure React / Tailwind (React Flow removed) | 4-zone stacked canvas |
+| AI | Claude claude-sonnet-4-6 + web_search tool | 7-step pipeline |
 
 ---
 
 ## Hard Constraints
 
-1. **Minimize external dependencies** — standard libraries only if posible. If not, then use only the most popular and trusted libraries.
-2. **Modular approach** — frontend, backend, AI brain (Claude API (claude-sonnet-4-6) with web_search tool).
-3. **Use popular and trusted frontend and backend hosting** — Easy to deploy and redeploy for any update from repository.
-4. **Security is always number one priority** — develop and build a solution that is secured and hardened including the choise of language.
-5. **CloudFlare sits in front of everything** — It would give us DDoS protection, bot detection, rate limiting, and SSL termination.
-6. **Mobile friendly access** — The web design must be responsive and beautiful from both computer and mobile phone.
-7. **Support authentication** — Only authenticated users are allowed to research for the stock if it's not researched already as it involved token usage. And not everyone can register for an account. An admin must approve for the new user before use. Support federated authentication from Apple, Google directory, and twitter or X.
-8. **Anyone can search for cached research** - For stocks that are already research by authenticated users, those stocks are open for public to see the reports
-9. **Support for update button for cached research with diff/changelog** - There should be an update button where research can be updated only by an authenticated user. The updates should indicate what is changing since the last time research was completed with the data of a research, and date of last updated
-10. **Audit logging** - When enabled, who triggers the research, who triggers the update, who did the query only, source of IP address, ticker, timestamp etc. The audit log is displayable on the frontend and searchable.
-11. **Support beautiful diagrams** - When generating the report with the diagrams, it must be how the company makes money.
+1. **Minimize external dependencies** — standard libraries only where possible.
+2. **Modular approach** — frontend, backend, AI pipeline are separate concerns.
+3. **Security is always number one priority** — hardened, no secrets in frontend.
+4. **CloudFlare sits in front of everything** — CF-Connecting-IP for real IP logging.
+5. **Mobile-first design** — all Tailwind classes written mobile-first with `sm:`, `md:`, `lg:` prefixes.
+6. **Auth-gated research** — only approved users may trigger new research or updates.
+7. **Public read access** — cached reports are publicly viewable without login.
+8. **Update with diff/changelog** — update button runs smart pipeline (skips unchanged steps) and shows diff before saving.
+9. **Audit logging** — every action logged with user, IP, ticker, timestamp.
+10. **No inline styles** — all styling via Tailwind utility classes only. No `style={{}}` except SVG attributes.
 
 ---
 
@@ -45,7 +44,7 @@ The idea behind this web application is to find the companies that have asymmetr
 
 ```
 moat-finder/
-├── CLAUDE.md                    # Master briefing for Claude Code
+├── CLAUDE.md                    # Master briefing (this file)
 ├── docs/
 │   ├── ARCHITECTURE.md          # System design
 │   ├── DATABASE.md              # Schema source of truth
@@ -53,57 +52,103 @@ moat-finder/
 ├── backend/
 │   ├── CLAUDE.md                # Backend-specific rules
 │   └── src/
+│       ├── routes/
+│       │   ├── research.ts      # GET/POST/PUT research endpoints
+│       │   └── admin.ts         # Admin user management
+│       ├── services/
+│       │   ├── pipeline.ts      # 7-step AI research pipeline
+│       │   ├── diff.ts          # Report diff/changelog generator
+│       │   └── supabase.ts      # anon + service-role clients
+│       └── types/
+│           └── report.types.ts  # Shared pipeline + report types
 ├── frontend/
 │   ├── CLAUDE.md                # Frontend-specific rules
 │   └── src/
+│       ├── pages/
+│       │   ├── Home.tsx         # Ticker search + grid
+│       │   ├── Report.tsx       # Full report page (two-column layout)
+│       │   ├── Versions.tsx     # Version history
+│       │   └── Admin.tsx        # Admin panel
+│       ├── components/
+│       │   ├── layout/          # Nav.tsx, Layout.tsx
+│       │   ├── report/          # ScoreBadge, SectorHeat, ValuationTable,
+│       │   │                    # NapkinMath, BearCase, Changelog,
+│       │   │                    # BusinessDiagram, QuarterlyResults
+│       │   ├── research/        # PipelineProgress, DiffModal
+│       │   ├── ui/              # Button, Input, Modal, Badge, Spinner
+│       │   └── ErrorBoundary.tsx
+│       └── types/
+│           └── report.types.ts  # Frontend mirrors of backend types
 └── .claude/
-   ├── settings.json            # Hooks and permissions
-   └── skills/                  # Reusable Claude skills
+    ├── settings.json            # Hooks and permissions
+    ├── hooks/                   # Shell hook scripts
+    └── skills/                  # Reusable Claude skills
 ```
 
 ---
 
 ## Language & Runtime
 
-- TypeScript strict mode throughout — no `any` types ever
+- TypeScript strict mode throughout — no `any` types, ever
 - Node.js v20 LTS (backend)
 - Package manager: npm
 
 ## Commands
 
-- `npm run dev` — start backend dev server (port 3001)
-- `npm run dev` — start frontend dev server (port 5173, Vite)
-- `npm run build` — production build
-- `npm run test` — run test suite (Vitest)
-- `npm run typecheck` — TypeScript type-check with no emit
-- `npm run lint` — ESLint check
+```bash
+# Backend (from backend/)
+npm run dev        # tsx watch — port 3001
+npm run build      # tsc compile
+npm run typecheck  # tsc --noEmit
+npm run test       # vitest run
+
+# Frontend (from frontend/)
+npm run dev        # Vite dev server — port 5173
+npm run build      # Vite production build
+npm run typecheck  # tsc --noEmit
+npm run lint       # ESLint
+```
 
 ## How Claude Verifies Changes
 
-1. Run `npm run typecheck` — must pass with zero errors
-2. Run `npm run test` — all tests must pass
-3. Run `npm run lint` — no lint errors
-Never leave failing type errors or tests. Fix before moving on.
+1. `npm run typecheck` — zero errors in both frontend/ and backend/
+2. `npm run build` — must pass in frontend/
+3. `npm run build` — must pass in backend/
+4. Never leave failing type errors. Fix before moving on.
 
-## Key Decisions
+---
 
-- API keys live in `.env` files only — NEVER hardcoded, NEVER committed
-- All backend routes are prefixed `/api/v1/`
-- Cloudflare CF-Connecting-IP header is used for real IP logging (not req.ip)
-- Research pipeline is sequential (7 steps), not parallel — order matters for context
-- Supabase Row Level Security is enabled on all tables — never bypass with service key in user-facing routes
+## Key Decisions & Architecture Notes
+
+- **Pipeline execution**: Step 1 (Discovery) runs first; Steps 2-6 run concurrently via `Promise.allSettled`; Step 7 synthesises. Smart updates (`runUpdatePipeline`) skip Steps 2 and 4, reusing cached report data.
+- **Prompt caching**: Steps 2-6 send Step 1 output as a cached content block (`cache_control: { type: "ephemeral" }`), reducing input tokens by ~60-70% across parallel calls.
+- **SSE streaming**: Progress events streamed to frontend as each step completes. Step status can be `complete`, `error`, or `cached`.
+- **Supabase clients**: `anonClient` for user-facing reads (RLS enforced). `adminClient` (service role) for writes and admin operations only.
+- **API keys**: `.env` files only — never hardcoded, never committed.
+- **All backend routes**: prefixed `/api/v1/`.
+- **CF-Connecting-IP**: used for real IP in audit logs — never `req.ip`.
+- **React Flow**: removed. Business diagram is now a pure React/Tailwind 4-zone stacked canvas (moat → business → customers → risks).
+- **Font stack**: Playfair Display (headings / `font-display`), Inter (body / `font-body`), JetBrains Mono (data / `font-mono`).
+- **ErrorBoundary**: wraps `BusinessDiagram` and `QuarterlyResults` in Report.tsx — renders a dark navy fallback card instead of crashing.
 
 ---
 
 ## Known Pitfalls (Lessons Learned)
 
-If any.
+- **`thesis` field can be an array** in older reports (Claude sometimes returns `["word", "word"]`). Always coerce: `Array.isArray(v) ? v.join(' ') : String(v)` before rendering.
+- **Percentage fields** (`gross_margin`, `yoy_growth`) may be stored as decimals (0.39) or already-multiplied percentages (39). Use `normPct()` guard: if `|value * 100| > 200`, use value directly.
+- **Flex container width collapse**: in the report hero, the right column (score + sector tags) must have `max-w-xs sm:max-w-sm` to prevent sector tag overflow from stealing all flex space from the thesis column.
+- **`report_json` optional fields**: always use `?? []` / `?? ''` defaults — old reports predate `quarterly_results`, `risk_factors`, etc.
+- **`Write` tool requires prior `Read`**: the Write tool will error if the file hasn't been read first in the conversation.
+- **No `style={{}}` props** except for SVG/canvas attributes — all styling via Tailwind only (per CLAUDE.md rule).
+- **Step 4 search explosion**: Risk Red Team prompt must be capped to 4 searches max and `< 800 words` — otherwise the model chains many searches and takes 600+ seconds.
 
 ---
 
 ## Test Strategy
 
-- Generate unit tests always as required
-- Every parser code path has a test
-
----
+- Unit test every parser (`parseNumberedList`, `parseBullets`, `normPct`, `extractGuideNumbers`)
+- Test every Zod schema for valid and invalid inputs
+- Test role-based rendering in frontend components
+- Mock Supabase and Anthropic SDK in all tests — never call live APIs in tests
+- Every custom hook tested with React Testing Library

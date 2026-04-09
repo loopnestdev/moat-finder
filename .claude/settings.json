@@ -26,7 +26,8 @@
         "matcher": "Write|Edit",
         "hooks": [
           { "type": "command", "command": "jq -r '.tool_input.file_path' | xargs npx prettier --write 2>/dev/null; exit 0" },
-          { "type": "command", "command": "npx eslint --fix $(jq -r '.tool_input.file_path') 2>&1 | tail -10; exit 0" }
+          { "type": "command", "command": "npx eslint --fix $(jq -r '.tool_input.file_path') 2>&1 | tail -10; exit 0" },
+          { "type": "command", "command": ".claude/hooks/track-doc-changes.sh" }
         ]
       }
     ],
@@ -34,6 +35,7 @@
       {
         "matcher": "",
         "hooks": [
+          { "type": "command", "command": ".claude/hooks/remind-doc-update.sh" },
           { "type": "command", "command": ".claude/hooks/auto-commit.sh" }
         ]
       }
