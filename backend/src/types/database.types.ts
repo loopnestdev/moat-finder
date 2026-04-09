@@ -39,6 +39,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      research_checkpoints: {
+        Row: {
+          id: string
+          ticker_symbol: string
+          run_id: string
+          step_number: number
+          step_label: string
+          status: string
+          output_json: Json
+          tokens_used: number | null
+          duration_ms: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          ticker_symbol: string
+          run_id: string
+          step_number: number
+          step_label: string
+          status: string
+          output_json: Json
+          tokens_used?: number | null
+          duration_ms?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          ticker_symbol?: string
+          run_id?: string
+          step_number?: number
+          step_label?: string
+          status?: string
+          output_json?: Json
+          tokens_used?: number | null
+          duration_ms?: number | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       audit_log: {
         Row: {
           action: string

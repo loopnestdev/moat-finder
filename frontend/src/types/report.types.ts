@@ -79,6 +79,7 @@ export interface SSEEvent {
   label: string;
   status: 'started' | 'complete' | 'error' | 'cached' | 'saving';
   duration?: number;
+  resumed?: boolean;
   data?: Record<string, unknown>;
 }
 

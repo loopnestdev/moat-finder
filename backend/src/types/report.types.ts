@@ -91,6 +91,7 @@ export interface SSEEvent {
   label: string;
   status: 'started' | 'complete' | 'error' | 'cached' | 'saving';
   duration?: number;
+  resumed?: boolean;
   data?: Record<string, unknown>;
 }
 
@@ -99,6 +100,7 @@ export type EmitFn = (event: SSEEvent) => void;
 export interface PipelineResult {
   report: ReportJson;
   diagram: DiagramJson;
+  runId: string;
 }
 
 export interface Step1Output {

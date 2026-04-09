@@ -80,10 +80,36 @@ moat-finder/
 │       └── types/
 │           └── report.types.ts  # Frontend mirrors of backend types
 └── .claude/
-    ├── settings.json            # Hooks and permissions
-    ├── hooks/                   # Shell hook scripts
+    ├── settings.json            # Hooks configuration (PreToolUse, PostToolUse, Stop)
+    ├── hooks/
+    │   ├── track-doc-changes.sh # PostToolUse: appends edited .ts/.tsx paths to pending-doc-updates.txt
+    │   ├── remind-doc-update.sh # Stop: prints CLAUDE.md update reminder if pending-doc-updates.txt exists
+    │   ├── block-dangerous.sh   # PreToolUse/Bash: blocks destructive shell commands
+    │   ├── log-commands.sh      # PreToolUse/Bash: logs all bash commands run by Claude
+    │   ├── protect-files.sh     # PreToolUse/Edit|Write: prevents edits to protected files
+    │   ├── require-tests-for-pr.sh  # PreToolUse: blocks PR creation if tests are missing
+    │   └── auto-commit.sh       # Stop: auto-commits if configured
     └── skills/                  # Reusable Claude skills
 ```
+
+---
+
+## Claude Code Hooks
+
+Hooks are configured in `.claude/settings.json` and run automatically around tool calls.
+
+| Hook | Trigger | Purpose |
+| --- | --- | --- |
+| `block-dangerous.sh` | PreToolUse/Bash | Blocks `rm -rf`, force-push, and other destructive commands |
+| `log-commands.sh` | PreToolUse/Bash | Logs every shell command Claude runs (audit trail) |
+| `protect-files.sh` | PreToolUse/Edit,Write | Prevents edits to `.env`, `database.types.ts`, and other protected files |
+| `require-tests-for-pr.sh` | PreToolUse/mcp__github__create_pull_request | Blocks PR creation if no test files exist for changed source |
+| `track-doc-changes.sh` | PostToolUse/Edit,Write | Appends edited `.ts`/`.tsx` file paths to `.claude/pending-doc-updates.txt` |
+| `remind-doc-update.sh` | Stop | If `pending-doc-updates.txt` has entries, prints a reminder box listing changed files, then clears it |
+| `auto-commit.sh` | Stop | Auto-commits staged changes if configured |
+| Prettier + ESLint | PostToolUse/Edit,Write | Auto-formats and auto-fixes each edited file immediately after write |
+
+**Important**: `track-doc-changes.sh` only tracks `.ts`/`.tsx` files. It will NOT fire when `.sh`, `.md`, `.json`, or other config files change. If those files change in a way that affects architecture, pitfalls, or rules, update the relevant CLAUDE.md files manually.
 
 ---
 

@@ -178,6 +178,45 @@ CREATE INDEX idx_versions_ticker ON public.research_versions(ticker_id, version 
 
 ---
 
+### `public.research_checkpoints`
+
+Temporary per-step checkpoint storage for pipeline resume support. Rows are cleared
+automatically after a pipeline run completes and saves successfully to `research_reports`.
+
+```sql
+CREATE TABLE public.research_checkpoints (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticker_symbol TEXT NOT NULL,
+  run_id        UUID NOT NULL,
+  step_number   INTEGER NOT NULL CHECK (step_number BETWEEN 1 AND 7),
+  step_label    TEXT NOT NULL,
+  status        TEXT NOT NULL CHECK (status IN ('complete', 'failed')),
+  output_json   JSONB NOT NULL,
+  tokens_used   INTEGER,
+  duration_ms   INTEGER,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  UNIQUE (ticker_symbol, run_id, step_number)
+);
+
+CREATE INDEX idx_checkpoints_ticker ON public.research_checkpoints(ticker_symbol);
+CREATE INDEX idx_checkpoints_run    ON public.research_checkpoints(run_id);
+```
+
+**RLS Policies:**
+
+- Public: no access
+- Authenticated: no access
+- Backend service role: full access (INSERT, SELECT, DELETE only)
+
+**Lifecycle:**
+
+1. Each step saves its output immediately on completion via `saveCheckpoint()`
+2. On restart, `loadCheckpoints()` finds the most recent `run_id` for a ticker and replays completed steps
+3. After the final report is written to `research_reports`, `clearCheckpoints()` deletes the run rows
+
+---
+
 ### `public.audit_log`
 
 Append-only. Never update or delete rows. Captures every meaningful action.
@@ -240,13 +279,14 @@ $$ LANGUAGE plpgsql;
 
 ## RLS Summary Table
 
-| Table                | Public | Approved User | Admin |
-|----------------------|--------|---------------|-------|
-| users                | none   | own row only  | all   |
-| tickers              | SELECT | SELECT+INSERT | all   |
-| research_reports     | SELECT | SELECT+INSERT+UPDATE | all |
-| research_versions    | SELECT | SELECT+INSERT | all   |
-| audit_log            | none   | none          | SELECT|
+| Table                   | Public | Approved User        | Admin  |
+|-------------------------|--------|----------------------|--------|
+| users                   | none   | own row only         | all    |
+| tickers                 | SELECT | SELECT+INSERT        | all    |
+| research_reports        | SELECT | SELECT+INSERT+UPDATE | all    |
+| research_versions       | SELECT | SELECT+INSERT        | all    |
+| research_checkpoints    | none   | none                 | none   |
+| audit_log               | none   | none                 | SELECT |
 
 ---
 

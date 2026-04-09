@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import Anthropic from '@anthropic-ai/sdk';
 import type { MessageParam } from '@anthropic-ai/sdk/resources/messages';
 import type {
@@ -13,6 +14,7 @@ import type {
   Step5Output,
   Step6Output,
 } from '../types/report.types';
+import { saveCheckpoint, loadCheckpoints, clearCheckpoints } from './checkpoint';
 
 const HOT_SECTORS = [
   'Energy',
@@ -25,15 +27,6 @@ const HOT_SECTORS = [
   'Solar',
 ];
 
-const STEP_LABELS: Record<number, string> = {
-  1: 'Discovery',
-  2: 'Deep Dive',
-  3: 'Valuation & Financials',
-  4: 'Risk Red Team',
-  5: 'Macro & Sector',
-  6: 'Sentiment & Technicals',
-  7: 'Synthesis & Diagram',
-};
 
 // ─── Anthropic client ────────────────────────────────────────────────────────
 
@@ -359,6 +352,7 @@ Use web search for current market data. Return only the JSON object.`,
 async function runStep7(
   ctx: PipelineContext,
   ticker: string,
+  runId: string,
   emit: EmitFn,
 ): Promise<PipelineResult> {
   const { step1, step2, step3, step4, step5, step6 } = ctx;
@@ -456,14 +450,20 @@ RS vs SPY: ${step6.rs_vs_spy ?? ''}`;
     parsed.report.quarterly_results = step3.quarterly_results;
   }
 
+  await saveCheckpoint(ticker, runId, {
+    step_number: 7,
+    step_label: 'Synthesis & Diagram',
+    output_json: { report: parsed.report as unknown as Record<string, unknown>, diagram: parsed.diagram as unknown as Record<string, unknown> },
+    duration_ms: duration7,
+  });
+
   emit({ step: 7, label: 'Synthesis & Diagram', status: 'complete', duration: duration7 });
   console.log(`[Step 7] complete — thesis: ${parsed.report.thesis.substring(0, 80)}, diagram nodes: ${(parsed.diagram?.nodes ?? []).length}, edges: ${(parsed.diagram?.edges ?? []).length} (${duration7}ms)`);
-  return { report: parsed.report, diagram: parsed.diagram };
+  return { report: parsed.report, diagram: parsed.diagram, runId };
 }
 
-// ─── Parallel helper ──────────────────────────────────────────────────────────
+// ─── Step defaults (used when a parallel step fails — Step 7 still runs) ──────
 
-// Default fallbacks used when a parallel step fails — Step 7 can still synthesise.
 const DEFAULT_STEP2: Step2Output = { business_model: '', moat: '', technological_advantage: '', catalysts: [] };
 const DEFAULT_STEP3: Step3Output = {
   valuation_table: [],
@@ -475,83 +475,114 @@ const DEFAULT_STEP5: Step5Output = { macro_summary: '', sector_heat: 3, hot_sect
 const DEFAULT_STEP6: Step6Output = { sentiment_summary: '', short_interest: '', ma_position: '', rs_vs_spy: '' };
 
 /**
- * Run steps 2-6 concurrently via Promise.allSettled.
- * Emits error events for failed steps but proceeds with defaults — Step 7 still runs.
+ * Run steps 2-6 concurrently. Skips any step already in cachedSteps (checkpoint resume).
+ * Saves each completed step to checkpoints immediately. Falls back to defaults on failure.
  */
 async function runParallelSteps(
   step1: Step1Output,
+  ticker: string,
+  runId: string,
+  cachedSteps: Map<number, Record<string, unknown>>,
   emit: EmitFn,
 ): Promise<[Step2Output, Step3Output, Step4Output, Step5Output, Step6Output]> {
-  const settled = await Promise.allSettled([
-    runStep2(step1, emit),
-    runStep3(step1, emit),
-    runStep4(step1, emit),
-    runStep5(step1, emit),
-    runStep6(step1, emit),
-  ]);
 
-  const failedSteps: string[] = [];
-  for (const [i, result] of settled.entries()) {
-    if (result.status === 'rejected') {
-      const stepNum = i + 2;
-      const message =
-        result.reason instanceof Error ? result.reason.message : `Step ${stepNum} failed`;
-      emit({
-        step: stepNum,
-        label: STEP_LABELS[stepNum] ?? `Step ${stepNum}`,
-        status: 'error',
-        data: { message },
+  async function runOrResume<T>(
+    stepNum: number,
+    label: string,
+    runner: () => Promise<T>,
+    defaultVal: T,
+  ): Promise<T> {
+    if (cachedSteps.has(stepNum)) {
+      emit({ step: stepNum, label, status: 'complete', resumed: true, duration: 0 });
+      console.log(`[Step ${stepNum}] resumed from checkpoint`);
+      return cachedSteps.get(stepNum) as T;
+    }
+    try {
+      const result = await runner();
+      await saveCheckpoint(ticker, runId, {
+        step_number: stepNum,
+        step_label: label,
+        output_json: result as Record<string, unknown>,
       });
-      failedSteps.push(`Step ${stepNum}: ${message}`);
+      return result;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : `Step ${stepNum} failed`;
+      emit({ step: stepNum, label, status: 'error', data: { message } });
+      console.warn(`[Step ${stepNum}] failed — using default. Reason: ${message}`);
+      return defaultVal;
     }
   }
-  if (failedSteps.length > 0) {
-    console.warn('[runParallelSteps] Some steps failed — proceeding with defaults:', failedSteps.join('; '));
-  }
 
-  return [
-    settled[0].status === 'fulfilled' ? settled[0].value : DEFAULT_STEP2,
-    settled[1].status === 'fulfilled' ? settled[1].value : DEFAULT_STEP3,
-    settled[2].status === 'fulfilled' ? settled[2].value : DEFAULT_STEP4,
-    settled[3].status === 'fulfilled' ? settled[3].value : DEFAULT_STEP5,
-    settled[4].status === 'fulfilled' ? settled[4].value : DEFAULT_STEP6,
-  ];
+  const [step2, step3, step4, step5, step6] = await Promise.all([
+    runOrResume(2, 'Deep Dive',              () => runStep2(step1, emit), DEFAULT_STEP2),
+    runOrResume(3, 'Valuation & Financials', () => runStep3(step1, emit), DEFAULT_STEP3),
+    runOrResume(4, 'Risk Red Team',          () => runStep4(step1, emit), DEFAULT_STEP4),
+    runOrResume(5, 'Macro & Sector',         () => runStep5(step1, emit), DEFAULT_STEP5),
+    runOrResume(6, 'Sentiment & Technicals', () => runStep6(step1, emit), DEFAULT_STEP6),
+  ]);
+
+  return [step2, step3, step4, step5, step6];
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Run the full 7-step research pipeline.
+ * Run the full 7-step research pipeline with checkpoint resume support.
  * Step 1 runs first; steps 2-6 run concurrently; step 7 synthesises.
+ * Each completed step is saved to research_checkpoints immediately.
+ * Checkpoints are cleared by the route handler after successful Supabase save.
  */
 export async function runPipeline(ticker: string, emit: EmitFn): Promise<PipelineResult> {
-  const step1 = await runStep1(ticker, emit);
-  const [step2, step3, step4, step5, step6] = await runParallelSteps(step1, emit);
+  // Load existing checkpoints — resume in-progress run if present
+  const existing = await loadCheckpoints(ticker);
+  const runId = existing?.runId ?? randomUUID();
+  const cachedSteps = existing?.steps ?? new Map<number, Record<string, unknown>>();
 
-  const parallelResults = { step2, step3, step4, step5, step6 };
-  const missingSteps = Object.entries(parallelResults)
-    .filter(([, v]) => !v)
-    .map(([k]) => k);
-  if (missingSteps.length > 0) {
-    console.warn('[runPipeline] Missing step results before Step 7:', missingSteps);
+  if (cachedSteps.size > 0) {
+    console.log(`[runPipeline] Resuming ${ticker} run ${runId} — cached steps: ${[...cachedSteps.keys()].sort((a, b) => a - b).join(', ')}`);
   }
 
+  // Step 1 — Discovery (always fast; run fresh to get current company data)
+  let step1: Step1Output;
+  if (cachedSteps.has(1)) {
+    step1 = cachedSteps.get(1) as unknown as Step1Output;
+    emit({ step: 1, label: 'Discovery', status: 'complete', resumed: true, duration: 0 });
+    console.log('[Step 1] resumed from checkpoint');
+  } else {
+    step1 = await runStep1(ticker, emit);
+    await saveCheckpoint(ticker, runId, {
+      step_number: 1,
+      step_label: 'Discovery',
+      output_json: step1 as unknown as Record<string, unknown>,
+    });
+  }
+
+  const [step2, step3, step4, step5, step6] = await runParallelSteps(step1, ticker, runId, cachedSteps, emit);
+
   const ctx: PipelineContext = { step1, step2, step3, step4, step5, step6 };
-  return runStep7(ctx, ticker, emit);
+  return runStep7(ctx, ticker, runId, emit);
 }
 
 /**
  * Smart update pipeline — skips steps 2 (Deep Dive) and 4 (Risk Red Team),
  * reusing their data from the existing report. Runs steps 3, 5, 6 concurrently.
+ * Uses a fresh runId (updates are not resumed — they always run from scratch).
  */
 export async function runUpdatePipeline(
   ticker: string,
   existingReport: ReportJson,
   emit: EmitFn,
 ): Promise<PipelineResult> {
-  const step1 = await runStep1(ticker, emit);
+  const runId = randomUUID();
 
-  // Reconstruct step2/step4 from cached report data
+  const step1 = await runStep1(ticker, emit);
+  await saveCheckpoint(ticker, runId, {
+    step_number: 1,
+    step_label: 'Discovery',
+    output_json: step1 as unknown as Record<string, unknown>,
+  });
+
+  // Reconstruct step2/step4 from existing report — these are skipped
   const rawSteps = existingReport.pipeline_steps_raw;
   const rawStep2 = rawSteps['step2'] as Partial<Step2Output> | undefined;
   const rawStep4 = rawSteps['step4'] as Partial<Step4Output> | undefined;
@@ -562,53 +593,28 @@ export async function runUpdatePipeline(
     technological_advantage: rawStep2?.technological_advantage ?? '',
     catalysts: existingReport.catalysts ?? [],
   };
-
   const cachedStep4: Step4Output = {
     bear_case: existingReport.bear_case ?? '',
     risk_factors: existingReport.risk_factors ?? [],
     tail_risks: (rawStep4?.tail_risks as string[] | undefined) ?? [],
   };
 
-  // Signal skipped steps immediately
   emit({ step: 2, label: 'Deep Dive', status: 'cached', data: { message: 'Using previous research' } });
   emit({ step: 4, label: 'Risk Red Team', status: 'cached', data: { message: 'Using previous research' } });
   console.log('[Update] Steps 2 and 4 skipped — reusing cached data');
 
-  // Run fresh steps concurrently — proceed with defaults on partial failure
-  const settled = await Promise.allSettled([
-    runStep3(step1, emit),
-    runStep5(step1, emit),
-    runStep6(step1, emit),
-  ]);
-
-  const updateStepNums = [3, 5, 6];
-  const failedUpdateSteps: string[] = [];
-  for (const [i, result] of settled.entries()) {
-    if (result.status === 'rejected') {
-      const stepNum = updateStepNums[i] as number;
-      const message =
-        result.reason instanceof Error ? result.reason.message : `Step ${stepNum} failed`;
-      emit({
-        step: stepNum,
-        label: STEP_LABELS[stepNum] ?? `Step ${stepNum}`,
-        status: 'error',
-        data: { message },
-      });
-      failedUpdateSteps.push(`Step ${stepNum}: ${message}`);
-    }
-  }
-  if (failedUpdateSteps.length > 0) {
-    console.warn('[runUpdatePipeline] Some steps failed — proceeding with defaults:', failedUpdateSteps.join('; '));
-  }
+  // Run steps 3, 5, 6 in parallel with checkpoint saves
+  const emptyCache = new Map<number, Record<string, unknown>>();
+  const [, step3,, step5, step6] = await runParallelSteps(step1, ticker, runId, emptyCache, emit);
 
   const ctx: PipelineContext = {
     step1,
     step2: cachedStep2,
-    step3: settled[0].status === 'fulfilled' ? settled[0].value : DEFAULT_STEP3,
+    step3,
     step4: cachedStep4,
-    step5: settled[1].status === 'fulfilled' ? settled[1].value : DEFAULT_STEP5,
-    step6: settled[2].status === 'fulfilled' ? settled[2].value : DEFAULT_STEP6,
+    step5,
+    step6,
   };
 
-  return runStep7(ctx, ticker, emit);
+  return runStep7(ctx, ticker, runId, emit);
 }

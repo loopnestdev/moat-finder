@@ -150,6 +150,7 @@ export default function PipelineProgress({
             ? endTimes[stepNum] - startTimesRef.current[stepNum]
             : null;
         const duration = isAdmin && isComplete ? (serverDuration ?? clientDuration) : null;
+        const isResumed = completedStepEvents[stepNum]?.resumed === true;
 
         return (
           <li
@@ -269,8 +270,11 @@ export default function PipelineProgress({
               {label}
             </span>
 
-            {/* Duration pill (admin only) */}
-            {duration !== null && (
+            {/* Duration / resumed badge */}
+            {isResumed && (
+              <span className="font-mono text-xs text-gold/70 italic">resumed</span>
+            )}
+            {!isResumed && duration !== null && (
               <span className="font-mono text-sm text-gold/60 tabular-nums">
                 {formatDuration(duration)}
               </span>

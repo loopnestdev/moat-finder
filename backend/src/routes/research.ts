@@ -5,6 +5,7 @@ import { requireRole } from '../middleware/requireRole';
 import { logAudit } from '../middleware/audit';
 import { anonClient, adminClient } from '../services/supabase';
 import { runPipeline, runUpdatePipeline } from '../services/pipeline';
+import { clearCheckpoints } from '../services/checkpoint';
 import { generateDiff } from '../services/diff';
 import { validateTicker } from '../utils/ticker';
 import type { EmitFn, SSEEvent, ReportJson, PipelineResult } from '../types/report.types';
@@ -179,7 +180,7 @@ router.post(
         return;
       }
 
-      const { report, diagram } = pipelineResult;
+      const { report, diagram, runId } = pipelineResult;
       console.log(`[research POST] pipeline complete for ${normalised} — report keys: ${Object.keys(report).join(', ')}`);
 
       const score = typeof report.sector_heat === 'number' ? report.sector_heat : null;
@@ -244,6 +245,7 @@ router.post(
         .eq('id', tickerRow.id);
 
       console.log(`[research POST] report saved — id: ${savedReport.id}, ticker: ${normalised}`);
+      void clearCheckpoints(normalised, runId);
       clearInterval(keepAlive);
       emit({ step: 8, label: 'Saved', status: 'complete', data: { id: savedReport.id } });
       res.end();
@@ -312,7 +314,7 @@ router.put(
         return;
       }
 
-      const { report, diagram } = pipelineResult;
+      const { report, diagram, runId } = pipelineResult;
       const newScore = typeof report.sector_heat === 'number' ? report.sector_heat : null;
       const newVersion = existingReport.version + 1;
 
@@ -375,6 +377,7 @@ router.put(
         .eq('id', existingReport.ticker_id);
 
       console.log(`[research PUT] report saved — v${newVersion}, ticker: ${normalised}`);
+      void clearCheckpoints(normalised, runId);
       clearInterval(keepAlive);
       emit({
         step: 8,
