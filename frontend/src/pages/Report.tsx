@@ -276,7 +276,7 @@ export default function Report() {
           </div>
 
           {/* Right: score + heat + update button */}
-          <div className="flex flex-col items-end gap-4 flex-shrink-0">
+          <div className="flex flex-col items-end gap-4 flex-shrink-0 max-w-xs sm:max-w-sm">
             <ScoreBadge score={report.score} size="lg" />
             <SectorHeat heat={rj.sector_heat} sectors={rj.hot_sector_match ?? []} />
             {isApproved && !isUpdateRunning && (
