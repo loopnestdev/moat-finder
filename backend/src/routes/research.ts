@@ -4,10 +4,10 @@ import { authenticate } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { logAudit } from '../middleware/audit';
 import { anonClient, adminClient } from '../services/supabase';
-import { runPipeline } from '../services/pipeline';
+import { runPipeline, runUpdatePipeline } from '../services/pipeline';
 import { generateDiff } from '../services/diff';
 import { validateTicker } from '../utils/ticker';
-import type { EmitFn, SSEEvent, ReportJson } from '../types/report.types';
+import type { EmitFn, SSEEvent, ReportJson, PipelineResult } from '../types/report.types';
 import type { Json } from '../types/database.types';
 
 const router = Router();
@@ -164,7 +164,7 @@ router.post(
 
       void logAudit('research_triggered', req, { ticker_symbol: normalised });
 
-      let pipelineResult: Awaited<ReturnType<typeof runPipeline>>;
+      let pipelineResult: PipelineResult;
       try {
         pipelineResult = await runPipeline(normalised, emit);
       } catch (pipelineErr) {
@@ -281,9 +281,11 @@ router.put(
 
       void logAudit('research_updated', req, { ticker_symbol: normalised });
 
-      let pipelineResult: Awaited<ReturnType<typeof runPipeline>>;
+      const prevReport = existingReport.report_json as unknown as ReportJson;
+
+      let pipelineResult: PipelineResult;
       try {
-        pipelineResult = await runPipeline(normalised, emit);
+        pipelineResult = await runUpdatePipeline(normalised, prevReport, emit);
       } catch (pipelineErr) {
         const message = pipelineErr instanceof Error ? pipelineErr.message : 'Pipeline failed';
         emit({ step: 0, label: 'Error', status: 'error', data: { message } });
@@ -295,7 +297,6 @@ router.put(
       const newScore = typeof report.sector_heat === 'number' ? report.sector_heat : null;
       const newVersion = existingReport.version + 1;
 
-      const prevReport = existingReport.report_json as unknown as ReportJson;
       const prevScore = typeof existingReport.score === 'number' ? existingReport.score : null;
       const diff = generateDiff(prevReport, prevScore, report, newScore);
 

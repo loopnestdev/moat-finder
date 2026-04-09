@@ -25,6 +25,16 @@ const HOT_SECTORS = [
   'Solar',
 ];
 
+const STEP_LABELS: Record<number, string> = {
+  1: 'Discovery',
+  2: 'Deep Dive',
+  3: 'Valuation & Financials',
+  4: 'Risk Red Team',
+  5: 'Macro & Sector',
+  6: 'Sentiment & Technicals',
+  7: 'Synthesis & Diagram',
+};
+
 // ─── Anthropic client ────────────────────────────────────────────────────────
 
 function createAnthropicClient(): Anthropic {
@@ -41,16 +51,22 @@ function extractJson(text: string): string {
   return match ? (match[1] ?? text.trim()) : text.trim();
 }
 
+/** Format Step 1 output as a cacheable context string passed to steps 2-6. */
+function formatStep1Context(step1: Step1Output): string {
+  return `Company: ${step1.company_name} (${step1.primary_product}, ${step1.industry})
+Sector: ${step1.sector} | Region: ${step1.primary_region}
+Competitors: ${step1.competitors.map((c) => `${c.name} (${c.ticker})`).join(', ')}
+Top Customers: ${step1.customers.join(', ')}`;
+}
+
+// ─── Claude call helpers ─────────────────────────────────────────────────────
+
 /**
- * Call Claude with web search enabled.
- * web_search_20250305 is a server-side tool — Anthropic executes the search
- * automatically and returns the final answer in a single response.
- * A fallback loop handles the rare case where stop_reason is 'tool_use'
- * for any client-side tools that might be added in future.
+ * Shared loop: send messages to Claude, handle tool_use turns, return final text.
  */
-async function callClaude(systemPrompt: string, userMessage: string): Promise<string> {
+async function runClaudeLoop(systemPrompt: string, initialMessages: MessageParam[]): Promise<string> {
   const client = createAnthropicClient();
-  const messages: MessageParam[] = [{ role: 'user', content: userMessage }];
+  const messages: MessageParam[] = [...initialMessages];
 
   for (;;) {
     const response = await client.messages.create({
@@ -93,6 +109,34 @@ async function callClaude(systemPrompt: string, userMessage: string): Promise<st
   }
 }
 
+/** Simple single-message call (Step 1 and Step 7 which have unique context). */
+async function callClaude(systemPrompt: string, userMessage: string): Promise<string> {
+  return runClaudeLoop(systemPrompt, [{ role: 'user', content: userMessage }]);
+}
+
+/**
+ * Call Claude with a cached Step 1 context block + a step-specific prompt.
+ * The cachedContext block is eligible for Anthropic prompt caching (ephemeral TTL ~5 min),
+ * reducing input tokens by ~60-70% across the five parallel steps that share the same context.
+ */
+async function callClaudeWithCachedContext(
+  systemPrompt: string,
+  cachedContext: string,
+  stepPrompt: string,
+): Promise<string> {
+  // Type assertion needed: cache_control is valid at runtime but may not be in all SDK typings.
+  const messages = [
+    {
+      role: 'user' as const,
+      content: [
+        { type: 'text' as const, text: cachedContext, cache_control: { type: 'ephemeral' as const } },
+        { type: 'text' as const, text: stepPrompt },
+      ],
+    },
+  ] as MessageParam[];
+  return runClaudeLoop(systemPrompt, messages);
+}
+
 // ─── Pipeline steps ───────────────────────────────────────────────────────────
 
 async function runStep1(ticker: string, emit: EmitFn): Promise<Step1Output> {
@@ -122,8 +166,9 @@ Use web search for current information. Return only the JSON object.`,
   return result;
 }
 
-async function runStep2(ctx: Pick<PipelineContext, 'step1'>, emit: EmitFn): Promise<Step2Output> {
-  const { step1 } = ctx;
+// Steps 2-6 each take only step1 as context — enables parallel execution.
+
+async function runStep2(step1: Step1Output, emit: EmitFn): Promise<Step2Output> {
   const system = `You are a financial research analyst specialising in competitive moat analysis.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
@@ -133,12 +178,11 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "catalysts": ["string"]
 }`;
 
-  const text = await callClaude(
+  const ctx = formatStep1Context(step1);
+  const text = await callClaudeWithCachedContext(
     system,
-    `Company: ${step1.company_name} (${step1.primary_product}, ${step1.industry})
-Competitors: ${step1.competitors.map((c) => `${c.name} (${c.ticker})`).join(', ')}
-
-Perform a deep dive analysis:
+    ctx,
+    `Perform a deep dive analysis on the company above:
 1. How does the company make money (business model)? Include the approximate revenue split by segment (e.g. "75% defense/aviation, 25% commercial") based on the most recent annual or quarterly filing.
 2. What is the economic moat (switching costs, network effects, IP, regulatory barriers, cost advantages)? Be specific — name the patents, certifications, or contracts if they exist.
 3. What is the technological advantage over competitors? Explain the core technology in 2–3 simple sentences that a non-technical investor would understand — use a real-world analogy (e.g. "think of it like X but for Y").
@@ -154,11 +198,7 @@ Use web search for current information. Return only the JSON object.`,
   return result;
 }
 
-async function runStep3(
-  ctx: Pick<PipelineContext, 'step1' | 'step2'>,
-  emit: EmitFn,
-): Promise<Step3Output> {
-  const { step1, step2 } = ctx;
+async function runStep3(step1: Step1Output, emit: EmitFn): Promise<Step3Output> {
   const system = `You are a financial analyst specialising in equity valuation.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
@@ -179,17 +219,15 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 }
 Use null (not "null") for unknown numeric values. Revenue values in millions (e.g. 340 = $340M). revenue_growth as a percentage (e.g. 18.2 = 18.2% YoY). quarterly_results must contain the last 4 reported quarters, most recent first.`;
 
-  const text = await callClaude(
+  const ctx = formatStep1Context(step1);
+  const text = await callClaudeWithCachedContext(
     system,
-    `Company: ${step1.company_name}
-Competitors: ${step1.competitors.map((c) => `${c.name} (${c.ticker})`).join(', ')}
-Moat: ${step2.moat}
-
-Provide:
-1. Relative valuation table including ALL major peers (minimum 3, ideally 4–5): P/S ratio, EV/EBITDA, gross margin %, YoY revenue growth %. For each peer, also note what their current EV/Sales multiple would imply as a target price for ${step1.company_name} — include this in the financial_summary.
-2. Revenue segment breakdown as percentages of total revenue (e.g. "75% defense/aviation, 25% commercial") — use the most recent filing. Include in the financial_summary.
+    ctx,
+    `Provide valuation and financial analysis for the company above:
+1. Relative valuation table including ALL major peers (minimum 3, ideally 4–5): P/S ratio, EV/EBITDA, gross margin %, YoY revenue growth %. For each peer, also note what their current EV/Sales multiple would imply as a target price — include this in the financial_summary.
+2. Revenue segment breakdown as percentages of total revenue — use the most recent filing. Include in the financial_summary.
 3. Customer metrics: total active customer count, new customers added in the most recent quarter, and top customer concentration (what % of revenue comes from the single largest customer). Include in the financial_summary.
-4. Napkin math: management's latest revenue guidance (exact figures if stated), best comparable ticker, their EV/Sales multiple, implied target price for ${step1.company_name}, and upside % from current price.
+4. Napkin math: management's latest revenue guidance (exact figures if stated), best comparable ticker, their EV/Sales multiple, implied target price, and upside % from current price.
 5. Brief financial summary (3–4 sentences) covering: revenue growth rate, gross margin trend, path to profitability, and any dilution risk from share issuances.
 6. Last 4 reported quarters of earnings (most recent first): quarter label (e.g. "Q4 2025"), revenue estimate in millions, revenue actual in millions, YoY revenue growth %, EPS estimate, EPS actual. Use null for unknown values.
 
@@ -202,11 +240,7 @@ Use web search for current financials and earnings results. Return only the JSON
   return result;
 }
 
-async function runStep4(
-  ctx: Pick<PipelineContext, 'step1' | 'step2' | 'step3'>,
-  emit: EmitFn,
-): Promise<Step4Output> {
-  const { step1, step2, step3 } = ctx;
+async function runStep4(step1: Step1Output, emit: EmitFn): Promise<Step4Output> {
   const system = `You are a bearish research analyst performing a risk red team analysis.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
@@ -215,18 +249,25 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "tail_risks": ["string", "string"]
 }`;
 
-  const text = await callClaude(
+  const ctx = formatStep1Context(step1);
+  const text = await callClaudeWithCachedContext(
     system,
-    `Company: ${step1.company_name} (${step1.industry})
-Moat claimed: ${step2.moat}
-Valuation upside: ${step3.napkin_math.upside_percent}%
+    ctx,
+    `Perform a bear case analysis on the company above.
+Complete this analysis in 4 web searches maximum. Be concise. Total response must be under 800 words.
 
-Perform a risk red team (bear case):
+Search targets:
+1. "[company name] [ticker] short report bear case risks"
+2. "[ticker] SEC 10-K risk factors"
+3. "[ticker] earnings miss history"
+4. "[ticker] customer concentration revenue"
+
+Provide:
 1. Bear case — write it as a short seller would (3-point thesis on why this fails)
 2. Top 3 risk factors from SEC filings and recent analyst reports
 3. Two tail risks (low probability, high impact scenarios)
 
-Use web search for current short theses and risk disclosures. Return only the JSON object.`,
+Return only the JSON object.`,
   );
 
   const result = JSON.parse(extractJson(text)) as Step4Output;
@@ -235,8 +276,7 @@ Use web search for current short theses and risk disclosures. Return only the JS
   return result;
 }
 
-async function runStep5(ctx: Pick<PipelineContext, 'step1'>, emit: EmitFn): Promise<Step5Output> {
-  const { step1 } = ctx;
+async function runStep5(step1: Step1Output, emit: EmitFn): Promise<Step5Output> {
   const system = `You are a macro and sector analyst.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
@@ -247,10 +287,11 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 }
 sector_heat must be an integer 1–5 (1=cold, 5=very hot). hot_sector_match must be a subset of the provided hot sectors list.`;
 
-  const text = await callClaude(
+  const ctx = formatStep1Context(step1);
+  const text = await callClaudeWithCachedContext(
     system,
-    `Company: ${step1.company_name}
-Industry: ${step1.industry} | Sector: ${step1.sector} | Region: ${step1.primary_region}
+    ctx,
+    `Analyse macro conditions and sector positioning for the company above.
 Hot sectors to evaluate against: ${HOT_SECTORS.join(', ')}
 
 Analyse:
@@ -268,8 +309,7 @@ Use web search for current macro context. Return only the JSON object.`,
   return result;
 }
 
-async function runStep6(ctx: Pick<PipelineContext, 'step1'>, emit: EmitFn): Promise<Step6Output> {
-  const { step1 } = ctx;
+async function runStep6(step1: Step1Output, emit: EmitFn): Promise<Step6Output> {
   const system = `You are a technical and sentiment analyst.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
@@ -279,11 +319,11 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "rs_vs_spy": "string"
 }`;
 
-  const text = await callClaude(
+  const ctx = formatStep1Context(step1);
+  const text = await callClaudeWithCachedContext(
     system,
-    `Company: ${step1.company_name}
-
-Analyse current market sentiment and technicals:
+    ctx,
+    `Analyse current market sentiment and technicals for the company above:
 1. Overall sentiment summary (retail + institutional)
 2. Short interest (% of float, recent changes)
 3. Position vs 200-day moving average (above/below, by how much %)
@@ -400,20 +440,135 @@ RS vs SPY: ${step6.rs_vs_spy}`;
   return { report: parsed.report, diagram: parsed.diagram };
 }
 
+// ─── Parallel helper ──────────────────────────────────────────────────────────
+
+/**
+ * Run steps 2-6 concurrently via Promise.allSettled.
+ * Emits error events for any failed steps, then throws if any failed
+ * (Step 7 requires all five outputs to synthesise correctly).
+ */
+async function runParallelSteps(
+  step1: Step1Output,
+  emit: EmitFn,
+): Promise<[Step2Output, Step3Output, Step4Output, Step5Output, Step6Output]> {
+  const settled = await Promise.allSettled([
+    runStep2(step1, emit),
+    runStep3(step1, emit),
+    runStep4(step1, emit),
+    runStep5(step1, emit),
+    runStep6(step1, emit),
+  ]);
+
+  const errors: string[] = [];
+  for (const [i, result] of settled.entries()) {
+    if (result.status === 'rejected') {
+      const stepNum = i + 2;
+      const message =
+        result.reason instanceof Error ? result.reason.message : `Step ${stepNum} failed`;
+      emit({
+        step: stepNum,
+        label: STEP_LABELS[stepNum] ?? `Step ${stepNum}`,
+        status: 'error',
+        data: { message },
+      });
+      errors.push(`Step ${stepNum}: ${message}`);
+    }
+  }
+  if (errors.length > 0) {
+    throw new Error(`Pipeline failed: ${errors.join('; ')}`);
+  }
+
+  return [
+    (settled[0] as PromiseFulfilledResult<Step2Output>).value,
+    (settled[1] as PromiseFulfilledResult<Step3Output>).value,
+    (settled[2] as PromiseFulfilledResult<Step4Output>).value,
+    (settled[3] as PromiseFulfilledResult<Step5Output>).value,
+    (settled[4] as PromiseFulfilledResult<Step6Output>).value,
+  ];
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
- * Run the full 7-step research pipeline sequentially.
- * Each step emits an SSE event on completion.
- * Each step's output is passed as context to the next.
+ * Run the full 7-step research pipeline.
+ * Step 1 runs first; steps 2-6 run concurrently; step 7 synthesises.
  */
 export async function runPipeline(ticker: string, emit: EmitFn): Promise<PipelineResult> {
   const step1 = await runStep1(ticker, emit);
-  const step2 = await runStep2({ step1 }, emit);
-  const step3 = await runStep3({ step1, step2 }, emit);
-  const step4 = await runStep4({ step1, step2, step3 }, emit);
-  const step5 = await runStep5({ step1 }, emit);
-  const step6 = await runStep6({ step1 }, emit);
+  const [step2, step3, step4, step5, step6] = await runParallelSteps(step1, emit);
   const ctx: PipelineContext = { step1, step2, step3, step4, step5, step6 };
+  return runStep7(ctx, ticker, emit);
+}
+
+/**
+ * Smart update pipeline — skips steps 2 (Deep Dive) and 4 (Risk Red Team),
+ * reusing their data from the existing report. Runs steps 3, 5, 6 concurrently.
+ */
+export async function runUpdatePipeline(
+  ticker: string,
+  existingReport: ReportJson,
+  emit: EmitFn,
+): Promise<PipelineResult> {
+  const step1 = await runStep1(ticker, emit);
+
+  // Reconstruct step2/step4 from cached report data
+  const rawSteps = existingReport.pipeline_steps_raw;
+  const rawStep2 = rawSteps['step2'] as Partial<Step2Output> | undefined;
+  const rawStep4 = rawSteps['step4'] as Partial<Step4Output> | undefined;
+
+  const cachedStep2: Step2Output = {
+    business_model: existingReport.business_model ?? '',
+    moat: existingReport.moat ?? '',
+    technological_advantage: rawStep2?.technological_advantage ?? '',
+    catalysts: existingReport.catalysts ?? [],
+  };
+
+  const cachedStep4: Step4Output = {
+    bear_case: existingReport.bear_case ?? '',
+    risk_factors: existingReport.risk_factors ?? [],
+    tail_risks: (rawStep4?.tail_risks as string[] | undefined) ?? [],
+  };
+
+  // Signal skipped steps immediately
+  emit({ step: 2, label: 'Deep Dive', status: 'cached', data: { message: 'Using previous research' } });
+  emit({ step: 4, label: 'Risk Red Team', status: 'cached', data: { message: 'Using previous research' } });
+  console.log('[Update] Steps 2 and 4 skipped — reusing cached data');
+
+  // Run fresh steps concurrently
+  const settled = await Promise.allSettled([
+    runStep3(step1, emit),
+    runStep5(step1, emit),
+    runStep6(step1, emit),
+  ]);
+
+  const updateStepNums = [3, 5, 6];
+  const errors: string[] = [];
+  for (const [i, result] of settled.entries()) {
+    if (result.status === 'rejected') {
+      const stepNum = updateStepNums[i] as number;
+      const message =
+        result.reason instanceof Error ? result.reason.message : `Step ${stepNum} failed`;
+      emit({
+        step: stepNum,
+        label: STEP_LABELS[stepNum] ?? `Step ${stepNum}`,
+        status: 'error',
+        data: { message },
+      });
+      errors.push(`Step ${stepNum}: ${message}`);
+    }
+  }
+  if (errors.length > 0) {
+    throw new Error(`Update pipeline failed: ${errors.join('; ')}`);
+  }
+
+  const ctx: PipelineContext = {
+    step1,
+    step2: cachedStep2,
+    step3: (settled[0] as PromiseFulfilledResult<Step3Output>).value,
+    step4: cachedStep4,
+    step5: (settled[1] as PromiseFulfilledResult<Step5Output>).value,
+    step6: (settled[2] as PromiseFulfilledResult<Step6Output>).value,
+  };
+
   return runStep7(ctx, ticker, emit);
 }

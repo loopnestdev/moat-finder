@@ -30,13 +30,13 @@ export default function PipelineProgress({
   isAdmin = false,
 }: PipelineProgressProps) {
   const completedSteps = new Set(
-    steps.filter((s) => s.status === 'complete').map((s) => s.step),
+    steps.filter((s) => s.status === 'complete' || s.status === 'cached').map((s) => s.step),
   );
 
-  // Build a map of step number → SSEEvent for completed pipeline steps (1–7)
+  // Build a map of step number → SSEEvent for completed/cached pipeline steps (1–7)
   const completedStepEvents: Record<number, SSEEvent> = {};
   for (const s of steps) {
-    if (s.status === 'complete' && s.step >= 1 && s.step <= 7) {
+    if ((s.status === 'complete' || s.status === 'cached') && s.step >= 1 && s.step <= 7) {
       completedStepEvents[s.step] = s;
     }
   }
@@ -127,6 +127,7 @@ export default function PipelineProgress({
         const stepNum = i + 1;
         const label = STEP_LABELS[stepNum] ?? `Step ${stepNum}`;
         const isComplete = completedSteps.has(stepNum);
+        const isCached = isComplete && completedStepEvents[stepNum]?.status === 'cached';
         const isInProgress = currentStep === stepNum;
         const isError = errorStep === stepNum;
         const isPending = !isComplete && !isInProgress && !isError;
@@ -169,7 +170,7 @@ export default function PipelineProgress({
           >
             {/* Status icon */}
             <span className="flex-shrink-0 h-6 w-6 flex items-center justify-center">
-              {isComplete && (
+              {isComplete && !isCached && (
                 <svg
                   className="h-5 w-5 text-emerald-400"
                   fill="none"
@@ -181,6 +182,22 @@ export default function PipelineProgress({
                     strokeLinejoin="round"
                     strokeWidth={2.5}
                     d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              )}
+              {isCached && (
+                <svg
+                  className="h-4 w-4 text-gold/60"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-label="Cached"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
                 </svg>
               )}
