@@ -139,10 +139,11 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 Competitors: ${step1.competitors.map((c) => `${c.name} (${c.ticker})`).join(', ')}
 
 Perform a deep dive analysis:
-1. How does the company make money (business model)?
-2. What is the economic moat (switching costs, network effects, IP, cost advantages)?
-3. What is the technological advantage over competitors?
-4. List 3–5 upcoming catalysts over the next 12 months.
+1. How does the company make money (business model)? Include the approximate revenue split by segment (e.g. "75% defense/aviation, 25% commercial") based on the most recent annual or quarterly filing.
+2. What is the economic moat (switching costs, network effects, IP, regulatory barriers, cost advantages)? Be specific — name the patents, certifications, or contracts if they exist.
+3. What is the technological advantage over competitors? Explain the core technology in 2–3 simple sentences that a non-technical investor would understand — use a real-world analogy (e.g. "think of it like X but for Y").
+4. Search for any CEO, CFO, or CTO changes in the past 12 months. If found, explain whether each change is a positive signal (e.g. growth-stage hire, industry veteran) or a negative signal (e.g. sudden departure, no successor named). If no changes, state that explicitly.
+5. List 3–5 upcoming catalysts over the next 12 months that could move the stock price.
 
 Use web search for current information. Return only the JSON object.`,
   );
@@ -185,10 +186,12 @@ Competitors: ${step1.competitors.map((c) => `${c.name} (${c.ticker})`).join(', '
 Moat: ${step2.moat}
 
 Provide:
-1. Relative valuation table vs 2–3 competitors: P/S, EV/EBITDA, gross margin, YoY revenue growth
-2. Napkin math: revenue guidance, best comparable ticker, their multiple, implied target price, upside %
-3. Brief financial summary (2–3 sentences)
-4. Last 4 reported quarters of earnings data (most recent first): for each quarter provide the quarter label (e.g. "Q4 2025"), revenue estimate (in millions), revenue actual (in millions), YoY revenue growth %, EPS estimate, and EPS actual. Use null for any values that cannot be found.
+1. Relative valuation table including ALL major peers (minimum 3, ideally 4–5): P/S ratio, EV/EBITDA, gross margin %, YoY revenue growth %. For each peer, also note what their current EV/Sales multiple would imply as a target price for ${step1.company_name} — include this in the financial_summary.
+2. Revenue segment breakdown as percentages of total revenue (e.g. "75% defense/aviation, 25% commercial") — use the most recent filing. Include in the financial_summary.
+3. Customer metrics: total active customer count, new customers added in the most recent quarter, and top customer concentration (what % of revenue comes from the single largest customer). Include in the financial_summary.
+4. Napkin math: management's latest revenue guidance (exact figures if stated), best comparable ticker, their EV/Sales multiple, implied target price for ${step1.company_name}, and upside % from current price.
+5. Brief financial summary (3–4 sentences) covering: revenue growth rate, gross margin trend, path to profitability, and any dilution risk from share issuances.
+6. Last 4 reported quarters of earnings (most recent first): quarter label (e.g. "Q4 2025"), revenue estimate in millions, revenue actual in millions, YoY revenue growth %, EPS estimate, EPS actual. Use null for unknown values.
 
 Use web search for current financials and earnings results. Return only the JSON object.`,
   );
@@ -305,6 +308,18 @@ async function runStep7(
   const system = `You are a senior investment analyst synthesising a complete research report.
 Respond ONLY with a valid JSON object with exactly two keys: "report" and "diagram".
 No markdown, no explanation, raw JSON only.
+
+SCORING RUBRIC — use this exact weighting to calculate the score (1.0–10.0):
+- Sector momentum (20%): Is this a hot sector (AI, Defense, Space, Nuclear, Semiconductors, Robotics)? Hot sector = +2.0 floor contribution. Cold sector = +0.5.
+- Revenue growth velocity (25%): >100% YoY = 2.5 pts. 50–100% = 2.0 pts. 20–50% = 1.5 pts. <20% = 0.5 pts. Declining = 0 pts.
+- Valuation vs peers (20%): Trading at a discount to peer EV/Sales median = +2.0. At par = +1.0. Premium = +0.5.
+- Moat quality (20%): Strong (IP + switching costs + regulatory moat) = +2.0. Moderate (one strong factor) = +1.2. Weak = +0.4.
+- Execution risk (15%): Clear path to profitability, low dilution risk = +1.5. Some concerns = +0.8. High risk = +0.2.
+
+IMPORTANT SCORING CONSTRAINTS:
+- A company with >100% YoY revenue growth in a hot sector with any moat must score at least 5.0.
+- Lack of profitability alone must NOT drag a high-growth company below 4.0 if sector momentum and growth are strong.
+- Weigh execution risk as a modifier on the upside, not a reason to discount the floor.
 
 "report" must match this exact structure:
 {
