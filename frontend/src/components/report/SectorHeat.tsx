@@ -36,8 +36,8 @@ interface SectorHeatProps {
   sectors: string[];
 }
 
-export default function SectorHeat({ heat, sectors }: SectorHeatProps) {
-  const clamped = Math.min(5, Math.max(0, Math.round(heat)));
+export default function SectorHeat({ heat, sectors = [] }: SectorHeatProps) {
+  const clamped = Math.min(5, Math.max(0, Math.round(heat ?? 0)));
 
   return (
     <div className="flex flex-wrap items-center gap-3">

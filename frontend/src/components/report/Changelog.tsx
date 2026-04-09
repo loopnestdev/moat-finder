@@ -13,7 +13,7 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function Changelog({ versions }: ChangelogProps) {
+export default function Changelog({ versions = [] }: ChangelogProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   if (versions.length === 0) return null;
@@ -72,33 +72,33 @@ export default function Changelog({ versions }: ChangelogProps) {
                     </span>
                   </div>
                 )}
-                {diff.changed_fields.length > 0 && (
+                {(diff.changed_fields ?? []).length > 0 && (
                   <div>
                     <span className="font-medium text-gray-700">Updated: </span>
                     <span className="text-gray-600">
-                      {diff.changed_fields.join(', ')}
+                      {(diff.changed_fields ?? []).join(', ')}
                     </span>
                   </div>
                 )}
-                {diff.added_catalysts.length > 0 && (
+                {(diff.added_catalysts ?? []).length > 0 && (
                   <div>
                     <span className="font-medium text-emerald-700">
                       Added catalysts:{' '}
                     </span>
                     <ul className="list-disc list-inside text-gray-600 mt-1">
-                      {diff.added_catalysts.map((c, i) => (
+                      {(diff.added_catalysts ?? []).map((c, i) => (
                         <li key={i}>{c}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-                {diff.removed_catalysts.length > 0 && (
+                {(diff.removed_catalysts ?? []).length > 0 && (
                   <div>
                     <span className="font-medium text-red-700">
                       Removed catalysts:{' '}
                     </span>
                     <ul className="list-disc list-inside text-gray-600 mt-1">
-                      {diff.removed_catalysts.map((c, i) => (
+                      {(diff.removed_catalysts ?? []).map((c, i) => (
                         <li key={i}>{c}</li>
                       ))}
                     </ul>

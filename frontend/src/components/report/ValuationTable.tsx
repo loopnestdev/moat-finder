@@ -46,7 +46,7 @@ function MetricRow({ label, value, valueClass = 'text-cream-muted' }: MetricRowP
   );
 }
 
-export default function ValuationTable({ rows, ticker }: ValuationTableProps) {
+export default function ValuationTable({ rows = [], ticker }: ValuationTableProps) {
   if (rows.length === 0) {
     return <p className="text-sm text-cream-subtle italic font-body">No valuation data available.</p>;
   }

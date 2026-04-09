@@ -31,8 +31,8 @@ function WarningIcon() {
   );
 }
 
-export default function BearCase({ bearCase, riskFactors }: BearCaseProps) {
-  const points = splitToPoints(bearCase);
+export default function BearCase({ bearCase, riskFactors = [] }: BearCaseProps) {
+  const points = splitToPoints(bearCase ?? '');
 
   return (
     <div className="rounded-xl border border-red-900/50 bg-red-950/20 overflow-hidden">

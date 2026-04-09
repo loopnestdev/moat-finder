@@ -16,6 +16,7 @@ import DiffModal from '../components/research/DiffModal';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import QuarterlyResults from '../components/report/QuarterlyResults';
+import ErrorBoundary from '../components/ErrorBoundary';
 import type { DiffJson } from '../types/report.types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -228,11 +229,11 @@ export default function Report() {
 
   const rj = report.report_json;
 
-  // Pre-parse text fields
-  const businessModelSegments = parseNumberedList(rj.business_model);
-  const moatPillars = parseNumberedList(rj.moat);
-  const macroBullets = parseBullets(rj.macro_summary);
-  const sentimentBullets = parseBullets(rj.sentiment_summary);
+  // Pre-parse text fields — guard against missing fields in old reports
+  const businessModelSegments = parseNumberedList(rj.business_model ?? '');
+  const moatPillars = parseNumberedList(rj.moat ?? '');
+  const macroBullets = parseBullets(rj.macro_summary ?? '');
+  const sentimentBullets = parseBullets(rj.sentiment_summary ?? '');
 
   return (
     <div className="space-y-0">
@@ -270,7 +271,7 @@ export default function Report() {
           {/* Right: score + heat + update button */}
           <div className="flex flex-col items-end gap-4 flex-shrink-0">
             <ScoreBadge score={report.score} size="lg" />
-            <SectorHeat heat={rj.sector_heat} sectors={rj.hot_sector_match} />
+            <SectorHeat heat={rj.sector_heat} sectors={rj.hot_sector_match ?? []} />
             {isApproved && !isUpdateRunning && (
               <Button
                 variant="secondary"
@@ -305,7 +306,9 @@ export default function Report() {
           {/* Fix 1: Business Model Canvas (pure React) */}
           <section>
             <SectionHeading>Business Model</SectionHeading>
-            <BusinessDiagram diagram={report.diagram_json} />
+            <ErrorBoundary>
+              <BusinessDiagram diagram={report.diagram_json} />
+            </ErrorBoundary>
           </section>
 
           {/* Fix 2: How It Makes Money — numbered segments */}
@@ -318,7 +321,7 @@ export default function Report() {
           <section>
             <SectionHeading>Why Now — Catalysts</SectionHeading>
             <ol className="space-y-5">
-              {rj.catalysts.map((c, i) => (
+              {(rj.catalysts ?? []).map((c, i) => (
                 <li key={i} className="flex gap-4">
                   <span className="font-mono text-2xl font-bold text-gold/40 flex-shrink-0 leading-tight w-8">
                     {String(i + 1).padStart(2, '0')}
@@ -335,9 +338,9 @@ export default function Report() {
             <div className="mb-5">
               <MoatPillars items={moatPillars} fallback={rj.moat} />
             </div>
-            {rj.competitors.length > 0 && (
+            {(rj.competitors ?? []).length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {rj.competitors.map((c) => (
+                {(rj.competitors ?? []).map((c) => (
                   <span
                     key={c.ticker}
                     className="text-sm border border-navy-600 bg-navy-800 rounded-full px-3 py-1"
@@ -384,7 +387,9 @@ export default function Report() {
           <NapkinMath data={rj.napkin_math} />
 
           {/* Quarterly Results card */}
-          <QuarterlyResults results={rj.quarterly_results} />
+          <ErrorBoundary>
+            <QuarterlyResults results={rj.quarterly_results} />
+          </ErrorBoundary>
 
           {/* Fix 6: ValuationTable card grid */}
           <div className="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
@@ -403,7 +408,7 @@ export default function Report() {
             <p className="font-mono text-xs text-gold/70 uppercase tracking-[0.2em] mb-3">
               Sector Heat
             </p>
-            <SectorHeat heat={rj.sector_heat} sectors={rj.hot_sector_match} />
+            <SectorHeat heat={rj.sector_heat} sectors={rj.hot_sector_match ?? []} />
           </div>
         </div>
       </div>

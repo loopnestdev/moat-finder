@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import Spinner from '../ui/Spinner';
 import type { SSEEvent } from '../../types/report.types';
 
 interface PipelineProgressProps {
@@ -123,7 +122,7 @@ export default function PipelineProgress({
   // ─── Steps list ──────────────────────────────────────────────────────────────
 
   const stepsList = (
-    <ol className="space-y-3">
+    <ol className="space-y-2">
       {Array.from({ length: 7 }, (_, i) => {
         const stepNum = i + 1;
         const label = STEP_LABELS[stepNum] ?? `Step ${stepNum}`;
@@ -146,9 +145,9 @@ export default function PipelineProgress({
           <li
             key={stepNum}
             className={[
-              'flex items-center gap-3 rounded-md px-2 py-1 -mx-2 transition-colors',
-              isClickable ? 'cursor-pointer hover:bg-gray-50' : '',
-              isSelected ? 'bg-blue-50 hover:bg-blue-50' : '',
+              'flex items-center gap-3 rounded-md px-2 py-1.5 -mx-2 transition-colors',
+              isClickable ? 'cursor-pointer hover:bg-navy-800' : '',
+              isSelected ? 'bg-navy-800' : '',
             ]
               .filter(Boolean)
               .join(' ')}
@@ -172,7 +171,7 @@ export default function PipelineProgress({
             <span className="flex-shrink-0 h-6 w-6 flex items-center justify-center">
               {isComplete && (
                 <svg
-                  className="h-5 w-5 text-emerald-500"
+                  className="h-5 w-5 text-emerald-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -185,10 +184,33 @@ export default function PipelineProgress({
                   />
                 </svg>
               )}
-              {isInProgress && <Spinner size="sm" />}
+              {isInProgress && (
+                <svg
+                  className="h-4 w-4 text-amber-400 animate-spin"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-label="In progress"
+                  role="status"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  />
+                </svg>
+              )}
               {isError && (
                 <svg
-                  className="h-5 w-5 text-red-500"
+                  className="h-5 w-5 text-red-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -202,18 +224,18 @@ export default function PipelineProgress({
                 </svg>
               )}
               {isPending && (
-                <span className="h-4 w-4 rounded-full border-2 border-gray-300" />
+                <span className="h-4 w-4 rounded-full border-2 border-cream/25" />
               )}
             </span>
 
             {/* Label */}
             <span
               className={[
-                'text-sm flex-1',
-                isComplete ? 'text-gray-900 font-medium' : '',
-                isInProgress ? 'text-blue-700 font-medium' : '',
-                isError ? 'text-red-700 font-medium' : '',
-                isPending ? 'text-gray-400' : '',
+                'font-body text-sm flex-1',
+                isComplete ? 'text-cream' : '',
+                isInProgress ? 'text-amber-400 font-medium' : '',
+                isError ? 'text-red-400 font-medium' : '',
+                isPending ? 'text-cream/40' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
@@ -223,7 +245,7 @@ export default function PipelineProgress({
 
             {/* Duration pill (admin only) */}
             {duration !== null && (
-              <span className="text-xs text-gray-400 font-mono tabular-nums">
+              <span className="font-mono text-sm text-gold/60 tabular-nums">
                 {formatDuration(duration)}
               </span>
             )}
@@ -233,7 +255,7 @@ export default function PipelineProgress({
               <svg
                 className={[
                   'h-4 w-4 flex-shrink-0 transition-transform duration-200',
-                  isSelected ? 'text-blue-500 rotate-90' : 'text-gray-300',
+                  isSelected ? 'text-gold rotate-90' : 'text-gold/40',
                 ].join(' ')}
                 fill="none"
                 viewBox="0 0 24 24"
@@ -261,17 +283,17 @@ export default function PipelineProgress({
 
   const detailPanel =
     isAdmin && selectedStep !== null && selectedEvent ? (
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+      <div className="rounded-lg border-l-2 border-gold/40 bg-navy-900 p-4">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-3">
-          <h4 className="text-sm font-semibold text-blue-900">
+          <h4 className="font-body text-sm font-semibold text-cream">
             Step {selectedStep}:{' '}
             {STEP_LABELS[selectedStep] ?? `Step ${selectedStep}`}
           </h4>
           <div className="flex items-center gap-2 flex-shrink-0">
             {endTimes[selectedStep] !== undefined &&
               startTimesRef.current[selectedStep] !== undefined && (
-                <span className="text-xs font-mono tabular-nums bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                <span className="font-mono text-xs tabular-nums bg-navy-800 text-gold/70 px-2 py-0.5 rounded-full">
                   {formatDuration(
                     endTimes[selectedStep] -
                       startTimesRef.current[selectedStep],
@@ -279,7 +301,7 @@ export default function PipelineProgress({
                 </span>
               )}
             <button
-              className="text-blue-400 hover:text-blue-600 transition-colors"
+              className="text-gold/40 hover:text-gold transition-colors"
               onClick={() => setSelectedStep(null)}
               aria-label="Close detail panel"
             >
@@ -301,7 +323,7 @@ export default function PipelineProgress({
         </div>
 
         {/* Output */}
-        <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">
+        <p className="font-mono text-xs text-gold/60 uppercase tracking-wide mb-2">
           Output summary
         </p>
         {selectedEvent.data !== undefined ? (
@@ -312,12 +334,12 @@ export default function PipelineProgress({
             const preview = isLong && !isExpanded ? full.slice(0, 300) + '…' : full;
             return (
               <>
-                <pre className="text-xs text-gray-700 bg-white rounded-md border border-blue-200 p-3 overflow-x-auto whitespace-pre-wrap break-all">
+                <pre className="font-mono text-xs text-cream-muted bg-navy-800 rounded-md border border-gold/20 p-3 overflow-x-auto whitespace-pre-wrap break-all">
                   {preview}
                 </pre>
                 {isLong && (
                   <button
-                    className="mt-2 text-xs font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
+                    className="mt-2 font-mono text-xs text-gold hover:text-gold/70 underline underline-offset-2 transition-colors"
                     onClick={() => toggleExpand(selectedStep)}
                   >
                     {isExpanded ? 'Show less' : 'Show full output'}
@@ -327,7 +349,7 @@ export default function PipelineProgress({
             );
           })()
         ) : (
-          <p className="text-xs text-gray-400 italic">
+          <p className="font-body text-xs text-cream-subtle italic">
             No output data transmitted for this step.
           </p>
         )}
@@ -337,8 +359,8 @@ export default function PipelineProgress({
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-6">
-      <h3 className="text-sm font-semibold text-gray-700 mb-4">
+    <div className="rounded-lg border border-gold/20 bg-navy-950 p-6">
+      <h3 className="font-body text-lg text-cream mb-4">
         Research in Progress
       </h3>
 
@@ -351,7 +373,7 @@ export default function PipelineProgress({
             {detailPanel ?? (
               // Placeholder hint when no step is selected
               completedSteps.size > 0 && (
-                <p className="text-xs text-gray-400 italic hidden md:block">
+                <p className="font-body text-xs text-cream-muted italic hidden md:block">
                   Click a completed step to inspect its output.
                 </p>
               )
@@ -361,7 +383,7 @@ export default function PipelineProgress({
       </div>
 
       {error && (
-        <div className="mt-4 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div className="mt-4 rounded-md bg-red-950/30 border border-red-500/30 px-4 py-3 font-body text-sm text-red-400">
           {error}
         </div>
       )}
