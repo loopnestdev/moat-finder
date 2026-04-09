@@ -229,6 +229,13 @@ export default function Report() {
 
   const rj = report.report_json;
 
+  // Coerce thesis — some older reports stored it as an array of words/strings
+  const rawThesis = (rj as unknown as Record<string, unknown>)['thesis'] ??
+    (rj as unknown as Record<string, unknown>)['one_liner'] ?? '';
+  const thesisText = Array.isArray(rawThesis)
+    ? (rawThesis as unknown[]).map(String).join(' ')
+    : String(rawThesis);
+
   // Pre-parse text fields — guard against missing fields in old reports
   const businessModelSegments = parseNumberedList(rj.business_model ?? '');
   const moatPillars = parseNumberedList(rj.moat ?? '');
@@ -264,7 +271,7 @@ export default function Report() {
             </p>
             {/* Thesis callout */}
             <p className="font-body italic text-cream/90 text-lg leading-relaxed border-l-2 border-gold/40 pl-4">
-              {rj.thesis}
+              {thesisText}
             </p>
           </div>
 
