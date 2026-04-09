@@ -12,12 +12,10 @@ import BearCase from '../components/report/BearCase';
 import Changelog from '../components/report/Changelog';
 import BusinessDiagram from '../components/report/BusinessDiagram';
 import PipelineProgress from '../components/research/PipelineProgress';
-import DiffModal from '../components/research/DiffModal';
 import Button from '../components/ui/Button';
 import Spinner from '../components/ui/Spinner';
 import QuarterlyResults from '../components/report/QuarterlyResults';
 import ErrorBoundary from '../components/ErrorBoundary';
-import type { DiffJson } from '../types/report.types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -188,29 +186,15 @@ export default function Report() {
   const { data: report, isLoading, error } = useReport(ticker);
   const { data: versions = [] } = useVersions(ticker);
 
-  const [showDiff, setShowDiff] = useState(false);
-  const [pendingDiff, setPendingDiff] = useState<DiffJson | null>(null);
   const [isUpdateRunning, setIsUpdateRunning] = useState(false);
 
   const handleUpdate = async () => {
     setIsUpdateRunning(true);
-    const completed = await pipeline.updateResearch(ticker);
-    const lastStep = completed[completed.length - 1];
-    const diff = lastStep?.data?.diff_summary as DiffJson | undefined;
-    setPendingDiff(diff ?? null);
-    setShowDiff(true);
-  };
-
-  const handleDiffConfirm = () => {
-    setShowDiff(false);
-    setIsUpdateRunning(false);
+    await pipeline.updateResearch(ticker);
+    // Invalidate all affected query keys to pull fresh data automatically
     void queryClient.invalidateQueries({ queryKey: ['research', ticker] });
     void queryClient.invalidateQueries({ queryKey: ['research', ticker, 'versions'] });
     void queryClient.invalidateQueries({ queryKey: ['research'] });
-  };
-
-  const handleDiffDiscard = () => {
-    setShowDiff(false);
     setIsUpdateRunning(false);
   };
 
@@ -420,14 +404,6 @@ export default function Report() {
         </div>
       </div>
 
-      {/* Diff modal */}
-      <DiffModal
-        isOpen={showDiff}
-        onClose={handleDiffDiscard}
-        onConfirm={handleDiffConfirm}
-        diff={pendingDiff}
-        isLoading={false}
-      />
     </div>
   );
 }
