@@ -54,8 +54,25 @@ export default function Nav() {
           {/* Logo */}
           <Link
             to="/"
-            className="flex-shrink-0 text-xl font-bold text-gold font-mono tracking-tight"
+            className="flex-shrink-0 flex items-center gap-2 text-xl font-bold text-gold font-mono tracking-tight"
           >
+            <svg
+              width="40"
+              height="40"
+              viewBox="0 0 204 204"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <rect width="204" height="204" rx="38" fill="#0d1526" />
+              <circle cx="102" cy="102" r="82" stroke="#d4a853" strokeWidth="11" />
+              <circle cx="102" cy="102" r="50" stroke="#d4a853" strokeWidth="3.5" opacity="0.45" />
+              <path
+                d="M88,172 L88,68 L130,113 L172,68 L172,172 L159,172 L159,86 L130,127 L101,86 L101,172 Z"
+                fill="#d4a853"
+              />
+              <line x1="80" y1="178" x2="180" y2="178" stroke="#d4a853" strokeWidth="5.5" opacity="0.4" />
+            </svg>
             moat-finder
           </Link>
 
