@@ -88,11 +88,15 @@ export default function PipelineProgress({
     const updates: Record<number, number> = {};
 
     for (const event of newSteps) {
-      if (event.status === 'complete' && event.step >= 1 && event.step <= 7) {
+      if ((event.status === 'complete' || event.status === 'cached') && event.step >= 1 && event.step <= 7) {
         updates[event.step] = now;
-        // The next step starts immediately after this one completes
-        if (event.step < 7) {
-          startTimesRef.current[event.step + 1] = now;
+        // Only derive next step start from sequential completion (step 1 → step 2 in full pipeline)
+        // For parallel steps 2-6, the server-emitted duration is authoritative.
+        if (event.step === 1) {
+          startTimesRef.current[2] = now;
+        }
+        if (event.step === 7) {
+          // no next step
         }
       }
     }
@@ -134,13 +138,14 @@ export default function PipelineProgress({
         const isSelected = selectedStep === stepNum;
         const isClickable = isAdmin && isComplete;
 
-        const duration =
-          isAdmin &&
-          isComplete &&
-          endTimes[stepNum] !== undefined &&
-          startTimesRef.current[stepNum] !== undefined
+        // Prefer server-emitted duration (accurate for parallel steps).
+        // Fall back to client-side timing only for step 1 and step 7 where it's reliable.
+        const serverDuration = completedStepEvents[stepNum]?.duration;
+        const clientDuration =
+          endTimes[stepNum] !== undefined && startTimesRef.current[stepNum] !== undefined
             ? endTimes[stepNum] - startTimesRef.current[stepNum]
             : null;
+        const duration = isAdmin && isComplete ? (serverDuration ?? clientDuration) : null;
 
         return (
           <li
@@ -308,15 +313,20 @@ export default function PipelineProgress({
             {STEP_LABELS[selectedStep] ?? `Step ${selectedStep}`}
           </h4>
           <div className="flex items-center gap-2 flex-shrink-0">
-            {endTimes[selectedStep] !== undefined &&
-              startTimesRef.current[selectedStep] !== undefined && (
+            {(() => {
+              const sd = selectedEvent?.duration;
+              const cd =
+                endTimes[selectedStep] !== undefined &&
+                startTimesRef.current[selectedStep] !== undefined
+                  ? endTimes[selectedStep] - startTimesRef.current[selectedStep]
+                  : null;
+              const ms = sd ?? cd;
+              return ms !== null && ms !== undefined ? (
                 <span className="font-mono text-xs tabular-nums bg-navy-800 text-gold/70 px-2 py-0.5 rounded-full">
-                  {formatDuration(
-                    endTimes[selectedStep] -
-                      startTimesRef.current[selectedStep],
-                  )}
+                  {formatDuration(ms)}
                 </span>
-              )}
+              ) : null;
+            })()}
             <button
               className="text-gold/40 hover:text-gold transition-colors"
               onClick={() => setSelectedStep(null)}
@@ -398,6 +408,27 @@ export default function PipelineProgress({
           </div>
         )}
       </div>
+
+      {/* Saving indicator — shown while Step 8 'saving' event is active */}
+      {steps.some((s) => s.step === 8 && s.status === 'saving') &&
+        !steps.some((s) => s.step === 8 && s.status === 'complete') && (
+          <div className="mt-4 flex items-center gap-2 font-body text-sm text-gold/80">
+            <svg
+              className="h-4 w-4 animate-spin text-gold"
+              fill="none"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+            Saving report…
+          </div>
+        )}
 
       {error && (
         <div className="mt-4 rounded-md bg-red-950/30 border border-red-500/30 px-4 py-3 font-body text-sm text-red-400">

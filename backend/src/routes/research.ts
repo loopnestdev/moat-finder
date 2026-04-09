@@ -156,7 +156,11 @@ router.post(
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
       res.flushHeaders();
+
+      // Keep connection alive through Cloudflare / Render proxy timeouts
+      const keepAlive = setInterval(() => { res.write(': ping\n\n'); }, 30000);
 
       const emit: EmitFn = (event: SSEEvent) => {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -170,6 +174,7 @@ router.post(
       } catch (pipelineErr) {
         const message = pipelineErr instanceof Error ? pipelineErr.message : 'Pipeline failed';
         emit({ step: 0, label: 'Error', status: 'error', data: { message } });
+        clearInterval(keepAlive);
         res.end();
         return;
       }
@@ -178,6 +183,10 @@ router.post(
       console.log(`[research POST] pipeline complete for ${normalised} — report keys: ${Object.keys(report).join(', ')}`);
 
       const score = typeof report.sector_heat === 'number' ? report.sector_heat : null;
+
+      // Signal save in progress — keeps SSE connection alive during DB write
+      emit({ step: 8, label: 'Saving Report', status: 'saving' });
+      console.log(`[research POST] saving report for ${normalised}...`);
 
       const { data: savedReport, error: reportErr } = await adminClient
         .from('research_reports')
@@ -194,14 +203,16 @@ router.post(
         .single();
 
       if (reportErr) {
-        console.error('[research POST] research_reports insert failed:', reportErr);
+        console.error('[research POST] research_reports insert failed:', JSON.stringify(reportErr));
         emit({ step: 0, label: 'Error', status: 'error', data: { message: `Failed to save report: ${reportErr.message}` } });
+        clearInterval(keepAlive);
         res.end();
         return;
       }
       if (!savedReport) {
         console.error('[research POST] research_reports insert returned no data');
         emit({ step: 0, label: 'Error', status: 'error', data: { message: 'Failed to save report: no data returned' } });
+        clearInterval(keepAlive);
         res.end();
         return;
       }
@@ -217,8 +228,9 @@ router.post(
         researched_by: req.user?.id ?? null,
       });
       if (versionsErr) {
-        console.error('[research POST] research_versions insert failed:', versionsErr);
+        console.error('[research POST] research_versions insert failed:', JSON.stringify(versionsErr));
         emit({ step: 0, label: 'Error', status: 'error', data: { message: `Failed to save version: ${versionsErr.message}` } });
+        clearInterval(keepAlive);
         res.end();
         return;
       }
@@ -231,6 +243,8 @@ router.post(
         })
         .eq('id', tickerRow.id);
 
+      console.log(`[research POST] report saved — id: ${savedReport.id}, ticker: ${normalised}`);
+      clearInterval(keepAlive);
       emit({ step: 8, label: 'Saved', status: 'complete', data: { id: savedReport.id } });
       res.end();
     } catch {
@@ -273,7 +287,11 @@ router.put(
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
       res.flushHeaders();
+
+      // Keep connection alive through Cloudflare / Render proxy timeouts
+      const keepAlive = setInterval(() => { res.write(': ping\n\n'); }, 30000);
 
       const emit: EmitFn = (event: SSEEvent) => {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -289,6 +307,7 @@ router.put(
       } catch (pipelineErr) {
         const message = pipelineErr instanceof Error ? pipelineErr.message : 'Pipeline failed';
         emit({ step: 0, label: 'Error', status: 'error', data: { message } });
+        clearInterval(keepAlive);
         res.end();
         return;
       }
@@ -300,33 +319,63 @@ router.put(
       const prevScore = typeof existingReport.score === 'number' ? existingReport.score : null;
       const diff = generateDiff(prevReport, prevScore, report, newScore);
 
-      await adminClient
-        .from('research_reports')
-        .update({
+      // Signal save in progress — keeps SSE connection alive during DB write
+      emit({ step: 8, label: 'Saving Report', status: 'saving' });
+      console.log(`[research PUT] saving report v${newVersion} for ${normalised}...`);
+
+      try {
+        const { error: updateErr } = await adminClient
+          .from('research_reports')
+          .update({
+            score: newScore,
+            report_json: report as unknown as Json,
+            diagram_json: diagram as unknown as Json,
+            version: newVersion,
+            researched_by: req.user?.id ?? null,
+          })
+          .eq('id', existingReport.id);
+
+        if (updateErr) {
+          console.error('[research PUT] research_reports update failed:', JSON.stringify(updateErr));
+          emit({ step: 0, label: 'Error', status: 'error', data: { message: `Failed to save report: ${updateErr.message}` } });
+          clearInterval(keepAlive);
+          res.end();
+          return;
+        }
+
+        const { error: versionsErr } = await adminClient.from('research_versions').insert({
+          ticker_id: existingReport.ticker_id,
+          ticker_symbol: normalised,
+          version: newVersion,
           score: newScore,
           report_json: report as unknown as Json,
           diagram_json: diagram as unknown as Json,
-          version: newVersion,
+          diff_json: diff as unknown as Json,
           researched_by: req.user?.id ?? null,
-        })
-        .eq('id', existingReport.id);
+        });
 
-      await adminClient.from('research_versions').insert({
-        ticker_id: existingReport.ticker_id,
-        ticker_symbol: normalised,
-        version: newVersion,
-        score: newScore,
-        report_json: report as unknown as Json,
-        diagram_json: diagram as unknown as Json,
-        diff_json: diff as unknown as Json,
-        researched_by: req.user?.id ?? null,
-      });
+        if (versionsErr) {
+          console.error('[research PUT] research_versions insert failed:', JSON.stringify(versionsErr));
+          emit({ step: 0, label: 'Error', status: 'error', data: { message: `Failed to save version: ${versionsErr.message}` } });
+          clearInterval(keepAlive);
+          res.end();
+          return;
+        }
+      } catch (saveErr) {
+        console.error('[research PUT] SAVE EXCEPTION:', saveErr);
+        emit({ step: 0, label: 'Error', status: 'error', data: { message: `Save exception: ${String(saveErr)}` } });
+        clearInterval(keepAlive);
+        res.end();
+        return;
+      }
 
       await adminClient
         .from('tickers')
         .update({ last_researched_at: new Date().toISOString() })
         .eq('id', existingReport.ticker_id);
 
+      console.log(`[research PUT] report saved — v${newVersion}, ticker: ${normalised}`);
+      clearInterval(keepAlive);
       emit({
         step: 8,
         label: 'Saved',

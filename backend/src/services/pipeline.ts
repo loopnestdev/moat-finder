@@ -152,6 +152,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "primary_region": "string"
 }`;
 
+  const startTime1 = Date.now();
   const text = await callClaude(
     system,
     `Research the company with ticker symbol ${ticker}.
@@ -159,10 +160,11 @@ Identify: company name, industry, top 3 competitors (with their tickers), top 3 
 primary product/service, and primary operating region.
 Use web search for current information. Return only the JSON object.`,
   );
+  const duration1 = Date.now() - startTime1;
 
   const result = JSON.parse(extractJson(text)) as Step1Output;
-  emit({ step: 1, label: 'Discovery', status: 'complete', data: { company_name: result.company_name } });
-  console.log(`[Step 1] complete — company: ${result.company_name}, industry: ${result.industry}, sector: ${result.sector}`);
+  emit({ step: 1, label: 'Discovery', status: 'complete', duration: duration1, data: { company_name: result.company_name } });
+  console.log(`[Step 1] complete — company: ${result.company_name}, industry: ${result.industry}, sector: ${result.sector} (${duration1}ms)`);
   return result;
 }
 
@@ -179,6 +181,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 }`;
 
   const ctx = formatStep1Context(step1);
+  const startTime2 = Date.now();
   const text = await callClaudeWithCachedContext(
     system,
     ctx,
@@ -191,10 +194,11 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 
 Use web search for current information. Return only the JSON object.`,
   );
+  const duration2 = Date.now() - startTime2;
 
   const result = JSON.parse(extractJson(text)) as Step2Output;
-  emit({ step: 2, label: 'Deep Dive', status: 'complete' });
-  console.log(`[Step 2] complete — moat: ${result.moat.substring(0, 80)}, catalysts: ${result.catalysts.length}`);
+  emit({ step: 2, label: 'Deep Dive', status: 'complete', duration: duration2 });
+  console.log(`[Step 2] complete — moat: ${result.moat.substring(0, 80)}, catalysts: ${result.catalysts.length} (${duration2}ms)`);
   return result;
 }
 
@@ -220,6 +224,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 Use null (not "null") for unknown numeric values. Revenue values in millions (e.g. 340 = $340M). revenue_growth as a percentage (e.g. 18.2 = 18.2% YoY). quarterly_results must contain the last 4 reported quarters, most recent first.`;
 
   const ctx = formatStep1Context(step1);
+  const startTime3 = Date.now();
   const text = await callClaudeWithCachedContext(
     system,
     ctx,
@@ -233,10 +238,11 @@ Use null (not "null") for unknown numeric values. Revenue values in millions (e.
 
 Use web search for current financials and earnings results. Return only the JSON object.`,
   );
+  const duration3 = Date.now() - startTime3;
 
   const result = JSON.parse(extractJson(text)) as Step3Output;
-  emit({ step: 3, label: 'Valuation & Financials', status: 'complete' });
-  console.log(`[Step 3] complete — target: $${result.napkin_math.target_price}, upside: ${result.napkin_math.upside_percent}%, rows: ${result.valuation_table.length}`);
+  emit({ step: 3, label: 'Valuation & Financials', status: 'complete', duration: duration3 });
+  console.log(`[Step 3] complete — target: $${result.napkin_math.target_price}, upside: ${result.napkin_math.upside_percent}%, rows: ${result.valuation_table.length} (${duration3}ms)`);
   return result;
 }
 
@@ -250,6 +256,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 }`;
 
   const ctx = formatStep1Context(step1);
+  const startTime4 = Date.now();
   const text = await callClaudeWithCachedContext(
     system,
     ctx,
@@ -269,10 +276,11 @@ Provide:
 
 Return only the JSON object.`,
   );
+  const duration4 = Date.now() - startTime4;
 
   const result = JSON.parse(extractJson(text)) as Step4Output;
-  emit({ step: 4, label: 'Risk Red Team', status: 'complete' });
-  console.log(`[Step 4] complete — risk_factors: ${result.risk_factors.length}, tail_risks: ${result.tail_risks.length}`);
+  emit({ step: 4, label: 'Risk Red Team', status: 'complete', duration: duration4 });
+  console.log(`[Step 4] complete — risk_factors: ${result.risk_factors.length}, tail_risks: ${result.tail_risks.length} (${duration4}ms)`);
   return result;
 }
 
@@ -288,6 +296,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 sector_heat must be an integer 1–5 (1=cold, 5=very hot). hot_sector_match must be a subset of the provided hot sectors list.`;
 
   const ctx = formatStep1Context(step1);
+  const startTime5 = Date.now();
   const text = await callClaudeWithCachedContext(
     system,
     ctx,
@@ -302,10 +311,11 @@ Analyse:
 
 Use web search for current macro context. Return only the JSON object.`,
   );
+  const duration5 = Date.now() - startTime5;
 
   const result = JSON.parse(extractJson(text)) as Step5Output;
-  emit({ step: 5, label: 'Macro & Sector', status: 'complete' });
-  console.log(`[Step 5] complete — sector_heat: ${result.sector_heat}/5, hot_matches: ${result.hot_sector_match.join(', ') || 'none'}`);
+  emit({ step: 5, label: 'Macro & Sector', status: 'complete', duration: duration5 });
+  console.log(`[Step 5] complete — sector_heat: ${result.sector_heat}/5, hot_matches: ${result.hot_sector_match.join(', ') || 'none'} (${duration5}ms)`);
   return result;
 }
 
@@ -320,6 +330,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 }`;
 
   const ctx = formatStep1Context(step1);
+  const startTime6 = Date.now();
   const text = await callClaudeWithCachedContext(
     system,
     ctx,
@@ -331,10 +342,11 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 
 Use web search for current market data. Return only the JSON object.`,
   );
+  const duration6 = Date.now() - startTime6;
 
   const result = JSON.parse(extractJson(text)) as Step6Output;
-  emit({ step: 6, label: 'Sentiment & Technicals', status: 'complete' });
-  console.log(`[Step 6] complete — short_interest: ${result.short_interest}, ma_position: ${result.ma_position}`);
+  emit({ step: 6, label: 'Sentiment & Technicals', status: 'complete', duration: duration6 });
+  console.log(`[Step 6] complete — short_interest: ${result.short_interest}, ma_position: ${result.ma_position} (${duration6}ms)`);
   return result;
 }
 
@@ -390,33 +402,35 @@ Layout: revenue streams on left (x≈0), business_unit in centre (x≈300), cust
 COMPANY: ${step1.company_name}
 INDUSTRY: ${step1.industry} | SECTOR: ${step1.sector}
 PRODUCT: ${step1.primary_product} | REGION: ${step1.primary_region}
-COMPETITORS: ${step1.competitors.map((c) => `${c.name} (${c.ticker})`).join(', ')}
-TOP CUSTOMERS: ${step1.customers.join(', ')}
+COMPETITORS: ${(step1.competitors ?? []).map((c) => `${c.name} (${c.ticker})`).join(', ')}
+TOP CUSTOMERS: ${(step1.customers ?? []).join(', ')}
 
-BUSINESS MODEL: ${step2.business_model}
-MOAT: ${step2.moat}
-TECH ADVANTAGE: ${step2.technological_advantage}
-CATALYSTS: ${step2.catalysts.join(' | ')}
+BUSINESS MODEL: ${step2.business_model ?? ''}
+MOAT: ${step2.moat ?? ''}
+TECH ADVANTAGE: ${step2.technological_advantage ?? ''}
+CATALYSTS: ${(step2.catalysts ?? []).join(' | ')}
 
-VALUATION SUMMARY: ${step3.financial_summary}
-NAPKIN MATH: $${step3.napkin_math.target_price} target (${step3.napkin_math.upside_percent}% upside) vs ${step3.napkin_math.comp_ticker} at ${step3.napkin_math.comp_multiple}x
+VALUATION SUMMARY: ${step3.financial_summary ?? ''}
+NAPKIN MATH: $${step3.napkin_math?.target_price ?? 0} target (${step3.napkin_math?.upside_percent ?? 0}% upside) vs ${step3.napkin_math?.comp_ticker ?? ''} at ${step3.napkin_math?.comp_multiple ?? 0}x
 
-BEAR CASE: ${step4.bear_case}
-RISK FACTORS: ${step4.risk_factors.join(' | ')}
+BEAR CASE: ${step4.bear_case ?? ''}
+RISK FACTORS: ${(step4.risk_factors ?? []).join(' | ')}
 
-MACRO: ${step5.macro_summary}
-SECTOR HEAT: ${step5.sector_heat}/5 | MATCHED SECTORS: ${step5.hot_sector_match.join(', ') || 'none'}
-TARIFF: ${step5.tariff_exposure}
+MACRO: ${step5.macro_summary ?? ''}
+SECTOR HEAT: ${step5.sector_heat ?? 3}/5 | MATCHED SECTORS: ${(step5.hot_sector_match ?? []).join(', ') || 'none'}
+TARIFF: ${step5.tariff_exposure ?? ''}
 
-SENTIMENT: ${step6.sentiment_summary}
-SHORT INTEREST: ${step6.short_interest}
-200-DAY MA: ${step6.ma_position}
-RS vs SPY: ${step6.rs_vs_spy}`;
+SENTIMENT: ${step6.sentiment_summary ?? ''}
+SHORT INTEREST: ${step6.short_interest ?? ''}
+200-DAY MA: ${step6.ma_position ?? ''}
+RS vs SPY: ${step6.rs_vs_spy ?? ''}`;
 
+  const startTime7 = Date.now();
   const text = await callClaude(
     system,
     `Synthesise a complete moat-finder report for ${ticker}.\n\n${contextSummary}\n\nReturn only the JSON object with "report" and "diagram" keys.`,
   );
+  const duration7 = Date.now() - startTime7;
 
   const parsed = JSON.parse(extractJson(text)) as { report: ReportJson; diagram: DiagramJson };
 
@@ -435,17 +449,27 @@ RS vs SPY: ${step6.rs_vs_spy}`;
     parsed.report.quarterly_results = step3.quarterly_results;
   }
 
-  emit({ step: 7, label: 'Synthesis & Diagram', status: 'complete' });
-  console.log(`[Step 7] complete — thesis: ${parsed.report.thesis.substring(0, 80)}, diagram nodes: ${parsed.diagram.nodes.length}, edges: ${parsed.diagram.edges.length}`);
+  emit({ step: 7, label: 'Synthesis & Diagram', status: 'complete', duration: duration7 });
+  console.log(`[Step 7] complete — thesis: ${parsed.report.thesis.substring(0, 80)}, diagram nodes: ${(parsed.diagram?.nodes ?? []).length}, edges: ${(parsed.diagram?.edges ?? []).length} (${duration7}ms)`);
   return { report: parsed.report, diagram: parsed.diagram };
 }
 
 // ─── Parallel helper ──────────────────────────────────────────────────────────
 
+// Default fallbacks used when a parallel step fails — Step 7 can still synthesise.
+const DEFAULT_STEP2: Step2Output = { business_model: '', moat: '', technological_advantage: '', catalysts: [] };
+const DEFAULT_STEP3: Step3Output = {
+  valuation_table: [],
+  napkin_math: { revenue_guidance: '', comp_ticker: '', comp_multiple: 0, target_price: 0, upside_percent: 0 },
+  financial_summary: '',
+};
+const DEFAULT_STEP4: Step4Output = { bear_case: '', risk_factors: [], tail_risks: [] };
+const DEFAULT_STEP5: Step5Output = { macro_summary: '', sector_heat: 3, hot_sector_match: [], tariff_exposure: '' };
+const DEFAULT_STEP6: Step6Output = { sentiment_summary: '', short_interest: '', ma_position: '', rs_vs_spy: '' };
+
 /**
  * Run steps 2-6 concurrently via Promise.allSettled.
- * Emits error events for any failed steps, then throws if any failed
- * (Step 7 requires all five outputs to synthesise correctly).
+ * Emits error events for failed steps but proceeds with defaults — Step 7 still runs.
  */
 async function runParallelSteps(
   step1: Step1Output,
@@ -459,7 +483,7 @@ async function runParallelSteps(
     runStep6(step1, emit),
   ]);
 
-  const errors: string[] = [];
+  const failedSteps: string[] = [];
   for (const [i, result] of settled.entries()) {
     if (result.status === 'rejected') {
       const stepNum = i + 2;
@@ -471,19 +495,19 @@ async function runParallelSteps(
         status: 'error',
         data: { message },
       });
-      errors.push(`Step ${stepNum}: ${message}`);
+      failedSteps.push(`Step ${stepNum}: ${message}`);
     }
   }
-  if (errors.length > 0) {
-    throw new Error(`Pipeline failed: ${errors.join('; ')}`);
+  if (failedSteps.length > 0) {
+    console.warn('[runParallelSteps] Some steps failed — proceeding with defaults:', failedSteps.join('; '));
   }
 
   return [
-    (settled[0] as PromiseFulfilledResult<Step2Output>).value,
-    (settled[1] as PromiseFulfilledResult<Step3Output>).value,
-    (settled[2] as PromiseFulfilledResult<Step4Output>).value,
-    (settled[3] as PromiseFulfilledResult<Step5Output>).value,
-    (settled[4] as PromiseFulfilledResult<Step6Output>).value,
+    settled[0].status === 'fulfilled' ? settled[0].value : DEFAULT_STEP2,
+    settled[1].status === 'fulfilled' ? settled[1].value : DEFAULT_STEP3,
+    settled[2].status === 'fulfilled' ? settled[2].value : DEFAULT_STEP4,
+    settled[3].status === 'fulfilled' ? settled[3].value : DEFAULT_STEP5,
+    settled[4].status === 'fulfilled' ? settled[4].value : DEFAULT_STEP6,
   ];
 }
 
@@ -496,6 +520,15 @@ async function runParallelSteps(
 export async function runPipeline(ticker: string, emit: EmitFn): Promise<PipelineResult> {
   const step1 = await runStep1(ticker, emit);
   const [step2, step3, step4, step5, step6] = await runParallelSteps(step1, emit);
+
+  const parallelResults = { step2, step3, step4, step5, step6 };
+  const missingSteps = Object.entries(parallelResults)
+    .filter(([, v]) => !v)
+    .map(([k]) => k);
+  if (missingSteps.length > 0) {
+    console.warn('[runPipeline] Missing step results before Step 7:', missingSteps);
+  }
+
   const ctx: PipelineContext = { step1, step2, step3, step4, step5, step6 };
   return runStep7(ctx, ticker, emit);
 }
@@ -534,7 +567,7 @@ export async function runUpdatePipeline(
   emit({ step: 4, label: 'Risk Red Team', status: 'cached', data: { message: 'Using previous research' } });
   console.log('[Update] Steps 2 and 4 skipped — reusing cached data');
 
-  // Run fresh steps concurrently
+  // Run fresh steps concurrently — proceed with defaults on partial failure
   const settled = await Promise.allSettled([
     runStep3(step1, emit),
     runStep5(step1, emit),
@@ -542,7 +575,7 @@ export async function runUpdatePipeline(
   ]);
 
   const updateStepNums = [3, 5, 6];
-  const errors: string[] = [];
+  const failedUpdateSteps: string[] = [];
   for (const [i, result] of settled.entries()) {
     if (result.status === 'rejected') {
       const stepNum = updateStepNums[i] as number;
@@ -554,20 +587,20 @@ export async function runUpdatePipeline(
         status: 'error',
         data: { message },
       });
-      errors.push(`Step ${stepNum}: ${message}`);
+      failedUpdateSteps.push(`Step ${stepNum}: ${message}`);
     }
   }
-  if (errors.length > 0) {
-    throw new Error(`Update pipeline failed: ${errors.join('; ')}`);
+  if (failedUpdateSteps.length > 0) {
+    console.warn('[runUpdatePipeline] Some steps failed — proceeding with defaults:', failedUpdateSteps.join('; '));
   }
 
   const ctx: PipelineContext = {
     step1,
     step2: cachedStep2,
-    step3: (settled[0] as PromiseFulfilledResult<Step3Output>).value,
+    step3: settled[0].status === 'fulfilled' ? settled[0].value : DEFAULT_STEP3,
     step4: cachedStep4,
-    step5: (settled[1] as PromiseFulfilledResult<Step5Output>).value,
-    step6: (settled[2] as PromiseFulfilledResult<Step6Output>).value,
+    step5: settled[1].status === 'fulfilled' ? settled[1].value : DEFAULT_STEP5,
+    step6: settled[2].status === 'fulfilled' ? settled[2].value : DEFAULT_STEP6,
   };
 
   return runStep7(ctx, ticker, emit);

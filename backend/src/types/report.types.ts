@@ -89,7 +89,8 @@ export type AuditAction =
 export interface SSEEvent {
   step: number;
   label: string;
-  status: 'complete' | 'error' | 'cached';
+  status: 'complete' | 'error' | 'cached' | 'saving';
+  duration?: number;
   data?: Record<string, unknown>;
 }
 
