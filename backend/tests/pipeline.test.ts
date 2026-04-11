@@ -99,7 +99,7 @@ describe('runPipeline', () => {
     process.env.ANTHROPIC_API_KEY = 'test-key';
   });
 
-  it('emits 7 SSE events (one per step) and returns a PipelineResult', async () => {
+  it('emits started + complete SSE events for each step and returns a PipelineResult', async () => {
     mockCreate
       .mockResolvedValueOnce(makeEndTurnResponse(step1Json))
       .mockResolvedValueOnce(makeEndTurnResponse(step2Json))
@@ -114,9 +114,12 @@ describe('runPipeline', () => {
 
     const result = await runPipeline('TEST', emit);
 
-    expect(events).toHaveLength(7);
-    expect(events.map((e) => e.step)).toEqual([1, 2, 3, 4, 5, 6, 7]);
-    expect(events.every((e) => e.status === 'complete')).toBe(true);
+    const completeEvents = events.filter((e) => e.status === 'complete');
+    const startedEvents = events.filter((e) => e.status === 'started');
+
+    expect(startedEvents).toHaveLength(7);
+    expect(completeEvents).toHaveLength(7);
+    expect(completeEvents.map((e) => e.step)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(result.report.thesis).toBe('Strong AI play with durable moat');
     expect(result.diagram.nodes).toHaveLength(2);
   });
