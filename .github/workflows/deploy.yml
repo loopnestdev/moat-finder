@@ -1,0 +1,66 @@
+name: CI / Deploy
+
+on:
+  # Run CI on direct pushes to develop and on PRs targeting main
+  push:
+    branches: [develop]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Backend: typecheck + unit tests ─────────────────────────────────────────
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  # ── Frontend: typecheck + production build ───────────────────────────────────
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      # Build with empty env vars to verify the bundle compiles cleanly.
+      # Real env vars are injected by Cloudflare Pages at deploy time.
+      - run: npm run build
+
+  # ── Deploy backend to Railway ────────────────────────────────────────────────
+  # Only runs when a version tag (v*) is pushed, after both CI jobs pass.
+  # Railway rebuilds the Docker image from this commit, runs the HEALTHCHECK,
+  # and only swaps traffic if it passes — otherwise the previous release stays live.
+  deploy-backend:
+    name: Deploy Backend → Railway
+    needs: [test-backend, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Trigger Railway deploy
+        run: curl --fail -sS -X POST "${{ secrets.RAILWAY_DEPLOY_HOOK_URL }}"
