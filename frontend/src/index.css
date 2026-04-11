@@ -1,15 +1,27 @@
-@config "../tailwind.config.ts";
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-navy-950: #0d1526;
+  --color-navy-900: #0f1a2e;
+  --color-navy-800: #1a2744;
+  --color-navy-700: #243558;
+  --color-navy-600: #2e4370;
+  --color-cream: #f0e8d8;
+  --color-gold: #d4a853;
+  --color-score-high: #10b981;
+  --color-score-mid: #f59e0b;
+  --color-score-low: #ef4444;
+  --color-moat: #f59e0b;
+  --color-revenue: #10b981;
 
-:root {
-  --bg-primary: #0d1526;
+  --font-display: 'Playfair Display', serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 html, body, #root {
   background-color: #0d1526;
   color: #f0e8d8;
   min-height: 100vh;
+  font-family: 'Inter', sans-serif;
 }
