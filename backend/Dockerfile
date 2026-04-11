@@ -23,9 +23,6 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 
 USER nodejs
 
-# Railway injects PORT at runtime; the app falls back to 3001
-EXPOSE 3001
-
 # Health check — Railway aborts the deploy and rolls back if this fails
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD wget -qO- http://localhost:${PORT:-3001}/api/v1/health || exit 1
