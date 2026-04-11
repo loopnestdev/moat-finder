@@ -1,7 +1,16 @@
 import type { Config } from 'tailwindcss';
 
 export default {
-  content: ['./index.html', './src/**/*.{ts,tsx}'],
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
+    './src/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  safelist: [
+    'bg-navy-950', 'bg-navy-900', 'bg-navy-800', 'bg-navy-700',
+    'text-cream', 'text-gold', 'border-gold',
+    'font-display', 'font-body', 'font-mono',
+  ],
   theme: {
     extend: {
       fontFamily: {
