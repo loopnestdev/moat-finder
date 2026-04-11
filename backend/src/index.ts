@@ -51,9 +51,9 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
-const port = process.env.PORT ?? 3001;
+const port = parseInt(process.env.PORT ?? '3001', 10);
 app.listen(port, () => {
-  console.log(`moat-finder backend listening on port ${String(port)}`);
+  console.log(`moat-finder backend listening on port ${port}`);
 
   void adminClient
     .from('research_checkpoints')
