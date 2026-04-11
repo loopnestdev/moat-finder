@@ -15,6 +15,15 @@ export interface NapkinMath {
   upside_percent: number;
 }
 
+export interface PriceScenario {
+  label: 'Bear' | 'Base' | 'Bull';
+  comp_ticker: string;
+  comp_multiple: number;
+  target_price: number;
+  upside_percent: number;
+  rationale: string;
+}
+
 export interface ValuationRow {
   ticker: string;
   name: string;
@@ -45,6 +54,11 @@ export interface ReportJson {
   sentiment_summary: string;
   pipeline_steps_raw: Record<string, unknown>;
   quarterly_results?: QuarterlyResult[];
+  // v2 fields — absent in reports generated before this version
+  scenarios?: PriceScenario[];
+  platform_optionality?: string;
+  rerating_catalyst?: string;
+  bear_case_rebuttal?: string;
 }
 
 export interface DiagramNode {

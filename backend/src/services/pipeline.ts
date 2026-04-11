@@ -171,8 +171,14 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "business_model": "string",
   "moat": "string",
   "technological_advantage": "string",
-  "catalysts": ["string"]
-}`;
+  "catalysts": ["string"],
+  "platform_type": "platform or single-product",
+  "platform_optionality": "string",
+  "rerating_catalyst": "string"
+}
+platform_type must be exactly "platform" or "single-product".
+platform_optionality: if platform, list adjacent markets/indications the core technology can address with rough TAM for each; if single-product, set to empty string.
+rerating_catalyst: the single most powerful event or announcement that could cause the market to reprice this stock 2–3x higher within 24 months.`;
 
   const ctx = formatStep1Context(step1);
   emit({ step: 2, label: 'Deep Dive', status: 'started' });
@@ -186,6 +192,9 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 3. What is the technological advantage over competitors? Explain the core technology in 2–3 simple sentences that a non-technical investor would understand — use a real-world analogy (e.g. "think of it like X but for Y").
 4. Search for any CEO, CFO, or CTO changes in the past 12 months. If found, explain whether each change is a positive signal (e.g. growth-stage hire, industry veteran) or a negative signal (e.g. sudden departure, no successor named). If no changes, state that explicitly.
 5. List 3–5 upcoming catalysts over the next 12 months that could move the stock price.
+6. Platform classification: is the core technology/IP applicable across MULTIPLE markets, indications, or customer segments beyond the primary product (platform), or is it tied to a single product line (single-product)? State explicitly which category and justify in one sentence.
+7. Platform optionality: if platform, enumerate every adjacent market or indication where this technology could be deployed — include rough TAM for each (e.g. "NSCLC: $25B global market"). If single-product, leave empty.
+8. Re-rating catalyst: identify the ONE catalyst — regulatory approval, contract win, data readout, M&A — that would force the market to fundamentally reprice the stock 2–3x higher. Be specific (name the trial, the regulatory body, the customer).
 
 Use web search for current information. Return only the JSON object.`,
   );
@@ -211,12 +220,18 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
     "target_price": number,
     "upside_percent": number
   },
+  "scenarios": [
+    { "label": "Bear", "comp_ticker": "string", "comp_multiple": number, "target_price": number, "upside_percent": number, "rationale": "string" },
+    { "label": "Base", "comp_ticker": "string", "comp_multiple": number, "target_price": number, "upside_percent": number, "rationale": "string" },
+    { "label": "Bull", "comp_ticker": "string", "comp_multiple": number, "target_price": number, "upside_percent": number, "rationale": "string" }
+  ],
   "financial_summary": "string",
   "quarterly_results": [
     { "quarter": "string", "revenue_est": number_or_null, "revenue_act": number_or_null, "revenue_growth": number_or_null, "eps_est": number_or_null, "eps_act": number_or_null }
   ]
 }
-Use null (not "null") for unknown numeric values. Revenue values in millions (e.g. 340 = $340M). revenue_growth as a percentage (e.g. 18.2 = 18.2% YoY). quarterly_results must contain the last 4 reported quarters, most recent first.`;
+Use null (not "null") for unknown numeric values. Revenue values in millions (e.g. 340 = $340M). revenue_growth as a percentage (e.g. 18.2 = 18.2% YoY). quarterly_results must contain the last 4 reported quarters, most recent first.
+napkin_math must reflect the Base scenario. scenarios must always contain exactly 3 objects with labels "Bear", "Base", "Bull".`;
 
   const ctx = formatStep1Context(step1);
   emit({ step: 3, label: 'Valuation & Financials', status: 'started' });
@@ -225,14 +240,20 @@ Use null (not "null") for unknown numeric values. Revenue values in millions (e.
     system,
     ctx,
     `Provide valuation and financial analysis for the company above:
-1. Relative valuation table including ALL major peers (minimum 3, ideally 4–5): P/S ratio, EV/EBITDA, gross margin %, YoY revenue growth %. For each peer, also note what their current EV/Sales multiple would imply as a target price — include this in the financial_summary.
+1. Relative valuation table including ALL major peers (minimum 3, ideally 4–5): P/S ratio, EV/EBITDA, gross margin %, YoY revenue growth %.
+   COMP SELECTION RULE: Match comparables by GROWTH STAGE first, then industry. If the subject company is growing >50% YoY, at least 2 of your comps must also be growing >30% YoY. Never use a mature low-growth peer as the primary anchor for a hypergrowth company.
 2. Revenue segment breakdown as percentages of total revenue — use the most recent filing. Include in the financial_summary.
-3. Customer metrics: total active customer count, new customers added in the most recent quarter, and top customer concentration (what % of revenue comes from the single largest customer). Include in the financial_summary.
-4. Napkin math: management's latest revenue guidance (exact figures if stated), best comparable ticker, their EV/Sales multiple, implied target price, and upside % from current price.
-5. Brief financial summary (3–4 sentences) covering: revenue growth rate, gross margin trend, path to profitability, and any dilution risk from share issuances.
-6. Last 4 reported quarters of earnings (most recent first): quarter label (e.g. "Q4 2025"), revenue estimate in millions, revenue actual in millions, YoY revenue growth %, EPS estimate, EPS actual. Use null for unknown values.
+3. Customer metrics: total active customer count, new customers in most recent quarter, top customer concentration (% of revenue). Include in the financial_summary.
+4. Three valuation scenarios using the comp table above:
+   - Bear: apply the LOWEST multiple peer to next-12-month revenue guidance. State which comp and why it is the bear case.
+   - Base: apply the MEDIAN multiple of your comp set to next-12-month revenue guidance.
+   - Bull: apply the HIGHEST-multiple hypergrowth comparable (must have >30% YoY growth) to next-12-month revenue guidance. If pipeline optionality exists (platform company, multiple indications), add a platform premium of 20–40%.
+   napkin_math should mirror the Base scenario.
+5. Gross margin trajectory: state whether margin has been IMPROVING, STABLE, or DETERIORATING over the last 4 quarters and by how many percentage points. Include in financial_summary.
+6. Brief financial summary (3–4 sentences) covering: revenue growth rate, gross margin trend, path to profitability, dilution risk.
+7. Last 4 reported quarters (most recent first): quarter, revenue estimate, revenue actual, YoY growth %, EPS estimate, EPS actual. Use null for unknown values.
 
-Use web search for current financials and earnings results. Return only the JSON object.`,
+Use web search for current financials. Return only the JSON object.`,
   );
   const duration3 = Date.now() - startTime3;
 
@@ -248,8 +269,10 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 {
   "bear_case": "string",
   "risk_factors": ["string", "string", "string"],
-  "tail_risks": ["string", "string"]
-}`;
+  "tail_risks": ["string", "string"],
+  "bear_case_rebuttal": "string"
+}
+bear_case_rebuttal: 2–3 sentences arguing what the bears consistently miss or underweight — write this from the bull's perspective as a genuine counter-argument.`;
 
   const ctx = formatStep1Context(step1);
   emit({ step: 4, label: 'Risk Red Team', status: 'started' });
@@ -267,9 +290,13 @@ Search targets:
 4. "[ticker] customer concentration revenue"
 
 Provide:
-1. Bear case — write it as a short seller would (3-point thesis on why this fails)
-2. Top 3 risk factors from SEC filings and recent analyst reports
-3. Two tail risks (low probability, high impact scenarios)
+1. Bear case — write it as a short seller would (3-point thesis on why this fails). Focus on STRUCTURAL risks (permanent threats to the business model) not temporary news events.
+   CRITICAL DISTINCTION:
+   - STRUCTURAL risk: competitive displacement, broken unit economics, debt covenant breach, customer concentration collapse, technology becoming obsolete.
+   - TEMPORARY overhang: recent regulatory correspondence, pending litigation that is likely to resolve, short-term macro headwinds, recent management noise. Do NOT let temporary overhangs dominate the structural bear case.
+2. Top 3 risk factors from SEC filings (10-K/10-Q) — cite the actual filing language where possible.
+3. Two tail risks (low probability, high impact scenarios that would be existential).
+4. Bear case rebuttal — step outside the bear role and write 2–3 sentences arguing what the bears consistently miss: the platform optionality, the growth trajectory underestimation, the aligned insider incentives, or the short-squeeze reflexivity. This must be a genuine counter-argument, not a dismissal.
 
 Return only the JSON object.`,
   );
@@ -371,7 +398,11 @@ SCORING RUBRIC — use this exact weighting to calculate the score (1.0–10.0):
 IMPORTANT SCORING CONSTRAINTS:
 - A company with >100% YoY revenue growth in a hot sector with any moat must score at least 5.0.
 - Lack of profitability alone must NOT drag a high-growth company below 4.0 if sector momentum and growth are strong.
+- If the primary bear case risks are TEMPORARY OVERHANGS (recent regulatory letters, pending litigation likely to resolve, short-term macro events from the last 90 days) rather than structural flaws, do NOT reduce the score below 4.5 for a company with >50% YoY growth and a genuine moat.
+- Platform companies (core technology applicable across multiple markets) deserve a platform premium: add +0.5 to the final score if platform_type is "platform" and platform_optionality lists 2+ adjacent markets.
 - Weigh execution risk as a modifier on the upside, not a reason to discount the floor.
+
+NAPKIN MATH RULE: Use the Base scenario comp for the primary napkin_math target_price. NEVER use the Bear scenario comp as the primary target for a company growing >50% YoY — that produces a misleadingly pessimistic anchor. The Bear scenario belongs in the scenarios array, not as the headline number.
 
 "report" must match this exact structure:
 {
@@ -380,7 +411,15 @@ IMPORTANT SCORING CONSTRAINTS:
   "moat": "string",
   "competitors": [{ "ticker": "string", "name": "string" }],
   "napkin_math": { "revenue_guidance": "string", "comp_ticker": "string", "comp_multiple": number, "target_price": number, "upside_percent": number },
+  "scenarios": [
+    { "label": "Bear", "comp_ticker": "string", "comp_multiple": number, "target_price": number, "upside_percent": number, "rationale": "string" },
+    { "label": "Base", "comp_ticker": "string", "comp_multiple": number, "target_price": number, "upside_percent": number, "rationale": "string" },
+    { "label": "Bull", "comp_ticker": "string", "comp_multiple": number, "target_price": number, "upside_percent": number, "rationale": "string" }
+  ],
+  "platform_optionality": "string",
+  "rerating_catalyst": "string",
   "bear_case": "string",
+  "bear_case_rebuttal": "string",
   "sector_heat": integer_1_to_5,
   "hot_sector_match": ["string"],
   "valuation_table": [{ "ticker": "string", "name": "string", "ps_ratio": number_or_null, "ev_ebitda": number_or_null, "gross_margin": number_or_null, "yoy_growth": number_or_null }],
@@ -398,6 +437,10 @@ IMPORTANT SCORING CONSTRAINTS:
 }
 Layout: revenue streams on left (x≈0), business_unit in centre (x≈300), customers on right (x≈600), moat above (y≈0), risks below (y≈400). Space nodes 120px apart vertically.`;
 
+  const scenarioSummary = (step3.scenarios ?? [])
+    .map((s) => `${s.label}: $${s.target_price} (${s.upside_percent}% upside) via ${s.comp_ticker} at ${s.comp_multiple}x — ${s.rationale}`)
+    .join(' | ');
+
   const contextSummary = `TICKER: ${ticker}
 COMPANY: ${step1.company_name}
 INDUSTRY: ${step1.industry} | SECTOR: ${step1.sector}
@@ -408,13 +451,18 @@ TOP CUSTOMERS: ${(step1.customers ?? []).join(', ')}
 BUSINESS MODEL: ${step2.business_model ?? ''}
 MOAT: ${step2.moat ?? ''}
 TECH ADVANTAGE: ${step2.technological_advantage ?? ''}
+PLATFORM TYPE: ${step2.platform_type ?? 'unknown'}
+PLATFORM OPTIONALITY: ${step2.platform_optionality ?? 'none'}
+RERATING CATALYST: ${step2.rerating_catalyst ?? ''}
 CATALYSTS: ${(step2.catalysts ?? []).join(' | ')}
 
 VALUATION SUMMARY: ${step3.financial_summary ?? ''}
-NAPKIN MATH: $${step3.napkin_math?.target_price ?? 0} target (${step3.napkin_math?.upside_percent ?? 0}% upside) vs ${step3.napkin_math?.comp_ticker ?? ''} at ${step3.napkin_math?.comp_multiple ?? 0}x
+BASE TARGET: $${step3.napkin_math?.target_price ?? 0} (${step3.napkin_math?.upside_percent ?? 0}% upside) vs ${step3.napkin_math?.comp_ticker ?? ''} at ${step3.napkin_math?.comp_multiple ?? 0}x
+SCENARIOS: ${scenarioSummary || 'none'}
 
 BEAR CASE: ${step4.bear_case ?? ''}
 RISK FACTORS: ${(step4.risk_factors ?? []).join(' | ')}
+BEAR CASE REBUTTAL: ${step4.bear_case_rebuttal ?? ''}
 
 MACRO: ${step5.macro_summary ?? ''}
 SECTOR HEAT: ${step5.sector_heat ?? 3}/5 | MATCHED SECTORS: ${(step5.hot_sector_match ?? []).join(', ') || 'none'}
@@ -592,11 +640,15 @@ export async function runUpdatePipeline(
     moat: existingReport.moat ?? '',
     technological_advantage: rawStep2?.technological_advantage ?? '',
     catalysts: existingReport.catalysts ?? [],
+    platform_type: (rawStep2?.platform_type as Step2Output['platform_type']) ?? undefined,
+    platform_optionality: existingReport.platform_optionality ?? (rawStep2?.platform_optionality as string | undefined) ?? '',
+    rerating_catalyst: existingReport.rerating_catalyst ?? (rawStep2?.rerating_catalyst as string | undefined) ?? '',
   };
   const cachedStep4: Step4Output = {
     bear_case: existingReport.bear_case ?? '',
     risk_factors: existingReport.risk_factors ?? [],
     tail_risks: (rawStep4?.tail_risks as string[] | undefined) ?? [],
+    bear_case_rebuttal: existingReport.bear_case_rebuttal ?? (rawStep4?.bear_case_rebuttal as string | undefined) ?? '',
   };
 
   emit({ step: 2, label: 'Deep Dive', status: 'cached', data: { message: 'Using previous research' } });
