@@ -16,7 +16,7 @@ export interface NapkinMath {
 }
 
 export interface PriceScenario {
-  label: 'Bear' | 'Base' | 'Bull';
+  label: "Bear" | "Base" | "Bull";
   comp_ticker: string;
   comp_multiple: number;
   target_price: number;
@@ -36,6 +36,17 @@ export interface ValuationRow {
 export interface Competitor {
   ticker: string;
   name: string;
+}
+
+export interface ConstraintAnalysis {
+  type: string;
+  controls_constraint: boolean;
+  durability: string;
+  value_chain_position: string;
+  rent_capture: string;
+  investable: boolean;
+  who_relieves: string;
+  window: string;
 }
 
 export interface ReportJson {
@@ -59,6 +70,8 @@ export interface ReportJson {
   platform_optionality?: string;
   rerating_catalyst?: string;
   bear_case_rebuttal?: string;
+  // v0.2.1 fields — absent in reports generated before this version
+  constraint_analysis?: ConstraintAnalysis;
 }
 
 export interface DiagramNode {
@@ -91,7 +104,7 @@ export interface DiffJson {
 export interface SSEEvent {
   step: number;
   label: string;
-  status: 'started' | 'complete' | 'error' | 'cached' | 'saving';
+  status: "started" | "complete" | "error" | "cached" | "saving";
   duration?: number;
   resumed?: boolean;
   data?: Record<string, unknown>;
@@ -102,7 +115,7 @@ export interface User {
   email: string;
   display_name: string | null;
   avatar_url: string | null;
-  role: 'admin' | 'approved' | 'pending' | 'rejected';
+  role: "admin" | "approved" | "pending" | "rejected";
   created_at: string;
   updated_at: string;
 }

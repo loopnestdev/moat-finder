@@ -21,7 +21,7 @@ export interface NapkinMath {
 }
 
 export interface PriceScenario {
-  label: 'Bear' | 'Base' | 'Bull';
+  label: "Bear" | "Base" | "Bull";
   comp_ticker: string;
   comp_multiple: number;
   target_price: number;
@@ -36,6 +36,25 @@ export interface ValuationRow {
   ev_ebitda: number | null;
   gross_margin: number | null;
   yoy_growth: number | null;
+}
+
+export interface ConstraintAnalysis {
+  /** 'supply_chain' | 'technology' | 'regulatory' | 'capital' | 'none' */
+  type: string;
+  /** Does the company own/control the scarce resource, process, or IP? */
+  controls_constraint: boolean;
+  /** 'durable' | 'temporary' | 'solvable_by_capital' */
+  durability: string;
+  /** Where in the value chain does the company sit? */
+  value_chain_position: string;
+  /** Can they actually capture the rent, or does value accrue elsewhere? */
+  rent_capture: string;
+  /** Is this an investable bottleneck? */
+  investable: boolean;
+  /** Who has the power/incentive to relieve it, and what sits outside their control? */
+  who_relieves: string;
+  /** How long before consensus prices it in? */
+  window: string;
 }
 
 export interface ReportJson {
@@ -59,11 +78,13 @@ export interface ReportJson {
   platform_optionality?: string;
   rerating_catalyst?: string;
   bear_case_rebuttal?: string;
+  // v0.2.1 fields — absent in reports generated before this version
+  constraint_analysis?: ConstraintAnalysis;
 }
 
 export interface DiagramNode {
   id: string;
-  type: 'revenue' | 'customer' | 'moat' | 'business_unit' | 'risk';
+  type: "revenue" | "customer" | "moat" | "business_unit" | "risk";
   data: { label: string; detail?: string };
   position: { x: number; y: number };
 }
@@ -91,19 +112,19 @@ export interface DiffJson {
 // ─── Pipeline types ──────────────────────────────────────────────────────────
 
 export type AuditAction =
-  | 'research_triggered'
-  | 'research_updated'
-  | 'report_viewed'
-  | 'report_searched'
-  | 'user_approved'
-  | 'user_rejected'
-  | 'login'
-  | 'logout';
+  | "research_triggered"
+  | "research_updated"
+  | "report_viewed"
+  | "report_searched"
+  | "user_approved"
+  | "user_rejected"
+  | "login"
+  | "logout";
 
 export interface SSEEvent {
   step: number;
   label: string;
-  status: 'started' | 'complete' | 'error' | 'cached' | 'saving';
+  status: "started" | "complete" | "error" | "cached" | "saving";
   duration?: number;
   resumed?: boolean;
   data?: Record<string, unknown>;
@@ -132,9 +153,11 @@ export interface Step2Output {
   moat: string;
   technological_advantage: string;
   catalysts: string[];
-  platform_type?: 'platform' | 'single-product';
+  platform_type?: "platform" | "single-product";
   platform_optionality?: string;
   rerating_catalyst?: string;
+  // v0.2.1 — absent in runs before this version
+  constraint_analysis?: ConstraintAnalysis;
 }
 
 export interface Step3Output {
