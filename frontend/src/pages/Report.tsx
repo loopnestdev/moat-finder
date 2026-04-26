@@ -1,29 +1,29 @@
-import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../hooks/useAuth';
-import { useReport, useVersions } from '../hooks/useResearch';
-import { usePipeline } from '../hooks/usePipeline';
-import ScoreBadge from '../components/report/ScoreBadge';
-import SectorHeat from '../components/report/SectorHeat';
-import ValuationTable from '../components/report/ValuationTable';
-import NapkinMath from '../components/report/NapkinMath';
-import BearCase from '../components/report/BearCase';
-import Changelog from '../components/report/Changelog';
-import BusinessDiagram from '../components/report/BusinessDiagram';
-import PipelineProgress from '../components/research/PipelineProgress';
-import Button from '../components/ui/Button';
-import Spinner from '../components/ui/Spinner';
-import QuarterlyResults from '../components/report/QuarterlyResults';
-import ErrorBoundary from '../components/ErrorBoundary';
+import { useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "../hooks/useAuth";
+import { useReport, useVersions } from "../hooks/useResearch";
+import { usePipeline } from "../hooks/usePipeline";
+import ScoreBadge from "../components/report/ScoreBadge";
+import SectorHeat from "../components/report/SectorHeat";
+import ValuationTable from "../components/report/ValuationTable";
+import NapkinMath from "../components/report/NapkinMath";
+import BearCase from "../components/report/BearCase";
+import Changelog from "../components/report/Changelog";
+import BusinessDiagram from "../components/report/BusinessDiagram";
+import PipelineProgress from "../components/research/PipelineProgress";
+import Button from "../components/ui/Button";
+import Spinner from "../components/ui/Spinner";
+import QuarterlyResults from "../components/report/QuarterlyResults";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-AU', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+  return new Date(iso).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
 }
 
@@ -48,16 +48,21 @@ function parseNumberedList(text: string): string[] {
  * Sentences containing a colon get the pre-colon text treated as a bold label.
  * Otherwise the text is split by ". " into plain bullets.
  */
-function parseBullets(text: string): Array<{ label: string | null; body: string }> {
+function parseBullets(
+  text: string,
+): Array<{ label: string | null; body: string }> {
   // Split into sentences on ". " followed by a capital letter
   const sentences = text.split(/\.\s+(?=[A-Z])/).filter(Boolean);
 
   const bullets = sentences.map((s) => {
-    const colonIdx = s.indexOf(':');
+    const colonIdx = s.indexOf(":");
     if (colonIdx > 0 && colonIdx < 60) {
-      return { label: s.slice(0, colonIdx).trim(), body: s.slice(colonIdx + 1).trim() };
+      return {
+        label: s.slice(0, colonIdx).trim(),
+        body: s.slice(colonIdx + 1).trim(),
+      };
     }
-    return { label: null, body: s.replace(/\.$/, '').trim() };
+    return { label: null, body: s.replace(/\.$/, "").trim() };
   });
 
   return bullets.filter((b) => b.body.length > 0);
@@ -78,7 +83,9 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 function NumberedSegments({ items }: { items: string[] }) {
   // Single item → just a paragraph
   if (items.length === 1) {
-    return <p className="font-body text-cream-muted leading-relaxed">{items[0]}</p>;
+    return (
+      <p className="font-body text-cream-muted leading-relaxed">{items[0]}</p>
+    );
   }
   return (
     <ol className="space-y-4">
@@ -86,15 +93,20 @@ function NumberedSegments({ items }: { items: string[] }) {
         // Split on the first " — " or " - " to separate a segment name from its description
         const dashMatch = item.match(/^([^—\-]{3,50})\s*[—\-]\s*(.+)$/s);
         return (
-          <li key={i} className="flex gap-4 border-l-2 border-gold/30 pl-4 py-1">
+          <li
+            key={i}
+            className="flex gap-4 border-l-2 border-gold/30 pl-4 py-1"
+          >
             <span className="font-mono text-lg font-bold text-gold/40 flex-shrink-0 w-7 leading-tight">
-              {String(i + 1).padStart(2, '0')}
+              {String(i + 1).padStart(2, "0")}
             </span>
             <p className="font-body text-cream-muted leading-relaxed">
               {dashMatch ? (
                 <>
-                  <span className="text-cream font-semibold">{dashMatch[1].trim()}</span>
-                  {' — '}
+                  <span className="text-cream font-semibold">
+                    {dashMatch[1].trim()}
+                  </span>
+                  {" — "}
                   {dashMatch[2].trim()}
                 </>
               ) : (
@@ -109,22 +121,31 @@ function NumberedSegments({ items }: { items: string[] }) {
 }
 
 /** Renders parsed bullets with gold dot and optional bold label */
-function BulletList({ bullets }: { bullets: Array<{ label: string | null; body: string }> }) {
+function BulletList({
+  bullets,
+}: {
+  bullets: Array<{ label: string | null; body: string }>;
+}) {
   if (bullets.length <= 1) {
     // Fall back to paragraph if parsing didn't produce meaningful bullets
-    const text = bullets[0] ? (bullets[0].label ? `${bullets[0].label}: ${bullets[0].body}` : bullets[0].body) : '';
+    const text = bullets[0]
+      ? bullets[0].label
+        ? `${bullets[0].label}: ${bullets[0].body}`
+        : bullets[0].body
+      : "";
     return <p className="font-body text-cream-muted leading-relaxed">{text}</p>;
   }
   return (
     <ul className="space-y-3">
       {bullets.map((b, i) => (
         <li key={i} className="flex gap-3">
-          <span className="text-gold font-bold flex-shrink-0 mt-0.5 leading-tight">•</span>
+          <span className="text-gold font-bold flex-shrink-0 mt-0.5 leading-tight">
+            •
+          </span>
           <p className="font-body text-cream-muted leading-relaxed">
             {b.label ? (
               <>
-                <span className="text-cream font-semibold">{b.label}:</span>
-                {' '}
+                <span className="text-cream font-semibold">{b.label}:</span>{" "}
                 {b.body}
               </>
             ) : (
@@ -138,19 +159,30 @@ function BulletList({ bullets }: { bullets: Array<{ label: string | null; body: 
 }
 
 /** Renders moat pillars as dark cards */
-function MoatPillars({ items, fallback }: { items: string[]; fallback: string }) {
+function MoatPillars({
+  items,
+  fallback,
+}: {
+  items: string[];
+  fallback: string;
+}) {
   if (items.length <= 1) {
-    return <p className="font-body text-cream-muted leading-relaxed">{fallback}</p>;
+    return (
+      <p className="font-body text-cream-muted leading-relaxed">{fallback}</p>
+    );
   }
   return (
     <div className="space-y-3">
       {items.map((item, i) => {
         const dashMatch = item.match(/^([^—\-]{3,60})\s*[—\-]\s*(.+)$/s);
         return (
-          <div key={i} className="rounded-lg bg-navy-800 border border-navy-600 p-4">
+          <div
+            key={i}
+            className="rounded-lg bg-navy-800 border border-navy-600 p-4"
+          >
             <div className="flex gap-3">
               <span className="font-mono text-sm font-bold text-gold/50 flex-shrink-0 w-6 leading-tight">
-                {String(i + 1).padStart(2, '0')}
+                {String(i + 1).padStart(2, "0")}
               </span>
               <div>
                 {dashMatch ? (
@@ -163,7 +195,9 @@ function MoatPillars({ items, fallback }: { items: string[]; fallback: string })
                     </p>
                   </>
                 ) : (
-                  <p className="font-body text-cream-muted leading-relaxed">{item}</p>
+                  <p className="font-body text-cream-muted leading-relaxed">
+                    {item}
+                  </p>
                 )}
               </div>
             </div>
@@ -177,7 +211,7 @@ function MoatPillars({ items, fallback }: { items: string[]; fallback: string })
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Report() {
-  const { ticker = '' } = useParams<{ ticker: string }>();
+  const { ticker = "" } = useParams<{ ticker: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isApproved, isAdmin } = useAuth();
@@ -190,12 +224,19 @@ export default function Report() {
 
   const handleUpdate = async () => {
     setIsUpdateRunning(true);
-    await pipeline.updateResearch(ticker);
-    // Invalidate all affected query keys to pull fresh data automatically
-    void queryClient.invalidateQueries({ queryKey: ['research', ticker] });
-    void queryClient.invalidateQueries({ queryKey: ['research', ticker, 'versions'] });
-    void queryClient.invalidateQueries({ queryKey: ['research'] });
-    setIsUpdateRunning(false);
+    const events = await pipeline.updateResearch(ticker);
+    const saved = events.some((e) => e.step === 8 && e.status === "complete");
+    if (saved) {
+      // Confirmed save — refresh all affected queries then close overlay
+      void queryClient.invalidateQueries({ queryKey: ["research", ticker] });
+      void queryClient.invalidateQueries({
+        queryKey: ["research", ticker, "versions"],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["research"] });
+      setIsUpdateRunning(false);
+    }
+    // Error path: isUpdateRunning stays true so PipelineProgress error stays visible.
+    // User dismisses via the button rendered below.
   };
 
   if (isLoading) {
@@ -207,24 +248,26 @@ export default function Report() {
   }
 
   if (error ?? !report) {
-    void navigate('/');
+    void navigate("/");
     return null;
   }
 
   const rj = report.report_json;
 
   // Coerce thesis — some older reports stored it as an array of words/strings
-  const rawThesis = (rj as unknown as Record<string, unknown>)['thesis'] ??
-    (rj as unknown as Record<string, unknown>)['one_liner'] ?? '';
+  const rawThesis =
+    (rj as unknown as Record<string, unknown>)["thesis"] ??
+    (rj as unknown as Record<string, unknown>)["one_liner"] ??
+    "";
   const thesisText = Array.isArray(rawThesis)
-    ? (rawThesis as unknown[]).map(String).join(' ')
+    ? (rawThesis as unknown[]).map(String).join(" ")
     : String(rawThesis);
 
   // Pre-parse text fields — guard against missing fields in old reports
-  const businessModelSegments = parseNumberedList(rj.business_model ?? '');
-  const moatPillars = parseNumberedList(rj.moat ?? '');
-  const macroBullets = parseBullets(rj.macro_summary ?? '');
-  const sentimentBullets = parseBullets(rj.sentiment_summary ?? '');
+  const businessModelSegments = parseNumberedList(rj.business_model ?? "");
+  const moatPillars = parseNumberedList(rj.moat ?? "");
+  const macroBullets = parseBullets(rj.macro_summary ?? "");
+  const sentimentBullets = parseBullets(rj.sentiment_summary ?? "");
 
   return (
     <div className="space-y-0">
@@ -245,7 +288,7 @@ export default function Report() {
             </div>
             <p className="font-mono text-xs text-cream-subtle mt-2 mb-4">
               v{report.version} · {formatDate(report.updated_at)}
-              {' · '}
+              {" · "}
               <Link
                 to={`/research/${ticker}/versions`}
                 className="text-gold/70 hover:text-gold transition-colors underline underline-offset-2"
@@ -262,11 +305,16 @@ export default function Report() {
           {/* Right: score + heat + update button */}
           <div className="flex flex-col items-end gap-4 flex-shrink-0 max-w-xs sm:max-w-sm">
             <ScoreBadge score={report.score} size="lg" />
-            <SectorHeat heat={rj.sector_heat} sectors={rj.hot_sector_match ?? []} />
+            <SectorHeat
+              heat={rj.sector_heat}
+              sectors={rj.hot_sector_match ?? []}
+            />
             {isApproved && !isUpdateRunning && (
               <Button
                 variant="secondary"
-                onClick={() => { void handleUpdate(); }}
+                onClick={() => {
+                  void handleUpdate();
+                }}
                 className="!bg-transparent !text-amber-400 !text-base border border-amber-400 hover:!bg-amber-400 hover:!text-navy-950 font-body font-medium tracking-wide px-6 py-2.5 rounded-md transition-all duration-200"
               >
                 Update Research
@@ -285,15 +333,24 @@ export default function Report() {
             error={pipeline.error}
             isAdmin={isAdmin}
           />
+          {/* Dismiss button — only visible after pipeline stops with an error */}
+          {!pipeline.isRunning && pipeline.error && (
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={() => setIsUpdateRunning(false)}
+                className="font-body text-sm text-cream-subtle hover:text-cream transition-colors underline underline-offset-2"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {/* ── Two-column body ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
-
         {/* ── Left column — narrative ─────────────────────────────────────── */}
         <div className="space-y-10 min-w-0">
-
           {/* Fix 1: Business Model Canvas (pure React) */}
           <section>
             <SectionHeading>Business Model</SectionHeading>
@@ -315,9 +372,11 @@ export default function Report() {
               {(rj.catalysts ?? []).map((c, i) => (
                 <li key={i} className="flex gap-4">
                   <span className="font-mono text-2xl font-bold text-gold/40 flex-shrink-0 leading-tight w-8">
-                    {String(i + 1).padStart(2, '0')}
+                    {String(i + 1).padStart(2, "0")}
                   </span>
-                  <p className="font-body text-cream-muted leading-relaxed">{c}</p>
+                  <p className="font-body text-cream-muted leading-relaxed">
+                    {c}
+                  </p>
                 </li>
               ))}
             </ol>
@@ -337,7 +396,9 @@ export default function Report() {
                     className="text-sm border border-navy-600 bg-navy-800 rounded-full px-3 py-1"
                   >
                     <span className="font-mono text-gold">{c.ticker}</span>
-                    <span className="font-body text-cream-subtle ml-1.5">— {c.name}</span>
+                    <span className="font-body text-cream-subtle ml-1.5">
+                      — {c.name}
+                    </span>
                   </span>
                 ))}
               </div>
@@ -347,7 +408,10 @@ export default function Report() {
           {/* Bear Case */}
           <section>
             <SectionHeading>Bear Case</SectionHeading>
-            <BearCase bearCase={rj.bear_case} riskFactors={rj.risk_factors ?? []} />
+            <BearCase
+              bearCase={rj.bear_case}
+              riskFactors={rj.risk_factors ?? []}
+            />
           </section>
 
           {/* Fix 4a: Macro — bullet list */}
@@ -373,7 +437,6 @@ export default function Report() {
 
         {/* ── Right column — data cards ────────────────────────────────────── */}
         <div className="space-y-6 lg:sticky lg:top-6">
-
           {/* Fix 5: NapkinMath with hierarchical revenue guidance */}
           <NapkinMath data={rj.napkin_math} />
 
@@ -399,11 +462,13 @@ export default function Report() {
             <p className="font-mono text-xs text-gold/70 uppercase tracking-[0.2em] mb-3">
               Sector Heat
             </p>
-            <SectorHeat heat={rj.sector_heat} sectors={rj.hot_sector_match ?? []} />
+            <SectorHeat
+              heat={rj.sector_heat}
+              sectors={rj.hot_sector_match ?? []}
+            />
           </div>
         </div>
       </div>
-
     </div>
   );
 }

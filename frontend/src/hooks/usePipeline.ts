@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { streamResearch } from '../lib/api';
-import type { SSEEvent } from '../types/report.types';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { streamResearch } from "../lib/api";
+import type { SSEEvent } from "../types/report.types";
 
 export function usePipeline() {
   const [steps, setSteps] = useState<SSEEvent[]>([]);
@@ -10,7 +10,7 @@ export function usePipeline() {
   const abortRef = useRef<AbortController | null>(null);
 
   const start = useCallback(
-    async (ticker: string, method: 'POST' | 'PUT'): Promise<SSEEvent[]> => {
+    async (ticker: string, method: "POST" | "PUT"): Promise<SSEEvent[]> => {
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
@@ -28,21 +28,22 @@ export function usePipeline() {
           setSteps((prev) => [...prev, event]);
           if (event.step === 8) {
             setIsComplete(true);
-            setIsRunning(false);
           }
-          if (event.status === 'error') {
+          if (event.status === "error") {
             setError(
-              (event.data?.message as string | undefined) ?? 'Pipeline failed',
+              (event.data?.message as string | undefined) ?? "Pipeline failed",
             );
-            setIsRunning(false);
             break;
           }
         }
       } catch (err) {
-        if (!(err instanceof DOMException && err.name === 'AbortError')) {
-          setError(err instanceof Error ? err.message : 'Unknown error');
-          setIsRunning(false);
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
+          setError(err instanceof Error ? err.message : "Unknown error");
         }
+      } finally {
+        // Always clear running state when the stream closes — covers normal
+        // completion, errors, abrupt server close, and abort.
+        setIsRunning(false);
       }
 
       return collected;
@@ -57,12 +58,12 @@ export function usePipeline() {
   }, []);
 
   const startResearch = useCallback(
-    (ticker: string): Promise<SSEEvent[]> => start(ticker, 'POST'),
+    (ticker: string): Promise<SSEEvent[]> => start(ticker, "POST"),
     [start],
   );
 
   const updateResearch = useCallback(
-    (ticker: string): Promise<SSEEvent[]> => start(ticker, 'PUT'),
+    (ticker: string): Promise<SSEEvent[]> => start(ticker, "PUT"),
     [start],
   );
 
