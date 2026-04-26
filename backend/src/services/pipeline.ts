@@ -666,6 +666,41 @@ RS vs SPY: ${step6.rs_vs_spy ?? ""}`;
   return { report: parsed.report, diagram: parsed.diagram, runId };
 }
 
+// ─── Step execution with fallback ─────────────────────────────────────────────
+
+/**
+ * Run a single pipeline step, save its checkpoint on success, and emit an error
+ * event + return the default value on failure. Used by both runParallelSteps
+ * (via runOrResume) and runUpdatePipeline (directly, for steps 3/5/6 only).
+ */
+async function runStepWithFallback<T>(
+  stepNum: number,
+  label: string,
+  runner: () => Promise<T>,
+  defaultVal: T,
+  ticker: string,
+  runId: string,
+  emit: EmitFn,
+): Promise<T> {
+  try {
+    const result = await runner();
+    await saveCheckpoint(ticker, runId, {
+      step_number: stepNum,
+      step_label: label,
+      output_json: result as Record<string, unknown>,
+    });
+    return result;
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : `Step ${stepNum} failed`;
+    emit({ step: stepNum, label, status: "error", data: { message } });
+    console.warn(
+      `[Step ${stepNum}] failed — using default. Reason: ${message}`,
+    );
+    return defaultVal;
+  }
+}
+
 // ─── Step defaults (used when a parallel step fails — Step 7 still runs) ──────
 
 const DEFAULT_STEP2: Step2Output = {
@@ -731,23 +766,15 @@ async function runParallelSteps(
       console.log(`[Step ${stepNum}] resumed from checkpoint`);
       return cachedSteps.get(stepNum) as T;
     }
-    try {
-      const result = await runner();
-      await saveCheckpoint(ticker, runId, {
-        step_number: stepNum,
-        step_label: label,
-        output_json: result as Record<string, unknown>,
-      });
-      return result;
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : `Step ${stepNum} failed`;
-      emit({ step: stepNum, label, status: "error", data: { message } });
-      console.warn(
-        `[Step ${stepNum}] failed — using default. Reason: ${message}`,
-      );
-      return defaultVal;
-    }
+    return runStepWithFallback(
+      stepNum,
+      label,
+      runner,
+      defaultVal,
+      ticker,
+      runId,
+      emit,
+    );
   }
 
   const [step2, step3, step4, step5, step6] = await Promise.all([
@@ -862,27 +889,22 @@ export async function runUpdatePipeline(
     moat: existingReport.moat ?? "",
     technological_advantage: rawStep2?.technological_advantage ?? "",
     catalysts: existingReport.catalysts ?? [],
-    platform_type:
-      (rawStep2?.platform_type as Step2Output["platform_type"]) ?? undefined,
+    platform_type: rawStep2?.platform_type ?? undefined,
     platform_optionality:
       existingReport.platform_optionality ??
-      (rawStep2?.platform_optionality as string | undefined) ??
+      rawStep2?.platform_optionality ??
       "",
     rerating_catalyst:
-      existingReport.rerating_catalyst ??
-      (rawStep2?.rerating_catalyst as string | undefined) ??
-      "",
+      existingReport.rerating_catalyst ?? rawStep2?.rerating_catalyst ?? "",
     constraint_analysis:
       existingReport.constraint_analysis ?? rawStep2?.constraint_analysis,
   };
   const cachedStep4: Step4Output = {
     bear_case: existingReport.bear_case ?? "",
     risk_factors: existingReport.risk_factors ?? [],
-    tail_risks: (rawStep4?.tail_risks as string[] | undefined) ?? [],
+    tail_risks: rawStep4?.tail_risks ?? [],
     bear_case_rebuttal:
-      existingReport.bear_case_rebuttal ??
-      (rawStep4?.bear_case_rebuttal as string | undefined) ??
-      "",
+      existingReport.bear_case_rebuttal ?? rawStep4?.bear_case_rebuttal ?? "",
   };
 
   emit({
@@ -899,15 +921,36 @@ export async function runUpdatePipeline(
   });
   console.log("[Update] Steps 2 and 4 skipped — reusing cached data");
 
-  // Run steps 3, 5, 6 in parallel with checkpoint saves
-  const emptyCache = new Map<number, Record<string, unknown>>();
-  const [, step3, , step5, step6] = await runParallelSteps(
-    step1,
-    ticker,
-    runId,
-    emptyCache,
-    emit,
-  );
+  // Run only steps 3, 5, 6 concurrently — steps 2 and 4 are reused above
+  const [step3, step5, step6] = await Promise.all([
+    runStepWithFallback(
+      3,
+      "Valuation & Financials",
+      () => runStep3(step1, emit),
+      DEFAULT_STEP3,
+      ticker,
+      runId,
+      emit,
+    ),
+    runStepWithFallback(
+      5,
+      "Macro & Sector",
+      () => runStep5(step1, emit),
+      DEFAULT_STEP5,
+      ticker,
+      runId,
+      emit,
+    ),
+    runStepWithFallback(
+      6,
+      "Sentiment & Technicals",
+      () => runStep6(step1, emit),
+      DEFAULT_STEP6,
+      ticker,
+      runId,
+      emit,
+    ),
+  ]);
 
   const ctx: PipelineContext = {
     step1,

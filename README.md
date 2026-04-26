@@ -322,6 +322,12 @@ Prompt caching is used across Steps 2–6: Step 1 output is sent as an
 
 ## Changelog
 
+### v0.2.1
+
+- **Constraint & value chain analysis**: Step 2 (Deep Dive) now performs a full 8-point bottleneck analysis — classifies the primary constraint (supply chain / technology / regulatory / capital / none), tests whether the company OWNS the constraint (not just adjacent to it), assesses durability, value chain position, rent capture, investability, who can relieve it, and the investable window before consensus prices it in
+- **Scoring update**: Step 7 applies a +0.5 constraint premium when `investable=true`, `controls_constraint=true`, and `durability=durable`; applies a constraint penalty if the company is adjacent to a bottleneck but does not capture the rent
+- **Bug fix — update pipeline token waste**: `runUpdatePipeline` was incorrectly running Steps 2 and 4 via an empty cache map, causing unnecessary Claude API calls and false `error` SSE events that made the frontend show a failure state. Fixed by calling only Steps 3, 5, 6 directly
+
 ### v0.2.0
 
 - **Hosting migration**: Vercel → Cloudflare Workers (frontend), Render → Railway (backend)
