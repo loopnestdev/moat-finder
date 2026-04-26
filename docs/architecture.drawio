@@ -1,0 +1,109 @@
+<mxfile host="app.diagrams.net" modified="2026-04-26T00:00:00.000Z" agent="moat-finder" version="24.0.0">
+  <diagram name="moat-finder Architecture v0.2.0" id="moat-finder-arch-v020">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="620" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Browser -->
+        <mxCell id="browser" value="&lt;b&gt;Browser / Mobile&lt;/b&gt;"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;"
+          vertex="1" parent="1">
+          <mxGeometry x="350" y="40" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Cloudflare WAF -->
+        <mxCell id="cf_waf" value="&lt;b&gt;Cloudflare&lt;/b&gt;&lt;br&gt;DDoS · WAF · Rate Limiting · SSL&lt;br&gt;CF-Connecting-IP injected"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f6821f;strokeColor=#cc6b00;fontColor=#ffffff;fontSize=12;"
+          vertex="1" parent="1">
+          <mxGeometry x="250" y="140" width="400" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Cloudflare Workers -->
+        <mxCell id="cf_workers" value="&lt;b&gt;Cloudflare Workers&lt;/b&gt;&lt;br&gt;React 19 SPA&lt;br&gt;Tailwind v4 · React Router v7"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffd966;strokeColor=#d6b656;fontColor=#000000;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="80" y="280" width="210" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Railway -->
+        <mxCell id="railway" value="&lt;b&gt;Railway&lt;/b&gt;&lt;br&gt;Node.js v22 · Express 4&lt;br&gt;Docker (node:22-alpine)"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1a1a2e;strokeColor=#333366;fontColor=#ffffff;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="610" y="280" width="210" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Supabase Auth -->
+        <mxCell id="supabase_auth" value="&lt;b&gt;Supabase Auth&lt;/b&gt;&lt;br&gt;Google OAuth&lt;br&gt;JWT verification"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3ecf8e;strokeColor=#2da56d;fontColor=#ffffff;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="430" y="430" width="180" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Supabase Postgres -->
+        <mxCell id="supabase_db" value="&lt;b&gt;Supabase Postgres&lt;/b&gt;&lt;br&gt;RLS enabled&lt;br&gt;5 tables + audit log"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#3ecf8e;strokeColor=#2da56d;fontColor=#ffffff;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="635" y="430" width="180" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Anthropic API -->
+        <mxCell id="anthropic" value="&lt;b&gt;Anthropic API&lt;/b&gt;&lt;br&gt;claude-sonnet-4-6&lt;br&gt;+ web_search tool"
+          style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e05c2a;strokeColor=#b04820;fontColor=#ffffff;fontSize=11;"
+          vertex="1" parent="1">
+          <mxGeometry x="840" y="430" width="190" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Browser → Cloudflare WAF -->
+        <mxCell id="e_browser_cf" value="HTTPS"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=11;"
+          edge="1" source="browser" target="cf_waf" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Cloudflare → Cloudflare Workers -->
+        <mxCell id="e_cf_workers" value="serve SPA"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=11;"
+          edge="1" source="cf_waf" target="cf_workers" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Cloudflare → Railway -->
+        <mxCell id="e_cf_railway" value="proxy /api/*"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=11;"
+          edge="1" source="cf_waf" target="railway" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: CF Workers → Railway (API calls, dashed) -->
+        <mxCell id="e_spa_api" value="API calls"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=11;dashed=1;"
+          edge="1" source="cf_workers" target="railway" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Railway → Supabase Auth -->
+        <mxCell id="e_api_auth" value="JWT verify"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=11;"
+          edge="1" source="railway" target="supabase_auth" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Railway → Supabase DB -->
+        <mxCell id="e_api_db" value="read / write"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=11;"
+          edge="1" source="railway" target="supabase_db" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Railway → Anthropic -->
+        <mxCell id="e_api_ai" value="7-step pipeline"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=11;"
+          edge="1" source="railway" target="anthropic" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

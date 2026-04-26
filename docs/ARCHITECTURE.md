@@ -23,20 +23,20 @@ Browser / Mobile
      ┌────────┴────────┐
      │                 │
      ▼                 ▼
-┌─────────┐      ┌───────────────┐
-│ Vercel  │      │    Render     │
-│(React   │ ───► │ (Express API) │
-│frontend)│      │  /api/v1/*    │
-└─────────┘      └──────┬────────┘
-                        │
-           ┌────────────┼─────────────┐
-           │            │             │
-           ▼            ▼             ▼
-     ┌──────────┐ ┌──────────┐ ┌──────────────┐
-     │ Supabase │ │ Supabase │ │ Anthropic API │
-     │ Postgres │ │   Auth   │ │ claude-sonnet │
-     │  + RLS   │ │          │ │  + web_search │
-     └──────────┘ └──────────┘ └──────────────┘
+┌──────────────┐  ┌───────────────┐
+│  Cloudflare  │  │    Railway    │
+│   Workers    │  │ (Express API) │
+│ (React SPA)  │  │  /api/v1/*    │
+└──────────────┘  └──────┬────────┘
+                         │
+            ┌────────────┼─────────────┐
+            │            │             │
+            ▼            ▼             ▼
+      ┌──────────┐ ┌──────────┐ ┌──────────────┐
+      │ Supabase │ │ Supabase │ │ Anthropic API │
+      │ Postgres │ │   Auth   │ │ claude-sonnet │
+      │  + RLS   │ │          │ │  + web_search │
+      └──────────┘ └──────────┘ └──────────────┘
 ```
 
 ---
@@ -53,48 +53,87 @@ Browser / Mobile
 
 ---
 
-## Frontend (Vercel)
+## Frontend (Cloudflare Workers)
 
-- **Framework**: React 18 + Vite + TypeScript strict
-- **Styling**: Tailwind CSS v3 — mobile-first, responsive
-- **Routing**: React Router v6
-- **Diagrams**: React Flow — interactive node-based business model diagrams
-- **Auth**: Supabase Auth JS client — handles session, OAuth redirects
-- **State**: React Query (TanStack Query) for server state; React Context for auth state
+- **Framework**: React 19 + Vite + TypeScript strict
+- **Styling**: Tailwind CSS v4 — mobile-first, responsive
+- **Routing**: React Router v7 — client-side routing
+- **Diagrams**: Pure React/Tailwind 4-zone stacked canvas (React Flow removed)
+- **Auth**: Supabase Auth JS v2 — handles session, OAuth redirects
+- **State**: React Query (TanStack Query) v5 for server state; React Context for auth state
 - **Streaming**: EventSource (SSE) to consume streaming research pipeline responses
-- **Build output**: Static assets deployed to Vercel CDN
+- **Deployment**: `wrangler deploy` — assets served from Cloudflare Workers edge network
+
+### Cloudflare Workers Configuration (`wrangler.jsonc`)
+
+```jsonc
+{
+  "name": "moat-finder",
+  "compatibility_date": "2026-04-11",
+  "observability": { "enabled": true },
+  "assets": {
+    "not_found_handling": "single-page-application", // SPA fallback routing
+  },
+  "compatibility_flags": ["nodejs_compat"],
+}
+```
 
 ### Frontend Environment Variables
 
 ```
 VITE_SUPABASE_URL=
 VITE_SUPABASE_ANON_KEY=
-VITE_API_BASE_URL=        # points to Render backend
+VITE_API_BASE_URL=        # points to Railway backend URL
 ```
 
 ---
 
-## Backend (Render)
+## Backend (Railway)
 
-- **Runtime**: Node.js v20 LTS + Express + TypeScript
+- **Runtime**: Node.js v22 LTS + Express + TypeScript
+- **Build**: Docker multi-stage build (`node:22-alpine` builder + lean runner)
 - **Transpilation**: tsx for dev, tsc for production build
-- **Port**: 3001 (local), Render assigns port via `process.env.PORT`
+- **Port**: 3001 (local), Railway assigns port via `process.env.PORT`
 - **Routes**: All prefixed `/api/v1/`
 - **Auth middleware**: Verifies Supabase JWT on every protected route
-- **CORS**: Restricted to Vercel frontend origin only
+- **CORS**: Restricted to Cloudflare Workers frontend origin only
 - **Streaming**: Server-Sent Events (SSE) for research pipeline progress
 - **IP logging**: Always read `req.headers['cf-connecting-ip']` — fall back to
   `req.socket.remoteAddress` for local dev only
+- **Binding**: Express must bind to `0.0.0.0` (not `127.0.0.1`) — Railway routes
+  external traffic to the container; `127.0.0.1` silently breaks health checks
+
+### Railway Configuration (`railway.toml`)
+
+```toml
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/api/v1/health"
+healthcheckTimeout = 120
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+```
+
+### Dockerfile (multi-stage, `node:22-alpine`)
+
+```
+Stage 1 — builder: npm ci + tsc compile
+Stage 2 — runner:  non-root user (nodejs:1001), production deps only, HEALTHCHECK
+```
 
 ### Backend Environment Variables
 
 ```
 PORT=3001
 SUPABASE_URL=
+SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=   # server-side only, never exposed to client
 ANTHROPIC_API_KEY=           # runtime API key for research pipeline
 NODE_ENV=development|production
-FRONTEND_ORIGIN=             # CORS allowlist
+FRONTEND_ORIGIN=             # CORS allowlist (Cloudflare Workers URL)
 ```
 
 ### Route Map
@@ -113,7 +152,7 @@ PATCH  /api/v1/admin/users/:id           # approve/reject user (admin only)
 
 ---
 
-## AI Research Pipeline (Sequential — 7 Steps)
+## AI Research Pipeline v2 (7 Steps)
 
 The pipeline runs server-side only. Each step calls the Anthropic API with
 `web_search` enabled. Steps are sequential — each step's output feeds context
@@ -123,7 +162,9 @@ into the next. Results stream back to the frontend via SSE as each step complete
 Step 1 — DISCOVERY
   Input:  ticker symbol
   Task:   Identify company name, industry, top 3 competitors (with tickers),
-          top 3 known customers, primary product/service, primary region
+          top 3 known customers, primary product/service, primary region,
+          platform classification (platform vs single-product),
+          platform optionality (adjacent TAMs), re-rating catalyst
   Output: JSON — populates all [PLACEHOLDER] variables for steps 2–7
 
 Step 2 — DEEP DIVE
@@ -134,16 +175,18 @@ Step 2 — DEEP DIVE
 
 Step 3 — VALUATION & FINANCIALS
   Input:  Step 1 + 2 output
-  Task:   Relative valuation table vs competitors, Rule of 40, P/S history,
-          insider ownership, SBC as % revenue, institutional holders,
-          cash burn, revenue estimates
-  Output: Structured tables + narrative
+  Task:   Relative valuation table vs competitors (growth-stage matched),
+          Rule of 40, P/S history, insider ownership, SBC as % revenue,
+          three valuation scenarios (Bear/Base/Bull), quarterly results
+  Comp rule: if subject >50% YoY growth, ≥2 comps must be >30% YoY
+  Output: Structured tables + 3-scenario napkin math
 
 Step 4 — RISK RED TEAM
   Input:  Step 1–3 output
-  Task:   Bear case (3-point short report), tail risks, SEC risk factors,
-          earnings miss history, customer concentration, dilution history
-  Output: Structured risk assessment
+  Task:   Bear case (structural risks only, not temporary overhangs),
+          SEC risk factors, tail risks, bear case rebuttal
+  Cap:    4 web searches max, < 800 words — prevents 600+ second runs
+  Output: Structured risk assessment + bear_case_rebuttal
 
 Step 5 — MACRO & SECTOR
   Input:  Step 1 output + hot sector list
@@ -158,46 +201,54 @@ Step 6 — SENTIMENT & TECHNICALS
           200-day MA position, RS vs SPY
   Output: Sentiment summary
 
-Step 7 — SYNTHESIS & DIAGRAM SPEC
+Step 7 — SYNTHESIS
   Input:  Steps 1–6 complete output
-  Task:   Generate final report in moat-finder format:
-          - Score (1.0–10.0, one decimal)
+  Task:   Generate final report:
+          - Score (1.0–10.0, one decimal) with weighted rubric
           - One-liner thesis
           - Business model narrative
           - Moat & competitors
-          - Napkin math (valuation upside)
-          - Bear case
+          - Napkin math (Base scenario target price)
+          - All 3 scenarios array (Bear/Base/Bull)
+          - Bear case + rebuttal
           - Sector heat (1–5)
-          - React Flow diagram spec (JSON nodes + edges)
-            showing: revenue streams → business units → customers → moat
+          - Platform type + optionality
+          - Re-rating catalyst
   Output: Structured JSON report saved to Supabase
 ```
 
-### React Flow Diagram Spec Format (output of Step 7)
+### Scoring Rubric (Step 7)
+
+| Factor             | Weight |
+| ------------------ | ------ |
+| Sector momentum    | 20%    |
+| Growth velocity    | 25%    |
+| Valuation vs peers | 20%    |
+| Moat quality       | 20%    |
+| Execution risk     | 15%    |
+
+**Special rules:**
+
+- Company >50% YoY growth + genuine moat: minimum score 4.5 even if temporary overhangs exist
+- `platform_type == "platform"` + 2+ adjacent markets in `platform_optionality`: +0.5 bonus
+- `napkin_math.target_price` must mirror the Base scenario — never use Bear as the headline
+
+### Scenarios Array Format
 
 ```json
-{
-  "nodes": [
-    { "id": "1", "type": "revenue", "label": "Revenue Stream", "amount": "$200M" },
-    { "id": "2", "type": "moat",    "label": "DMEA 1A Clearance" },
-    { "id": "3", "type": "customer","label": "US Dept of Defense" }
-  ],
-  "edges": [
-    { "source": "1", "target": "3", "label": "serves" },
-    { "source": "2", "target": "1", "label": "protects" }
-  ]
-}
+"scenarios": [
+  { "label": "Bear", "comp_ticker": "XYZ", "comp_multiple": 4.2, "target_price": 8.50, "upside_percent": -15, "rationale": "..." },
+  { "label": "Base", "comp_ticker": "ABC", "comp_multiple": 7.8, "target_price": 18.00, "upside_percent": 80, "rationale": "..." },
+  { "label": "Bull", "comp_ticker": "DEF", "comp_multiple": 12.0, "target_price": 27.00, "upside_percent": 170, "rationale": "..." }
+]
 ```
-
-Node types: `revenue` (green), `moat` (orange), `customer` (blue),
-`risk` (red), `business_unit` (purple)
 
 ---
 
 ## Authentication & Authorisation
 
 - **Provider**: Supabase Auth
-- **Federated logins**: Google, Apple, Twitter/X (configured in Supabase dashboard)
+- **Federated logins**: Google OAuth (configured in Supabase dashboard)
 - **Session**: JWT stored in Supabase client (httpOnly cookie pattern)
 - **User approval flow**:
   1. User registers via OAuth
@@ -227,13 +278,19 @@ Node types: `revenue` (green), `moat` (orange), `customer` (blue),
 ```
 git push origin main
         │
-        ├──► Vercel detects frontend/ changes → builds + deploys automatically
+        ├──► GitHub Actions detects changes
+        │         ├──► frontend/ changes → wrangler deploy → Cloudflare Workers
+        │         └──► backend/ changes  → Railway builds Docker image + deploys
         │
-        └──► Render detects backend/ changes → builds + deploys automatically
+        └──► Manual deploy (alternative):
+                  ├──► frontend/: npm run build && npm run deploy
+                  └──► backend/:  railway up
 ```
 
-Both Vercel and Render are connected to the GitHub repository.
 Environment variables are set in each platform's dashboard — never in code.
+
+- **Cloudflare Workers**: set via `wrangler secret put` or Cloudflare dashboard Workers > Settings > Variables
+- **Railway**: set via Railway dashboard project > Variables
 
 ---
 
