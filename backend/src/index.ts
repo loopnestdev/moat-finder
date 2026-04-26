@@ -1,15 +1,16 @@
-import 'dotenv/config';
-import express from 'express';
-import type { Request, Response, NextFunction } from 'express';
-import helmet from 'helmet';
-import cors from 'cors';
-import rateLimit from 'express-rate-limit';
-import healthRouter from './routes/health';
-import researchRouter from './routes/research';
-import adminRouter from './routes/admin';
-import { adminClient } from './services/supabase';
+import "dotenv/config";
+import express from "express";
+import type { Request, Response, NextFunction } from "express";
+import helmet from "helmet";
+import cors from "cors";
+import rateLimit from "express-rate-limit";
+import healthRouter from "./routes/health";
+import researchRouter from "./routes/research";
+import adminRouter from "./routes/admin";
+import { adminClient } from "./services/supabase";
 
 const app = express();
+app.set("trust proxy", 1);
 
 // ─── Global middleware ────────────────────────────────────────────────────────
 
@@ -30,41 +31,48 @@ app.use(
     standardHeaders: true,
     legacyHeaders: false,
     handler: (_req: Request, res: Response) => {
-      res.status(429).json({ error: 'Too many requests', code: 'RATE_LIMITED' });
+      res
+        .status(429)
+        .json({ error: "Too many requests", code: "RATE_LIMITED" });
     },
   }),
 );
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
-app.use('/api/v1/health', healthRouter);
-app.use('/api/v1/research', researchRouter);
-app.use('/api/v1', adminRouter);
+app.use("/api/v1/health", healthRouter);
+app.use("/api/v1/research", researchRouter);
+app.use("/api/v1", adminRouter);
 
 // ─── Global error handler ─────────────────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
-  res.status(500).json({ error: 'Internal server error', code: 'INTERNAL_ERROR' });
+  res
+    .status(500)
+    .json({ error: "Internal server error", code: "INTERNAL_ERROR" });
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 
-const port = parseInt(process.env.PORT ?? '3001', 10);
-const server = app.listen(port, '0.0.0.0', () => {
+const port = parseInt(process.env.PORT ?? "3001", 10);
+const server = app.listen(port, "0.0.0.0", () => {
   const addr = server.address();
   console.log(`moat-finder backend listening on ${JSON.stringify(addr)}`);
 
   void adminClient
-    .from('research_checkpoints')
-    .select('id')
+    .from("research_checkpoints")
+    .select("id")
     .limit(1)
     .then(({ error }) => {
       if (error) {
-        console.error('❌ research_checkpoints table check failed:', error.message);
+        console.error(
+          "❌ research_checkpoints table check failed:",
+          error.message,
+        );
       } else {
-        console.log('✅ research_checkpoints table OK');
+        console.log("✅ research_checkpoints table OK");
       }
     });
 });
