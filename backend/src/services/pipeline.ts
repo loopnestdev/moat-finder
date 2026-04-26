@@ -547,6 +547,7 @@ NAPKIN MATH RULE: Use the Base scenario comp for the primary napkin_math target_
   "risk_factors": ["string"],
   "macro_summary": "string",
   "sentiment_summary": "string",
+  "score": number_1.0_to_10.0_calculated_from_scoring_rubric_above,
   "constraint_analysis": {
     "type": "string",
     "controls_constraint": boolean,

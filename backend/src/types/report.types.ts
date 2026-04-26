@@ -71,6 +71,8 @@ export interface ReportJson {
   risk_factors: string[];
   macro_summary: string;
   sentiment_summary: string;
+  /** Weighted investment score 1.0–10.0 from Step 7 scoring rubric. Optional for backwards-compat with pre-score reports. */
+  score?: number;
   pipeline_steps_raw: Record<string, unknown>;
   quarterly_results?: QuarterlyResult[];
   // v2 fields — absent in reports generated before this version

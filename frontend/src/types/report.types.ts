@@ -63,6 +63,7 @@ export interface ReportJson {
   risk_factors: string[];
   macro_summary: string;
   sentiment_summary: string;
+  score?: number;
   pipeline_steps_raw: Record<string, unknown>;
   quarterly_results?: QuarterlyResult[];
   // v2 fields — absent in reports generated before this version
