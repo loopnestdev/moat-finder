@@ -224,7 +224,9 @@ export default function Report() {
 
   const handleUpdate = async () => {
     setIsUpdateRunning(true);
-    const events = await pipeline.updateResearch(ticker);
+    const provider =
+      (report?.report_json.llm_provider as string | undefined) ?? "claude";
+    const events = await pipeline.updateResearch(ticker, provider);
     const saved = events.some((e) => e.step === 8 && e.status === "complete");
     if (saved) {
       // Confirmed save — refresh all affected queries then close overlay
@@ -286,16 +288,27 @@ export default function Report() {
                 </span>
               )}
             </div>
-            <p className="font-mono text-xs text-cream-subtle mt-2 mb-4">
-              v{report.version} · {formatDate(report.updated_at)}
-              {" · "}
-              <Link
-                to={`/research/${ticker}/versions`}
-                className="text-gold/70 hover:text-gold transition-colors underline underline-offset-2"
-              >
-                version history
-              </Link>
-            </p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 mb-4">
+              <p className="font-mono text-xs text-cream-subtle">
+                v{report.version} · {formatDate(report.updated_at)}
+                {" · "}
+                <Link
+                  to={`/research/${ticker}/versions`}
+                  className="text-gold/70 hover:text-gold transition-colors underline underline-offset-2"
+                >
+                  version history
+                </Link>
+              </p>
+              {rj.llm_provider === "gemini" ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-blue-900/60 border border-blue-700/50 px-2 py-0.5 font-mono text-[10px] text-blue-300">
+                  ◆ Gemini
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-purple-900/60 border border-purple-700/50 px-2 py-0.5 font-mono text-[10px] text-purple-300">
+                  ✦ Claude
+                </span>
+              )}
+            </div>
             {/* Thesis callout */}
             <p className="block w-full font-body italic text-cream/90 text-lg leading-relaxed border-l-2 border-gold/40 pl-4 whitespace-normal break-words">
               {thesisText}

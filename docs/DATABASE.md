@@ -122,7 +122,9 @@ CREATE INDEX idx_research_report_gin ON public.research_reports USING GIN (repor
   "risk_factors": ["string"],
   "macro_summary": "string",
   "sentiment_summary": "string",
-  "pipeline_steps_raw": {}
+  "pipeline_steps_raw": {},
+  "llm_provider": "claude | gemini",
+  "llm_model": "claude-sonnet-4-6 | gemini-2.5-flash-lite"
 }
 ```
 
@@ -279,14 +281,14 @@ $$ LANGUAGE plpgsql;
 
 ## RLS Summary Table
 
-| Table                   | Public | Approved User        | Admin  |
-|-------------------------|--------|----------------------|--------|
-| users                   | none   | own row only         | all    |
-| tickers                 | SELECT | SELECT+INSERT        | all    |
-| research_reports        | SELECT | SELECT+INSERT+UPDATE | all    |
-| research_versions       | SELECT | SELECT+INSERT        | all    |
-| research_checkpoints    | none   | none                 | none   |
-| audit_log               | none   | none                 | SELECT |
+| Table                | Public | Approved User        | Admin  |
+| -------------------- | ------ | -------------------- | ------ |
+| users                | none   | own row only         | all    |
+| tickers              | SELECT | SELECT+INSERT        | all    |
+| research_reports     | SELECT | SELECT+INSERT+UPDATE | all    |
+| research_versions    | SELECT | SELECT+INSERT        | all    |
+| research_checkpoints | none   | none                 | none   |
+| audit_log            | none   | none                 | SELECT |
 
 ---
 

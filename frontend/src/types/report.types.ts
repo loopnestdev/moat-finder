@@ -73,6 +73,9 @@ export interface ReportJson {
   bear_case_rebuttal?: string;
   // v0.2.1 fields — absent in reports generated before this version
   constraint_analysis?: ConstraintAnalysis;
+  // v0.3.0 fields — multi-LLM support
+  llm_provider?: string;
+  llm_model?: string;
 }
 
 export interface DiagramNode {
