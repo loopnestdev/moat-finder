@@ -107,7 +107,7 @@ async function runGemini(
     systemInstruction: GEMINI_SYSTEM,
   });
 
-  const generationConfig = { temperature: 0.1, maxOutputTokens: 8192 };
+  const generationConfig = { temperature: 0.1, maxOutputTokens: 16384 };
   const maxAttempts = 3;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -164,9 +164,50 @@ export async function callLLM(
 }
 
 /**
+ * Best-effort repair for truncated JSON — closes any unclosed arrays/objects
+ * and strips trailing incomplete values left by a token-limit cut-off.
+ */
+function repairJSON(text: string): string {
+  let inString = false;
+  let escaped = false;
+  const stack: string[] = [];
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\" && inString) {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") stack.push("}");
+    else if (ch === "[") stack.push("]");
+    else if (ch === "}" || ch === "]") stack.pop();
+  }
+
+  let repaired = text.trimEnd();
+  // Remove trailing comma or partial key/string left by the cut-off
+  repaired = repaired.replace(/,\s*$/, "");
+  repaired = repaired.replace(/,\s*"[^"]*$/, "");
+  // Close every unclosed structure in reverse order
+  while (stack.length > 0) {
+    repaired += stack.pop();
+  }
+  return repaired;
+}
+
+/**
  * Robust JSON extractor — works for both Claude and Gemini responses.
- * Strips markdown fences then finds the outermost { } pair.
- * Throws if no JSON object is found — caller must catch.
+ * Strips markdown fences, finds the outermost { } pair, and falls back to
+ * repairJSON() when JSON.parse fails (e.g. response truncated at token limit).
+ * Throws if no JSON object is found after repair — caller must catch.
  */
 export function extractJSON(text: string): unknown {
   const stripped = text
@@ -174,11 +215,32 @@ export function extractJSON(text: string): unknown {
     .replace(/```\n?/g, "")
     .trim();
   const start = stripped.indexOf("{");
-  const end = stripped.lastIndexOf("}");
-  if (start === -1 || end === -1) {
+  if (start === -1) {
     throw new Error(
       `No JSON object found in LLM response. Response length: ${text.length}. First 500 chars: ${text.substring(0, 500)}`,
     );
   }
-  return JSON.parse(stripped.substring(start, end + 1));
+  // Take from the first { to the last } (or end of string if response is cut off)
+  const end = stripped.lastIndexOf("}");
+  const jsonStr =
+    end !== -1 ? stripped.substring(start, end + 1) : stripped.substring(start);
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch (firstError) {
+    try {
+      const repaired = repairJSON(jsonStr);
+      console.warn(
+        "[extractJSON] JSON repair attempted for truncated response",
+      );
+      return JSON.parse(repaired);
+    } catch (repairError) {
+      throw new Error(
+        `No JSON object found in LLM response. ` +
+          `Response length: ${text.length}. ` +
+          `Parse error: ${firstError instanceof Error ? firstError.message : String(firstError)}. ` +
+          `Repair also failed: ${repairError instanceof Error ? repairError.message : String(repairError)}`,
+      );
+    }
+  }
 }
