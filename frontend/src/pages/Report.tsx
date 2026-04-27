@@ -221,15 +221,25 @@ export default function Report() {
   const { data: versions = [] } = useVersions(ticker);
 
   const [isUpdateRunning, setIsUpdateRunning] = useState(false);
+  const [showProviderSelect, setShowProviderSelect] = useState(false);
+  const [selectedProvider, setSelectedProvider] = useState<"claude" | "gemini">(
+    "claude",
+  );
 
-  const handleUpdate = async () => {
+  const handleUpdateClick = () => {
+    const current =
+      (report?.report_json.llm_provider as "claude" | "gemini" | undefined) ??
+      "claude";
+    setSelectedProvider(current);
+    setShowProviderSelect(true);
+  };
+
+  const startUpdate = async () => {
+    setShowProviderSelect(false);
     setIsUpdateRunning(true);
-    const provider =
-      (report?.report_json.llm_provider as string | undefined) ?? "claude";
-    const events = await pipeline.updateResearch(ticker, provider);
+    const events = await pipeline.updateResearch(ticker, selectedProvider);
     const saved = events.some((e) => e.step === 8 && e.status === "complete");
     if (saved) {
-      // Confirmed save — refresh all affected queries then close overlay
       void queryClient.invalidateQueries({ queryKey: ["research", ticker] });
       void queryClient.invalidateQueries({
         queryKey: ["research", ticker, "versions"],
@@ -322,17 +332,50 @@ export default function Report() {
               heat={rj.sector_heat}
               sectors={rj.hot_sector_match ?? []}
             />
-            {isApproved && !isUpdateRunning && (
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  void handleUpdate();
-                }}
-                className="!bg-transparent !text-amber-400 !text-base border border-amber-400 hover:!bg-amber-400 hover:!text-navy-950 font-body font-medium tracking-wide px-6 py-2.5 rounded-md transition-all duration-200"
-              >
-                Update Research
-              </Button>
-            )}
+            {isApproved &&
+              !isUpdateRunning &&
+              (showProviderSelect ? (
+                <div className="rounded-lg bg-navy-900 border border-amber-400/20 p-4 w-full space-y-3">
+                  <p className="font-body text-xs text-cream-subtle uppercase tracking-widest">
+                    Select Research Engine
+                  </p>
+                  <select
+                    value={selectedProvider}
+                    onChange={(e) =>
+                      setSelectedProvider(e.target.value as "claude" | "gemini")
+                    }
+                    className="w-full rounded-lg border border-navy-600 bg-navy-800 text-cream font-body text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold"
+                  >
+                    <option value="claude">✦ Claude (Anthropic)</option>
+                    <option value="gemini">◆ Gemini (Google)</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        void startUpdate();
+                      }}
+                      className="!bg-transparent !text-amber-400 !text-sm border border-amber-400 hover:!bg-amber-400 hover:!text-navy-950 font-body font-medium px-4 py-2 rounded-md transition-all duration-200 flex-1"
+                    >
+                      Start Update
+                    </Button>
+                    <button
+                      onClick={() => setShowProviderSelect(false)}
+                      className="font-body text-sm text-cream-subtle hover:text-cream transition-colors px-3 py-2 rounded-md"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  variant="secondary"
+                  onClick={handleUpdateClick}
+                  className="!bg-transparent !text-amber-400 !text-base border border-amber-400 hover:!bg-amber-400 hover:!text-navy-950 font-body font-medium tracking-wide px-6 py-2.5 rounded-md transition-all duration-200"
+                >
+                  Update Research
+                </Button>
+              ))}
           </div>
         </div>
       </div>
