@@ -1,15 +1,17 @@
 # moat-finder
 
 AI-powered asymmetric investment research engine. Enter a stock ticker, get a structured
-research report in 60–90 seconds — powered by Claude Sonnet with live web search.
+research report in 60–90 seconds — powered by Claude Sonnet or Gemini with live web search.
 
 ---
 
 ## What it does
 
 - **7-step AI pipeline** — Discovery → Deep Dive → Valuation → Risk → Macro → Sentiment → Synthesis
+- **Multi-LLM** — choose Claude (Anthropic) or Gemini (Google) per research run; provider stored with each report
 - **Scored 1.0–10.0** using a weighted rubric (growth, moat quality, sector momentum, valuation, execution risk)
 - **3-scenario napkin math** — Bear / Base / Bull with comparable-matched multiples
+- **Constraint & value chain analysis** — classifies primary bottleneck, tests ownership, assesses durability, investability, and rent capture
 - **Platform classification** — identifies platform vs single-product companies, maps adjacent-market TAMs
 - **Re-rating catalyst** — the single event that could force a 2–3x reprice within 24 months
 - **Diff-tracked versioning** — every update shows exactly what changed between research runs
@@ -39,7 +41,8 @@ graph TB
     subgraph Data["Data & AI"]
         Auth["Supabase Auth\nGoogle OAuth · JWT"]
         DB["Supabase Postgres\nRLS enabled · 5 tables"]
-        AI["Anthropic API\nclaude-sonnet-4-6\n+ web_search"]
+        Claude["Anthropic API\nclaude-sonnet-4-6\n+ web_search"]
+        Gemini["Google AI\ngemini-2.0-flash\n+ googleSearch"]
     end
 
     Browser -->|HTTPS| WAF
@@ -48,7 +51,8 @@ graph TB
     SPA -->|API calls| API
     API -->|JWT verify| Auth
     API -->|read / write| DB
-    API -->|AI pipeline| AI
+    API -->|AI pipeline| Claude
+    API -->|AI pipeline| Gemini
 ```
 
 > The full draw.io diagram is at [`docs/architecture.drawio`](docs/architecture.drawio) —
@@ -72,7 +76,8 @@ graph TB
 | Container          | Docker (node:22-alpine) | multi-stage       |
 | Auth               | Supabase Auth           | v2                |
 | Database           | Supabase Postgres       | —                 |
-| AI                 | Anthropic SDK           | claude-sonnet-4-6 |
+| AI — Claude        | Anthropic SDK           | claude-sonnet-4-6 |
+| AI — Gemini        | Google Generative AI    | gemini-2.0-flash  |
 | Input validation   | Zod                     | —                 |
 | Security headers   | Helmet                  | —                 |
 | Language           | TypeScript              | strict            |
@@ -94,10 +99,12 @@ Each report includes:
 7. 3-scenario napkin math (Bear / Base / Bull)
 8. Moat & competitors
 9. Bear case + bull rebuttal
-10. Macro & policy impact
-11. Sentiment & technicals (short interest, 200-day MA, RS vs SPY)
-12. Platform optionality map (if platform company)
-13. Re-rating catalyst
+10. Constraint & value chain analysis (bottleneck type, ownership, durability, rent capture)
+11. Macro & policy impact
+12. Sentiment & technicals (short interest, 200-day MA, RS vs SPY)
+13. Platform optionality map (if platform company)
+14. Re-rating catalyst
+15. LLM provider badge (Claude or Gemini) shown in report header
 
 ### User Roles
 
@@ -112,7 +119,8 @@ Each report includes:
 
 Every research update creates a new version. A diff modal shows changes before saving:
 score deltas, changed sections, added/removed catalysts. The full changelog is visible
-at the bottom of every report.
+at the bottom of every report. Update research automatically re-uses the same LLM provider
+that originally generated the report.
 
 ---
 
@@ -123,7 +131,8 @@ at the bottom of every report.
 - Node.js v22+
 - npm
 - Supabase project (or local Supabase CLI)
-- Anthropic API key
+- Anthropic API key (required)
+- Google AI Studio API key (optional — only needed if using Gemini)
 
 ### Setup
 
@@ -156,6 +165,8 @@ SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ANTHROPIC_API_KEY=
+GEMINI_API_KEY=           # optional — required only if using Gemini provider
+DEFAULT_LLM=claude        # claude | gemini (default: claude)
 FRONTEND_ORIGIN=http://localhost:5173
 ```
 
@@ -273,7 +284,7 @@ moat-finder/
 │   ├── railway.toml
 │   └── src/
 │       ├── routes/           # research.ts, admin.ts, health.ts
-│       ├── services/         # pipeline.ts, diff.ts, supabase.ts
+│       ├── services/         # pipeline.ts, llm.ts, diff.ts, supabase.ts
 │       ├── middleware/        # auth.ts, requireRole.ts, audit.ts
 │       ├── types/            # report.types.ts, database.types.ts
 │       └── utils/            # ip.ts, ticker.ts
@@ -292,7 +303,7 @@ moat-finder/
 ## AI Pipeline — How It Works
 
 ```
-Ticker input
+Ticker input + provider selection (Claude or Gemini)
      │
      ▼
 Step 1 — Discovery (sequential)
@@ -300,8 +311,8 @@ Step 1 — Discovery (sequential)
      adjacent-market TAMs, re-rating catalyst
      │
      ▼
-Steps 2–6 — run concurrently via Promise.allSettled
-     ├── Step 2: Deep Dive (moat, business model, catalysts)
+Steps 2–6 — run concurrently via Promise.all
+     ├── Step 2: Deep Dive (moat, business model, catalysts, constraint analysis)
      ├── Step 3: Valuation & Financials (3-scenario napkin math)
      ├── Step 4: Risk Red Team (bear case, SEC risks, rebuttal)
      ├── Step 5: Macro & Sector (policy, tariffs, sector heat)
@@ -309,18 +320,36 @@ Steps 2–6 — run concurrently via Promise.allSettled
      │
      ▼
 Step 7 — Synthesis
-     Scores 1.0–10.0, writes final report JSON, saves to Supabase
+     Scores 1.0–10.0, writes final report JSON + llm_provider, saves to Supabase
      │
      ▼
 Report saved → SSE completion event → frontend redirects to report
 ```
 
-Prompt caching is used across Steps 2–6: Step 1 output is sent as an
-`ephemeral` cached content block, reducing input tokens by ~60–70%.
+All pipeline steps route through `backend/src/services/llm.ts` — the LLM abstraction layer.
+Add a new provider by implementing a call function there; `pipeline.ts` stays provider-agnostic.
+
+**Smart update pipeline** (`runUpdatePipeline`): skips Steps 2 and 4, reusing moat and risk data
+from the existing report. Only Steps 1, 3, 5, 6, and 7 run — reducing API cost on routine updates.
 
 ---
 
 ## Changelog
+
+### v0.3.0 (develop)
+
+- **Multi-LLM support**: new `llm.ts` abstraction layer routes research to Claude (`claude-sonnet-4-6` + `web_search` tool) or Gemini (`gemini-2.0-flash` + `googleSearch` grounding), selectable per run
+- **LLM selector**: provider dropdown (Claude / Gemini) in the research confirm modal; defaults to Claude
+- **LLM badge**: small `✦ Claude` or `◆ Gemini` badge shown in the report header
+- **Provider persistence**: `report_json.llm_provider` and `report_json.llm_model` recorded for every report; update research automatically re-uses the same provider
+- **New env vars**: `GEMINI_API_KEY` (optional, Railway) and `DEFAULT_LLM=claude` (optional)
+
+### v0.2.2
+
+- **Trust proxy**: `app.set('trust proxy', 1)` added as the first line after `express()` — fixes `express-rate-limit` `ValidationError` behind Cloudflare + Railway proxy layers that was crashing SSE connections before reports could save
+- **Step 7 JSON hardening**: strengthened system prompt to forbid prose responses; added `extractJSON()` with fence-stripping and outermost `{…}` search; try/catch deletes only the Step 7 checkpoint on parse failure so Steps 1–6 survive for the next retry
+- **Score field**: Step 7 now explicitly outputs `score` (1.0–10.0) in the JSON schema; `report.score` correctly used instead of `sector_heat` for the Supabase `score` column
+- **Save reliability**: `tickerData` null guard tightened; explicit `console.error` on every Supabase write failure; verification read-back after PUT version insert; `(existingReport.version ?? 1) + 1` guards missing version field
 
 ### v0.2.1
 
