@@ -37,6 +37,12 @@ Browser / Mobile
       │ Postgres │ │   Auth   │ │ claude-sonnet │
       │  + RLS   │ │          │ │  + web_search │
       └──────────┘ └──────────┘ └──────────────┘
+                                  │
+                              ┌───┴──────────────┐
+                              │   Google Gemini   │
+                              │ gemini-2.0-flash  │
+                              │  + googleSearch   │
+                              └──────────────────┘
 ```
 
 ---

@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
-import Anthropic from "@anthropic-ai/sdk";
-import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
+import type { LLMProvider } from "./llm";
+import { callLLM, extractJSON } from "./llm";
 import type {
   EmitFn,
   PipelineResult,
@@ -14,11 +14,7 @@ import type {
   Step5Output,
   Step6Output,
 } from "../types/report.types";
-import {
-  saveCheckpoint,
-  loadCheckpoints,
-  clearCheckpoints,
-} from "./checkpoint";
+import { saveCheckpoint, loadCheckpoints } from "./checkpoint";
 import { adminClient } from "./supabase";
 
 const HOT_SECTORS = [
@@ -32,41 +28,9 @@ const HOT_SECTORS = [
   "Solar",
 ];
 
-// ─── Anthropic client ────────────────────────────────────────────────────────
-
-function createAnthropicClient(): Anthropic {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
-  return new Anthropic({ apiKey });
-}
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Strip markdown code fences if Claude wraps the JSON in them. */
-function extractJson(text: string): string {
-  const match = /```(?:json)?\s*([\s\S]+?)\s*```/.exec(text);
-  return match ? (match[1] ?? text.trim()) : text.trim();
-}
-
-/**
- * Robust JSON extractor for Step 7 synthesis responses.
- * Strips markdown fences, then finds the outermost { } pair.
- * Throws if no JSON object is found — caller must catch.
- */
-function extractJSON(text: string): string {
-  const stripped = text
-    .replace(/```json\n?/g, "")
-    .replace(/```\n?/g, "")
-    .trim();
-  const start = stripped.indexOf("{");
-  const end = stripped.lastIndexOf("}");
-  if (start === -1 || end === -1) {
-    throw new Error("No JSON object found in synthesis response");
-  }
-  return stripped.substring(start, end + 1);
-}
-
-/** Format Step 1 output as a cacheable context string passed to steps 2-6. */
+/** Format Step 1 output as a context string passed to steps 2-6. */
 function formatStep1Context(step1: Step1Output): string {
   return `Company: ${step1.company_name} (${step1.primary_product}, ${step1.industry})
 Sector: ${step1.sector} | Region: ${step1.primary_region}
@@ -74,101 +38,18 @@ Competitors: ${step1.competitors.map((c) => `${c.name} (${c.ticker})`).join(", "
 Top Customers: ${step1.customers.join(", ")}`;
 }
 
-// ─── Claude call helpers ─────────────────────────────────────────────────────
-
-/**
- * Shared loop: send messages to Claude, handle tool_use turns, return final text.
- */
-async function runClaudeLoop(
-  systemPrompt: string,
-  initialMessages: MessageParam[],
-): Promise<string> {
-  const client = createAnthropicClient();
-  const messages: MessageParam[] = [...initialMessages];
-
-  for (;;) {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 8192,
-      system: systemPrompt,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-      messages,
-    });
-
-    const textBlock = response.content.find((b) => b.type === "text");
-
-    if (
-      response.stop_reason === "end_turn" ||
-      response.stop_reason === "stop_sequence"
-    ) {
-      if (!textBlock || textBlock.type !== "text") {
-        throw new Error("No text content in Claude response");
-      }
-      return textBlock.text;
-    }
-
-    // Defensive: handle client-side tool_use if it ever occurs
-    if (response.stop_reason === "tool_use") {
-      const toolUseBlocks = response.content.filter(
-        (b): b is Anthropic.Messages.ToolUseBlock => b.type === "tool_use",
-      );
-      messages.push({ role: "assistant", content: response.content });
-      messages.push({
-        role: "user",
-        content: toolUseBlocks.map((b) => ({
-          type: "tool_result" as const,
-          tool_use_id: b.id,
-          content: "",
-        })),
-      });
-      continue;
-    }
-
-    // max_tokens or other — return whatever text we have
-    if (textBlock && textBlock.type === "text") return textBlock.text;
-    throw new Error(`Unexpected stop_reason: ${String(response.stop_reason)}`);
-  }
-}
-
-/** Simple single-message call (Step 1 and Step 7 which have unique context). */
-async function callClaude(
-  systemPrompt: string,
-  userMessage: string,
-): Promise<string> {
-  return runClaudeLoop(systemPrompt, [{ role: "user", content: userMessage }]);
-}
-
-/**
- * Call Claude with a cached Step 1 context block + a step-specific prompt.
- * The cachedContext block is eligible for Anthropic prompt caching (ephemeral TTL ~5 min),
- * reducing input tokens by ~60-70% across the five parallel steps that share the same context.
- */
-async function callClaudeWithCachedContext(
-  systemPrompt: string,
-  cachedContext: string,
-  stepPrompt: string,
-): Promise<string> {
-  // Type assertion needed: cache_control is valid at runtime but may not be in all SDK typings.
-  const messages = [
-    {
-      role: "user" as const,
-      content: [
-        {
-          type: "text" as const,
-          text: cachedContext,
-          cache_control: { type: "ephemeral" as const },
-        },
-        { type: "text" as const, text: stepPrompt },
-      ],
-    },
-  ] as MessageParam[];
-  return runClaudeLoop(systemPrompt, messages);
-}
-
 // ─── Pipeline steps ───────────────────────────────────────────────────────────
 
-async function runStep1(ticker: string, emit: EmitFn): Promise<Step1Output> {
-  const system = `You are a financial research analyst.
+async function runStep1(
+  ticker: string,
+  emit: EmitFn,
+  provider: LLMProvider,
+): Promise<Step1Output> {
+  emit({ step: 1, label: "Discovery", status: "started" });
+  const startTime = Date.now();
+
+  const { text } = await callLLM(
+    `You are a financial research analyst.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "company_name": "string",
@@ -178,29 +59,26 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "customers": ["string"],
   "primary_product": "string",
   "primary_region": "string"
-}`;
+}
 
-  emit({ step: 1, label: "Discovery", status: "started" });
-  const startTime1 = Date.now();
-  const text = await callClaude(
-    system,
-    `Research the company with ticker symbol ${ticker}.
+Research the company with ticker symbol ${ticker}.
 Identify: company name, industry, top 3 competitors (with their tickers), top 3 known customers,
 primary product/service, and primary operating region.
 Use web search for current information. Return only the JSON object.`,
+    provider,
   );
-  const duration1 = Date.now() - startTime1;
 
-  const result = JSON.parse(extractJson(text)) as Step1Output;
+  const duration = Date.now() - startTime;
+  const result = extractJSON(text) as Step1Output;
   emit({
     step: 1,
     label: "Discovery",
     status: "complete",
-    duration: duration1,
+    duration,
     data: { company_name: result.company_name },
   });
   console.log(
-    `[Step 1] complete — company: ${result.company_name}, industry: ${result.industry}, sector: ${result.sector} (${duration1}ms)`,
+    `[Step 1] complete — company: ${result.company_name}, industry: ${result.industry}, sector: ${result.sector} (${duration}ms)`,
   );
   return result;
 }
@@ -210,8 +88,14 @@ Use web search for current information. Return only the JSON object.`,
 async function runStep2(
   step1: Step1Output,
   emit: EmitFn,
+  provider: LLMProvider,
 ): Promise<Step2Output> {
-  const system = `You are a financial research analyst specialising in competitive moat analysis and value chain constraint mapping.
+  const ctx = formatStep1Context(step1);
+  emit({ step: 2, label: "Deep Dive", status: "started" });
+  const startTime = Date.now();
+
+  const { text } = await callLLM(
+    `You are a financial research analyst specialising in competitive moat analysis and value chain constraint mapping.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "business_model": "string",
@@ -240,17 +124,13 @@ constraint_analysis.controls_constraint: true only if the company OWNS the scarc
 constraint_analysis.durability: "durable" = structurally scarce, cannot be replicated quickly; "temporary" = cyclical/demand-surge shortage; "solvable_by_capital" = anyone with enough capital can relieve it.
 constraint_analysis.value_chain_position: precise description of where in the value chain the company sits (e.g. "sole qualified supplier for step 4 of HBM stacking process").
 constraint_analysis.rent_capture: narrative explaining whether the company actually captures the economic rent from its position, or whether value accrues to customers, incumbents, or upstream suppliers instead.
-constraint_analysis.investable: true only if the bottleneck is (1) durable or slowly-moving, AND (2) the company controls or is the primary beneficiary, AND (3) the window is wide enough before consensus prices it in.
+constraint_analysis.investable: true only if the bottleneck is (1) durable or slowly-moving, AND (2) the company controls or is the primary and non-displaceable beneficiary of the constraint, AND (3) the market has not yet fully priced in the constraint advantage.
 constraint_analysis.who_relieves: who has the power, incentive, and strategic ability to relieve this bottleneck — and what sits outside their control?
-constraint_analysis.window: estimated time before consensus fully prices in this constraint advantage (e.g. "18–24 months — next-gen tooling announcements will expand capacity in 2026").`;
+constraint_analysis.window: estimated time before consensus fully prices in this constraint advantage (e.g. "18–24 months — next-gen tooling announcements will expand capacity in 2026").
 
-  const ctx = formatStep1Context(step1);
-  emit({ step: 2, label: "Deep Dive", status: "started" });
-  const startTime2 = Date.now();
-  const text = await callClaudeWithCachedContext(
-    system,
-    ctx,
-    `Perform a deep dive analysis on the company above:
+${ctx}
+
+Perform a deep dive analysis on the company above:
 1. How does the company make money (business model)? Include the approximate revenue split by segment (e.g. "75% defense/aviation, 25% commercial") based on the most recent annual or quarterly filing.
 2. What is the economic moat (switching costs, network effects, IP, regulatory barriers, cost advantages)? Be specific — name the patents, certifications, or contracts if they exist.
 3. What is the technological advantage over competitors? Explain the core technology in 2–3 simple sentences that a non-technical investor would understand — use a real-world analogy (e.g. "think of it like X but for Y").
@@ -287,18 +167,14 @@ constraint_analysis.window: estimated time before consensus fully prices in this
    H. INVESTABLE WINDOW — how long does this constraint persist as an investable window before consensus prices it in? Give a time estimate and explain what event or announcement would signal the window is closing (e.g. "18–24 months — window closes when TSMC announces next-gen capacity expansion or a second supplier passes HBM qualification").
 
 Use web search for current information. Return only the JSON object.`,
+    provider,
   );
-  const duration2 = Date.now() - startTime2;
 
-  const result = JSON.parse(extractJson(text)) as Step2Output;
-  emit({
-    step: 2,
-    label: "Deep Dive",
-    status: "complete",
-    duration: duration2,
-  });
+  const duration = Date.now() - startTime;
+  const result = extractJSON(text) as Step2Output;
+  emit({ step: 2, label: "Deep Dive", status: "complete", duration });
   console.log(
-    `[Step 2] complete — moat: ${result.moat.substring(0, 80)}, catalysts: ${result.catalysts.length} (${duration2}ms)`,
+    `[Step 2] complete — moat: ${result.moat.substring(0, 80)}, catalysts: ${result.catalysts.length} (${duration}ms)`,
   );
   return result;
 }
@@ -306,8 +182,14 @@ Use web search for current information. Return only the JSON object.`,
 async function runStep3(
   step1: Step1Output,
   emit: EmitFn,
+  provider: LLMProvider,
 ): Promise<Step3Output> {
-  const system = `You are a financial analyst specialising in equity valuation.
+  const ctx = formatStep1Context(step1);
+  emit({ step: 3, label: "Valuation & Financials", status: "started" });
+  const startTime = Date.now();
+
+  const { text } = await callLLM(
+    `You are a financial analyst specialising in equity valuation.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "valuation_table": [
@@ -331,15 +213,11 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   ]
 }
 Use null (not "null") for unknown numeric values. Revenue values in millions (e.g. 340 = $340M). revenue_growth as a percentage (e.g. 18.2 = 18.2% YoY). quarterly_results must contain the last 4 reported quarters, most recent first.
-napkin_math must reflect the Base scenario. scenarios must always contain exactly 3 objects with labels "Bear", "Base", "Bull".`;
+napkin_math must reflect the Base scenario. scenarios must always contain exactly 3 objects with labels "Bear", "Base", "Bull".
 
-  const ctx = formatStep1Context(step1);
-  emit({ step: 3, label: "Valuation & Financials", status: "started" });
-  const startTime3 = Date.now();
-  const text = await callClaudeWithCachedContext(
-    system,
-    ctx,
-    `Provide valuation and financial analysis for the company above:
+${ctx}
+
+Provide valuation and financial analysis for the company above:
 1. Relative valuation table including ALL major peers (minimum 3, ideally 4–5): P/S ratio, EV/EBITDA, gross margin %, YoY revenue growth %.
    COMP SELECTION RULE: Match comparables by GROWTH STAGE first, then industry. If the subject company is growing >50% YoY, at least 2 of your comps must also be growing >30% YoY. Never use a mature low-growth peer as the primary anchor for a hypergrowth company.
 2. Revenue segment breakdown as percentages of total revenue — use the most recent filing. Include in the financial_summary.
@@ -354,18 +232,19 @@ napkin_math must reflect the Base scenario. scenarios must always contain exactl
 7. Last 4 reported quarters (most recent first): quarter, revenue estimate, revenue actual, YoY growth %, EPS estimate, EPS actual. Use null for unknown values.
 
 Use web search for current financials. Return only the JSON object.`,
+    provider,
   );
-  const duration3 = Date.now() - startTime3;
 
-  const result = JSON.parse(extractJson(text)) as Step3Output;
+  const duration = Date.now() - startTime;
+  const result = extractJSON(text) as Step3Output;
   emit({
     step: 3,
     label: "Valuation & Financials",
     status: "complete",
-    duration: duration3,
+    duration,
   });
   console.log(
-    `[Step 3] complete — target: $${result.napkin_math.target_price}, upside: ${result.napkin_math.upside_percent}%, rows: ${result.valuation_table.length} (${duration3}ms)`,
+    `[Step 3] complete — target: $${result.napkin_math.target_price}, upside: ${result.napkin_math.upside_percent}%, rows: ${result.valuation_table.length} (${duration}ms)`,
   );
   return result;
 }
@@ -373,8 +252,14 @@ Use web search for current financials. Return only the JSON object.`,
 async function runStep4(
   step1: Step1Output,
   emit: EmitFn,
+  provider: LLMProvider,
 ): Promise<Step4Output> {
-  const system = `You are a bearish research analyst performing a risk red team analysis.
+  const ctx = formatStep1Context(step1);
+  emit({ step: 4, label: "Risk Red Team", status: "started" });
+  const startTime = Date.now();
+
+  const { text } = await callLLM(
+    `You are a bearish research analyst performing a risk red team analysis.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "bear_case": "string",
@@ -382,15 +267,11 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "tail_risks": ["string", "string"],
   "bear_case_rebuttal": "string"
 }
-bear_case_rebuttal: 2–3 sentences arguing what the bears consistently miss or underweight — write this from the bull's perspective as a genuine counter-argument.`;
+bear_case_rebuttal: 2–3 sentences arguing what the bears consistently miss or underweight — write this from the bull's perspective as a genuine counter-argument.
 
-  const ctx = formatStep1Context(step1);
-  emit({ step: 4, label: "Risk Red Team", status: "started" });
-  const startTime4 = Date.now();
-  const text = await callClaudeWithCachedContext(
-    system,
-    ctx,
-    `Perform a bear case analysis on the company above.
+${ctx}
+
+Perform a bear case analysis on the company above.
 Complete this analysis in 4 web searches maximum. Be concise. Total response must be under 800 words.
 
 Search targets:
@@ -409,18 +290,14 @@ Provide:
 4. Bear case rebuttal — step outside the bear role and write 2–3 sentences arguing what the bears consistently miss: the platform optionality, the growth trajectory underestimation, the aligned insider incentives, or the short-squeeze reflexivity. This must be a genuine counter-argument, not a dismissal.
 
 Return only the JSON object.`,
+    provider,
   );
-  const duration4 = Date.now() - startTime4;
 
-  const result = JSON.parse(extractJson(text)) as Step4Output;
-  emit({
-    step: 4,
-    label: "Risk Red Team",
-    status: "complete",
-    duration: duration4,
-  });
+  const duration = Date.now() - startTime;
+  const result = extractJSON(text) as Step4Output;
+  emit({ step: 4, label: "Risk Red Team", status: "complete", duration });
   console.log(
-    `[Step 4] complete — risk_factors: ${result.risk_factors.length}, tail_risks: ${result.tail_risks.length} (${duration4}ms)`,
+    `[Step 4] complete — risk_factors: ${result.risk_factors.length}, tail_risks: ${result.tail_risks.length} (${duration}ms)`,
   );
   return result;
 }
@@ -428,8 +305,14 @@ Return only the JSON object.`,
 async function runStep5(
   step1: Step1Output,
   emit: EmitFn,
+  provider: LLMProvider,
 ): Promise<Step5Output> {
-  const system = `You are a macro and sector analyst.
+  const ctx = formatStep1Context(step1);
+  emit({ step: 5, label: "Macro & Sector", status: "started" });
+  const startTime = Date.now();
+
+  const { text } = await callLLM(
+    `You are a macro and sector analyst.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "macro_summary": "string",
@@ -437,15 +320,11 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "hot_sector_match": ["string"],
   "tariff_exposure": "string"
 }
-sector_heat must be an integer 1–5 (1=cold, 5=very hot). hot_sector_match must be a subset of the provided hot sectors list.`;
+sector_heat must be an integer 1–5 (1=cold, 5=very hot). hot_sector_match must be a subset of the provided hot sectors list.
 
-  const ctx = formatStep1Context(step1);
-  emit({ step: 5, label: "Macro & Sector", status: "started" });
-  const startTime5 = Date.now();
-  const text = await callClaudeWithCachedContext(
-    system,
-    ctx,
-    `Analyse macro conditions and sector positioning for the company above.
+${ctx}
+
+Analyse macro conditions and sector positioning for the company above.
 Hot sectors to evaluate against: ${HOT_SECTORS.join(", ")}
 
 Analyse:
@@ -455,18 +334,14 @@ Analyse:
 4. Tariff and supply chain exposure
 
 Use web search for current macro context. Return only the JSON object.`,
+    provider,
   );
-  const duration5 = Date.now() - startTime5;
 
-  const result = JSON.parse(extractJson(text)) as Step5Output;
-  emit({
-    step: 5,
-    label: "Macro & Sector",
-    status: "complete",
-    duration: duration5,
-  });
+  const duration = Date.now() - startTime;
+  const result = extractJSON(text) as Step5Output;
+  emit({ step: 5, label: "Macro & Sector", status: "complete", duration });
   console.log(
-    `[Step 5] complete — sector_heat: ${result.sector_heat}/5, hot_matches: ${result.hot_sector_match.join(", ") || "none"} (${duration5}ms)`,
+    `[Step 5] complete — sector_heat: ${result.sector_heat}/5, hot_matches: ${result.hot_sector_match.join(", ") || "none"} (${duration}ms)`,
   );
   return result;
 }
@@ -474,41 +349,44 @@ Use web search for current macro context. Return only the JSON object.`,
 async function runStep6(
   step1: Step1Output,
   emit: EmitFn,
+  provider: LLMProvider,
 ): Promise<Step6Output> {
-  const system = `You are a technical and sentiment analyst.
+  const ctx = formatStep1Context(step1);
+  emit({ step: 6, label: "Sentiment & Technicals", status: "started" });
+  const startTime = Date.now();
+
+  const { text } = await callLLM(
+    `You are a technical and sentiment analyst.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "sentiment_summary": "string",
   "short_interest": "string",
   "ma_position": "string",
   "rs_vs_spy": "string"
-}`;
+}
 
-  const ctx = formatStep1Context(step1);
-  emit({ step: 6, label: "Sentiment & Technicals", status: "started" });
-  const startTime6 = Date.now();
-  const text = await callClaudeWithCachedContext(
-    system,
-    ctx,
-    `Analyse current market sentiment and technicals for the company above:
+${ctx}
+
+Analyse current market sentiment and technicals for the company above:
 1. Overall sentiment summary (retail + institutional)
 2. Short interest (% of float, recent changes)
 3. Position vs 200-day moving average (above/below, by how much %)
 4. Relative strength vs SPY over last 3 months (outperforming/underperforming by X%)
 
 Use web search for current market data. Return only the JSON object.`,
+    provider,
   );
-  const duration6 = Date.now() - startTime6;
 
-  const result = JSON.parse(extractJson(text)) as Step6Output;
+  const duration = Date.now() - startTime;
+  const result = extractJSON(text) as Step6Output;
   emit({
     step: 6,
     label: "Sentiment & Technicals",
     status: "complete",
-    duration: duration6,
+    duration,
   });
   console.log(
-    `[Step 6] complete — short_interest: ${result.short_interest}, ma_position: ${result.ma_position} (${duration6}ms)`,
+    `[Step 6] complete — short_interest: ${result.short_interest}, ma_position: ${result.ma_position} (${duration}ms)`,
   );
   return result;
 }
@@ -518,10 +396,64 @@ async function runStep7(
   ticker: string,
   runId: string,
   emit: EmitFn,
+  provider: LLMProvider,
 ): Promise<PipelineResult> {
   const { step1, step2, step3, step4, step5, step6 } = ctx;
 
-  const system = `You must respond with ONLY a valid JSON object.
+  const scenarioSummary = (step3.scenarios ?? [])
+    .map(
+      (s) =>
+        `${s.label}: $${s.target_price} (${s.upside_percent}% upside) via ${s.comp_ticker} at ${s.comp_multiple}x — ${s.rationale}`,
+    )
+    .join(" | ");
+
+  const contextSummary = `TICKER: ${ticker}
+COMPANY: ${step1.company_name}
+INDUSTRY: ${step1.industry} | SECTOR: ${step1.sector}
+PRODUCT: ${step1.primary_product} | REGION: ${step1.primary_region}
+COMPETITORS: ${(step1.competitors ?? []).map((c) => `${c.name} (${c.ticker})`).join(", ")}
+TOP CUSTOMERS: ${(step1.customers ?? []).join(", ")}
+
+BUSINESS MODEL: ${step2.business_model ?? ""}
+MOAT: ${step2.moat ?? ""}
+TECH ADVANTAGE: ${step2.technological_advantage ?? ""}
+PLATFORM TYPE: ${step2.platform_type ?? "unknown"}
+PLATFORM OPTIONALITY: ${step2.platform_optionality ?? "none"}
+RERATING CATALYST: ${step2.rerating_catalyst ?? ""}
+CATALYSTS: ${(step2.catalysts ?? []).join(" | ")}
+
+CONSTRAINT ANALYSIS:
+  TYPE: ${step2.constraint_analysis?.type ?? "none"}
+  CONTROLS CONSTRAINT: ${step2.constraint_analysis?.controls_constraint ?? false}
+  DURABILITY: ${step2.constraint_analysis?.durability ?? "unknown"}
+  VALUE CHAIN POSITION: ${step2.constraint_analysis?.value_chain_position ?? ""}
+  RENT CAPTURE: ${step2.constraint_analysis?.rent_capture ?? ""}
+  INVESTABLE: ${step2.constraint_analysis?.investable ?? false}
+  WHO RELIEVES: ${step2.constraint_analysis?.who_relieves ?? ""}
+  WINDOW: ${step2.constraint_analysis?.window ?? ""}
+
+VALUATION SUMMARY: ${step3.financial_summary ?? ""}
+BASE TARGET: $${step3.napkin_math?.target_price ?? 0} (${step3.napkin_math?.upside_percent ?? 0}% upside) vs ${step3.napkin_math?.comp_ticker ?? ""} at ${step3.napkin_math?.comp_multiple ?? 0}x
+SCENARIOS: ${scenarioSummary || "none"}
+
+BEAR CASE: ${step4.bear_case ?? ""}
+RISK FACTORS: ${(step4.risk_factors ?? []).join(" | ")}
+BEAR CASE REBUTTAL: ${step4.bear_case_rebuttal ?? ""}
+
+MACRO: ${step5.macro_summary ?? ""}
+SECTOR HEAT: ${step5.sector_heat ?? 3}/5 | MATCHED SECTORS: ${(step5.hot_sector_match ?? []).join(", ") || "none"}
+TARIFF: ${step5.tariff_exposure ?? ""}
+
+SENTIMENT: ${step6.sentiment_summary ?? ""}
+SHORT INTEREST: ${step6.short_interest ?? ""}
+200-DAY MA: ${step6.ma_position ?? ""}
+RS vs SPY: ${step6.rs_vs_spy ?? ""}`;
+
+  emit({ step: 7, label: "Synthesis & Diagram", status: "started" });
+  const startTime = Date.now();
+
+  const { text, model } = await callLLM(
+    `You must respond with ONLY a valid JSON object.
 No preamble, no explanation, no markdown code blocks,
 no text before or after the JSON.
 Start your response with { and end with }
@@ -591,72 +523,21 @@ NAPKIN MATH RULE: Use the Base scenario comp for the primary napkin_math target_
   "nodes": [{ "id": "string", "type": "revenue|customer|moat|business_unit|risk", "data": { "label": "string", "detail": "string" }, "position": { "x": number, "y": number } }],
   "edges": [{ "id": "string", "source": "string", "target": "string", "label": "string" }]
 }
-Layout: revenue streams on left (x≈0), business_unit in centre (x≈300), customers on right (x≈600), moat above (y≈0), risks below (y≈400). Space nodes 120px apart vertically.`;
+Layout: revenue streams on left (x≈0), business_unit in centre (x≈300), customers on right (x≈600), moat above (y≈0), risks below (y≈400). Space nodes 120px apart vertically.
 
-  const scenarioSummary = (step3.scenarios ?? [])
-    .map(
-      (s) =>
-        `${s.label}: $${s.target_price} (${s.upside_percent}% upside) via ${s.comp_ticker} at ${s.comp_multiple}x — ${s.rationale}`,
-    )
-    .join(" | ");
+Synthesise a complete moat-finder report for ${ticker}.
 
-  const contextSummary = `TICKER: ${ticker}
-COMPANY: ${step1.company_name}
-INDUSTRY: ${step1.industry} | SECTOR: ${step1.sector}
-PRODUCT: ${step1.primary_product} | REGION: ${step1.primary_region}
-COMPETITORS: ${(step1.competitors ?? []).map((c) => `${c.name} (${c.ticker})`).join(", ")}
-TOP CUSTOMERS: ${(step1.customers ?? []).join(", ")}
+${contextSummary}
 
-BUSINESS MODEL: ${step2.business_model ?? ""}
-MOAT: ${step2.moat ?? ""}
-TECH ADVANTAGE: ${step2.technological_advantage ?? ""}
-PLATFORM TYPE: ${step2.platform_type ?? "unknown"}
-PLATFORM OPTIONALITY: ${step2.platform_optionality ?? "none"}
-RERATING CATALYST: ${step2.rerating_catalyst ?? ""}
-CATALYSTS: ${(step2.catalysts ?? []).join(" | ")}
-
-CONSTRAINT ANALYSIS:
-  TYPE: ${step2.constraint_analysis?.type ?? "none"}
-  CONTROLS CONSTRAINT: ${step2.constraint_analysis?.controls_constraint ?? false}
-  DURABILITY: ${step2.constraint_analysis?.durability ?? "unknown"}
-  VALUE CHAIN POSITION: ${step2.constraint_analysis?.value_chain_position ?? ""}
-  RENT CAPTURE: ${step2.constraint_analysis?.rent_capture ?? ""}
-  INVESTABLE: ${step2.constraint_analysis?.investable ?? false}
-  WHO RELIEVES: ${step2.constraint_analysis?.who_relieves ?? ""}
-  WINDOW: ${step2.constraint_analysis?.window ?? ""}
-
-VALUATION SUMMARY: ${step3.financial_summary ?? ""}
-BASE TARGET: $${step3.napkin_math?.target_price ?? 0} (${step3.napkin_math?.upside_percent ?? 0}% upside) vs ${step3.napkin_math?.comp_ticker ?? ""} at ${step3.napkin_math?.comp_multiple ?? 0}x
-SCENARIOS: ${scenarioSummary || "none"}
-
-BEAR CASE: ${step4.bear_case ?? ""}
-RISK FACTORS: ${(step4.risk_factors ?? []).join(" | ")}
-BEAR CASE REBUTTAL: ${step4.bear_case_rebuttal ?? ""}
-
-MACRO: ${step5.macro_summary ?? ""}
-SECTOR HEAT: ${step5.sector_heat ?? 3}/5 | MATCHED SECTORS: ${(step5.hot_sector_match ?? []).join(", ") || "none"}
-TARIFF: ${step5.tariff_exposure ?? ""}
-
-SENTIMENT: ${step6.sentiment_summary ?? ""}
-SHORT INTEREST: ${step6.short_interest ?? ""}
-200-DAY MA: ${step6.ma_position ?? ""}
-RS vs SPY: ${step6.rs_vs_spy ?? ""}`;
-
-  emit({ step: 7, label: "Synthesis & Diagram", status: "started" });
-  const startTime7 = Date.now();
-  const text = await callClaude(
-    system,
-    `Synthesise a complete moat-finder report for ${ticker}.\n\n${contextSummary}\n\nReturn only the JSON object with "report" and "diagram" keys.`,
+Return only the JSON object with "report" and "diagram" keys.`,
+    provider,
   );
-  const duration7 = Date.now() - startTime7;
+
+  const duration = Date.now() - startTime;
 
   let parsed: { report: ReportJson; diagram: DiagramJson };
   try {
-    const jsonStr = extractJSON(text);
-    parsed = JSON.parse(jsonStr) as {
-      report: ReportJson;
-      diagram: DiagramJson;
-    };
+    parsed = extractJSON(text) as { report: ReportJson; diagram: DiagramJson };
   } catch (parseError) {
     const message =
       parseError instanceof Error ? parseError.message : "JSON parse failed";
@@ -689,6 +570,10 @@ RS vs SPY: ${step6.rs_vs_spy ?? ""}`;
     step6,
   };
 
+  // Record which LLM generated this report
+  parsed.report.llm_provider = provider;
+  parsed.report.llm_model = model;
+
   // Carry quarterly results from Step 3 into the final report
   if (step3.quarterly_results && step3.quarterly_results.length > 0) {
     parsed.report.quarterly_results = step3.quarterly_results;
@@ -701,17 +586,17 @@ RS vs SPY: ${step6.rs_vs_spy ?? ""}`;
       report: parsed.report as unknown as Record<string, unknown>,
       diagram: parsed.diagram as unknown as Record<string, unknown>,
     },
-    duration_ms: duration7,
+    duration_ms: duration,
   });
 
   emit({
     step: 7,
     label: "Synthesis & Diagram",
     status: "complete",
-    duration: duration7,
+    duration,
   });
   console.log(
-    `[Step 7] complete — thesis: ${parsed.report.thesis.substring(0, 80)}, diagram nodes: ${(parsed.diagram?.nodes ?? []).length}, edges: ${(parsed.diagram?.edges ?? []).length} (${duration7}ms)`,
+    `[Step 7] complete — thesis: ${parsed.report.thesis.substring(0, 80)}, diagram nodes: ${(parsed.diagram?.nodes ?? []).length}, edges: ${(parsed.diagram?.edges ?? []).length}, provider: ${provider} (${duration}ms)`,
   );
   return { report: parsed.report, diagram: parsed.diagram, runId };
 }
@@ -798,6 +683,7 @@ async function runParallelSteps(
   runId: string,
   cachedSteps: Map<number, Record<string, unknown>>,
   emit: EmitFn,
+  provider: LLMProvider,
 ): Promise<[Step2Output, Step3Output, Step4Output, Step5Output, Step6Output]> {
   async function runOrResume<T>(
     stepNum: number,
@@ -828,24 +714,34 @@ async function runParallelSteps(
   }
 
   const [step2, step3, step4, step5, step6] = await Promise.all([
-    runOrResume(2, "Deep Dive", () => runStep2(step1, emit), DEFAULT_STEP2),
+    runOrResume(
+      2,
+      "Deep Dive",
+      () => runStep2(step1, emit, provider),
+      DEFAULT_STEP2,
+    ),
     runOrResume(
       3,
       "Valuation & Financials",
-      () => runStep3(step1, emit),
+      () => runStep3(step1, emit, provider),
       DEFAULT_STEP3,
     ),
-    runOrResume(4, "Risk Red Team", () => runStep4(step1, emit), DEFAULT_STEP4),
+    runOrResume(
+      4,
+      "Risk Red Team",
+      () => runStep4(step1, emit, provider),
+      DEFAULT_STEP4,
+    ),
     runOrResume(
       5,
       "Macro & Sector",
-      () => runStep5(step1, emit),
+      () => runStep5(step1, emit, provider),
       DEFAULT_STEP5,
     ),
     runOrResume(
       6,
       "Sentiment & Technicals",
-      () => runStep6(step1, emit),
+      () => runStep6(step1, emit, provider),
       DEFAULT_STEP6,
     ),
   ]);
@@ -864,6 +760,7 @@ async function runParallelSteps(
 export async function runPipeline(
   ticker: string,
   emit: EmitFn,
+  provider: LLMProvider = "claude",
 ): Promise<PipelineResult> {
   // Load existing checkpoints — resume in-progress run if present
   const existing = await loadCheckpoints(ticker);
@@ -890,7 +787,7 @@ export async function runPipeline(
     });
     console.log("[Step 1] resumed from checkpoint");
   } else {
-    step1 = await runStep1(ticker, emit);
+    step1 = await runStep1(ticker, emit, provider);
     await saveCheckpoint(ticker, runId, {
       step_number: 1,
       step_label: "Discovery",
@@ -904,10 +801,11 @@ export async function runPipeline(
     runId,
     cachedSteps,
     emit,
+    provider,
   );
 
   const ctx: PipelineContext = { step1, step2, step3, step4, step5, step6 };
-  return runStep7(ctx, ticker, runId, emit);
+  return runStep7(ctx, ticker, runId, emit, provider);
 }
 
 /**
@@ -919,10 +817,11 @@ export async function runUpdatePipeline(
   ticker: string,
   existingReport: ReportJson,
   emit: EmitFn,
+  provider: LLMProvider = "claude",
 ): Promise<PipelineResult> {
   const runId = randomUUID();
 
-  const step1 = await runStep1(ticker, emit);
+  const step1 = await runStep1(ticker, emit, provider);
   await saveCheckpoint(ticker, runId, {
     step_number: 1,
     step_label: "Discovery",
@@ -976,7 +875,7 @@ export async function runUpdatePipeline(
     runStepWithFallback(
       3,
       "Valuation & Financials",
-      () => runStep3(step1, emit),
+      () => runStep3(step1, emit, provider),
       DEFAULT_STEP3,
       ticker,
       runId,
@@ -985,7 +884,7 @@ export async function runUpdatePipeline(
     runStepWithFallback(
       5,
       "Macro & Sector",
-      () => runStep5(step1, emit),
+      () => runStep5(step1, emit, provider),
       DEFAULT_STEP5,
       ticker,
       runId,
@@ -994,7 +893,7 @@ export async function runUpdatePipeline(
     runStepWithFallback(
       6,
       "Sentiment & Technicals",
-      () => runStep6(step1, emit),
+      () => runStep6(step1, emit, provider),
       DEFAULT_STEP6,
       ticker,
       runId,
@@ -1011,5 +910,5 @@ export async function runUpdatePipeline(
     step6,
   };
 
-  return runStep7(ctx, ticker, runId, emit);
+  return runStep7(ctx, ticker, runId, emit, provider);
 }

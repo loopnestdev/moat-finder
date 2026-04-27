@@ -197,6 +197,10 @@ The AI research pipeline was upgraded based on real backtest results from resear
 - **`platform_optionality` and `rerating_catalyst`**: absent in pre-v2 reports. Default to `''`.
 - **Railway PORT binding**: Express must call `app.listen(PORT, '0.0.0.0', ...)` — binding to `127.0.0.1` silently breaks Railway health checks and routing.
 - **Tailwind v4 config**: `tailwind.config.ts` still defines the design tokens, but the CSS entry (`index.css`) uses `@import "tailwindcss"` and `@theme {}` blocks — not the v3 `@tailwind base/components/utilities` directives.
+- **Gemini googleSearch grounding**: requires `GEMINI_API_KEY` in Railway env. Without it, any Gemini research request returns a 400 before the SSE stream opens.
+- **Gemini may return markdown-wrapped JSON**: `extractJSON()` in `backend/src/services/llm.ts` strips fences and finds the outermost `{…}` — do not remove this guard.
+- **Provider is stored per-report**: `report_json.llm_provider` records which LLM generated the report. Update research re-uses the same provider automatically (read from the existing report in `Report.tsx → handleUpdate`).
+- **LLM abstraction layer**: all pipeline steps call `callLLM(prompt, provider)` in `backend/src/services/llm.ts`. Add new providers there; pipeline.ts stays provider-agnostic.
 
 ---
 

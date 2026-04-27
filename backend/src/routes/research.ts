@@ -5,6 +5,7 @@ import { requireRole } from "../middleware/requireRole";
 import { logAudit } from "../middleware/audit";
 import { anonClient, adminClient } from "../services/supabase";
 import { runPipeline, runUpdatePipeline } from "../services/pipeline";
+import type { LLMProvider } from "../services/llm";
 import { clearCheckpoints } from "../services/checkpoint";
 import { generateDiff } from "../services/diff";
 import { validateTicker } from "../utils/ticker";
@@ -164,6 +165,26 @@ router.post(
         return;
       }
 
+      // Validate provider
+      const { provider: rawProvider = "claude" } = req.body as {
+        provider?: string;
+      };
+      if (!["claude", "gemini"].includes(rawProvider)) {
+        res.status(400).json({
+          error: "Invalid provider. Must be 'claude' or 'gemini'",
+          code: "INVALID_PROVIDER",
+        });
+        return;
+      }
+      if (rawProvider === "gemini" && !process.env.GEMINI_API_KEY) {
+        res.status(400).json({
+          error: "Gemini API key not configured on server",
+          code: "GEMINI_NOT_CONFIGURED",
+        });
+        return;
+      }
+      const provider = rawProvider as LLMProvider;
+
       // Race condition guard — check cache again
       const { data: existing } = await anonClient
         .from("research_reports")
@@ -213,7 +234,7 @@ router.post(
 
       let pipelineResult: PipelineResult;
       try {
-        pipelineResult = await runPipeline(normalised, emit);
+        pipelineResult = await runPipeline(normalised, emit, provider);
       } catch (pipelineErr) {
         const message =
           pipelineErr instanceof Error
@@ -366,6 +387,26 @@ router.put(
         return;
       }
 
+      // Validate provider
+      const { provider: rawProviderPut = "claude" } = req.body as {
+        provider?: string;
+      };
+      if (!["claude", "gemini"].includes(rawProviderPut)) {
+        res.status(400).json({
+          error: "Invalid provider. Must be 'claude' or 'gemini'",
+          code: "INVALID_PROVIDER",
+        });
+        return;
+      }
+      if (rawProviderPut === "gemini" && !process.env.GEMINI_API_KEY) {
+        res.status(400).json({
+          error: "Gemini API key not configured on server",
+          code: "GEMINI_NOT_CONFIGURED",
+        });
+        return;
+      }
+      const providerPut = rawProviderPut as LLMProvider;
+
       const { data: existingReport, error: fetchErr } = await anonClient
         .from("research_reports")
         .select("id, ticker_id, version, score, report_json")
@@ -399,7 +440,12 @@ router.put(
 
       let pipelineResult: PipelineResult;
       try {
-        pipelineResult = await runUpdatePipeline(normalised, prevReport, emit);
+        pipelineResult = await runUpdatePipeline(
+          normalised,
+          prevReport,
+          emit,
+          providerPut,
+        );
       } catch (pipelineErr) {
         const message =
           pipelineErr instanceof Error

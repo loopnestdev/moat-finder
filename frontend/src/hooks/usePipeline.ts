@@ -10,7 +10,11 @@ export function usePipeline() {
   const abortRef = useRef<AbortController | null>(null);
 
   const start = useCallback(
-    async (ticker: string, method: "POST" | "PUT"): Promise<SSEEvent[]> => {
+    async (
+      ticker: string,
+      method: "POST" | "PUT",
+      provider?: string,
+    ): Promise<SSEEvent[]> => {
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
@@ -23,7 +27,12 @@ export function usePipeline() {
       const collected: SSEEvent[] = [];
 
       try {
-        for await (const event of streamResearch(ticker, method, ctrl.signal)) {
+        for await (const event of streamResearch(
+          ticker,
+          method,
+          ctrl.signal,
+          provider,
+        )) {
           collected.push(event);
           setSteps((prev) => [...prev, event]);
           if (event.step === 8) {
@@ -58,12 +67,14 @@ export function usePipeline() {
   }, []);
 
   const startResearch = useCallback(
-    (ticker: string): Promise<SSEEvent[]> => start(ticker, "POST"),
+    (ticker: string, provider?: string): Promise<SSEEvent[]> =>
+      start(ticker, "POST", provider),
     [start],
   );
 
   const updateResearch = useCallback(
-    (ticker: string): Promise<SSEEvent[]> => start(ticker, "PUT"),
+    (ticker: string, provider?: string): Promise<SSEEvent[]> =>
+      start(ticker, "PUT", provider),
     [start],
   );
 
