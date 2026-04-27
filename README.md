@@ -42,7 +42,7 @@ graph TB
         Auth["Supabase Auth\nGoogle OAuth · JWT"]
         DB["Supabase Postgres\nRLS enabled · 5 tables"]
         Claude["Anthropic API\nclaude-sonnet-4-6\n+ web_search"]
-        Gemini["Google AI\ngemini-2.0-flash-lite\n+ googleSearch"]
+        Gemini["Google AI\ngemini-2.5-flash-lite\n+ googleSearch"]
     end
 
     Browser -->|HTTPS| WAF
@@ -77,7 +77,7 @@ graph TB
 | Auth               | Supabase Auth           | v2                |
 | Database           | Supabase Postgres       | —                 |
 | AI — Claude        | Anthropic SDK           | claude-sonnet-4-6 |
-| AI — Gemini        | Google Generative AI    | gemini-2.0-flash-lite  |
+| AI — Gemini        | Google Generative AI    | gemini-2.5-flash-lite  |
 | Input validation   | Zod                     | —                 |
 | Security headers   | Helmet                  | —                 |
 | Language           | TypeScript              | strict            |
@@ -338,7 +338,7 @@ from the existing report. Only Steps 1, 3, 5, 6, and 7 run — reducing API cost
 
 ### v0.3.0 (develop)
 
-- **Multi-LLM support**: new `llm.ts` abstraction layer routes research to Claude (`claude-sonnet-4-6` + `web_search` tool) or Gemini (`gemini-2.0-flash-lite` + `googleSearch` grounding), selectable per run
+- **Multi-LLM support**: new `llm.ts` abstraction layer routes research to Claude (`claude-sonnet-4-6` + `web_search` tool) or Gemini (`gemini-2.5-flash-lite` + `googleSearch` grounding), selectable per run
 - **LLM selector**: provider dropdown (Claude / Gemini) in the research confirm modal; defaults to Claude
 - **LLM badge**: small `✦ Claude` or `◆ Gemini` badge shown in the report header
 - **Provider persistence**: `report_json.llm_provider` and `report_json.llm_model` recorded for every report; update research automatically re-uses the same provider

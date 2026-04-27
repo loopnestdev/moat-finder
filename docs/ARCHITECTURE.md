@@ -40,7 +40,7 @@ Browser / Mobile
                                   │
                               ┌───┴──────────────------┐
                               │   Google Gemini        │
-                              │ gemini-2.0-flash-lite  │
+                              │ gemini-2.5-flash-lite  │
                               │  + googleSearch        │
                               └──────────────────------┘
 ```
