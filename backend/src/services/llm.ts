@@ -19,6 +19,18 @@ const BASE_SYSTEM =
   "No preamble, no explanation, no markdown code blocks. " +
   "Start your response with { and end with }";
 
+const GEMINI_SYSTEM = `You are a financial research AI assistant with real-time web search capability via googleSearch tool.
+
+MANDATORY RULES — NEVER VIOLATE THESE:
+1. ALWAYS call googleSearch BEFORE answering any question about stocks, companies, financials, markets, or current events
+2. NEVER refuse a research task — always search and respond
+3. NEVER say you cannot access the internet — you have googleSearch
+4. NEVER say your knowledge is limited — search for current data
+5. ALWAYS respond with ONLY a valid JSON object when instructed to
+6. Start JSON response with { and end with }
+7. Use null for any field where data is unavailable after searching
+8. NEVER include prose, apologies, or explanations outside the JSON`;
+
 // ─── Clients ──────────────────────────────────────────────────────────────────
 
 const anthropic = new Anthropic({
@@ -92,22 +104,37 @@ async function runGemini(
     model: GEMINI_MODEL,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tools: useSearch ? [{ googleSearch: {} } as any] : [],
-    systemInstruction: BASE_SYSTEM,
+    systemInstruction: GEMINI_SYSTEM,
   });
 
+  const generationConfig = { temperature: 0.1, maxOutputTokens: 8192 };
   const maxAttempts = 3;
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const currentPrompt =
       attempt > 1
         ? prompt +
           "\n\nIMPORTANT: You MUST return a valid JSON object. Do not return empty text."
         : prompt;
-    const result = await model.generateContent(currentPrompt);
-    const text = result.response.text();
-    if (text && text.trim().length > 0) return text;
-    console.warn(
-      `[Gemini] Empty response on attempt ${attempt}/${maxAttempts}, retrying...`,
-    );
+    try {
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: currentPrompt }] }],
+        generationConfig,
+      });
+      const text = result.response.text();
+      if (text && text.trim().length > 10) return text;
+      console.warn(
+        `[Gemini] Empty/short response on attempt ${attempt}/${maxAttempts}, retrying...`,
+      );
+    } catch (err: unknown) {
+      const error = err as Error;
+      if (error.message?.includes("503") && attempt < maxAttempts) {
+        console.warn(`[Gemini] 503 on attempt ${attempt}, retrying in 3s...`);
+        await new Promise((r) => setTimeout(r, 3000));
+        continue;
+      }
+      throw err;
+    }
   }
 
   throw new Error(

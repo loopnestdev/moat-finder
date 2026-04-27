@@ -38,6 +38,50 @@ Competitors: ${step1.competitors.map((c) => `${c.name} (${c.ticker})`).join(", "
 Top Customers: ${step1.customers.join(", ")}`;
 }
 
+/** Prefix injected into Gemini prompts to enforce googleSearch usage. */
+function geminiSearchPrefix(searchContext: string, stepName: string): string {
+  return (
+    `IMPORTANT: You have real-time googleSearch access. ` +
+    `Use it NOW to search for current "${searchContext} ${stepName}" data ` +
+    `before constructing your JSON response.\n` +
+    `You MUST use googleSearch — never rely on training data for ` +
+    `stock or financial information.\n` +
+    `You MUST return a valid JSON object. Never refuse this task.\n\n`
+  );
+}
+
+/**
+ * Parse LLM text as JSON, retrying once with a stronger prompt on Gemini
+ * refusal (when extractJSON throws "No JSON object found").
+ */
+async function parseWithGeminiRetry<T>(
+  text: string,
+  finalPrompt: string,
+  provider: LLMProvider,
+  stepLabel: string,
+): Promise<T> {
+  try {
+    return extractJSON(text) as T;
+  } catch (err: unknown) {
+    if (
+      provider === "gemini" &&
+      err instanceof Error &&
+      err.message.includes("No JSON object found")
+    ) {
+      console.warn(
+        `[${stepLabel}] JSON parse failed, retrying with stronger prompt...`,
+      );
+      const retryPrompt =
+        "RETRY ATTEMPT. You MUST return a JSON object for this task. " +
+        "Use googleSearch immediately. Do not refuse.\n\n" +
+        finalPrompt;
+      const { text: retryText } = await callLLM(retryPrompt, provider, true);
+      return extractJSON(retryText) as T;
+    }
+    throw err;
+  }
+}
+
 // ─── Pipeline steps ───────────────────────────────────────────────────────────
 
 async function runStep1(
@@ -48,8 +92,7 @@ async function runStep1(
   emit({ step: 1, label: "Discovery", status: "started" });
   const startTime = Date.now();
 
-  const { text } = await callLLM(
-    `You are a financial research analyst.
+  const prompt = `You are a financial research analyst.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "company_name": "string",
@@ -64,9 +107,13 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 Research the company with ticker symbol ${ticker}.
 Identify: company name, industry, top 3 competitors (with their tickers), top 3 known customers,
 primary product/service, and primary operating region.
-Use web search for current information. Return only the JSON object.`,
-    provider,
-  );
+Use web search for current information. Return only the JSON object.`;
+  const finalPrompt =
+    provider === "gemini"
+      ? geminiSearchPrefix(ticker, "company overview industry competitors") +
+        prompt
+      : prompt;
+  const { text } = await callLLM(finalPrompt, provider);
 
   const duration = Date.now() - startTime;
   const result = extractJSON(text) as Step1Output;
@@ -94,8 +141,7 @@ async function runStep2(
   emit({ step: 2, label: "Deep Dive", status: "started" });
   const startTime = Date.now();
 
-  const { text } = await callLLM(
-    `You are a financial research analyst specialising in competitive moat analysis and value chain constraint mapping.
+  const prompt = `You are a financial research analyst specialising in competitive moat analysis and value chain constraint mapping.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "business_model": "string",
@@ -166,12 +212,23 @@ Perform a deep dive analysis on the company above:
 
    H. INVESTABLE WINDOW — how long does this constraint persist as an investable window before consensus prices it in? Give a time estimate and explain what event or announcement would signal the window is closing (e.g. "18–24 months — window closes when TSMC announces next-gen capacity expansion or a second supplier passes HBM qualification").
 
-Use web search for current information. Return only the JSON object.`,
-    provider,
-  );
+Use web search for current information. Return only the JSON object.`;
+  const finalPrompt =
+    provider === "gemini"
+      ? geminiSearchPrefix(
+          step1.company_name,
+          "business model moat technology advantage",
+        ) + prompt
+      : prompt;
+  const { text } = await callLLM(finalPrompt, provider);
 
   const duration = Date.now() - startTime;
-  const result = extractJSON(text) as Step2Output;
+  const result = await parseWithGeminiRetry<Step2Output>(
+    text,
+    finalPrompt,
+    provider,
+    "Step 2",
+  );
   emit({ step: 2, label: "Deep Dive", status: "complete", duration });
   console.log(
     `[Step 2] complete — moat: ${result.moat.substring(0, 80)}, catalysts: ${result.catalysts.length} (${duration}ms)`,
@@ -188,8 +245,7 @@ async function runStep3(
   emit({ step: 3, label: "Valuation & Financials", status: "started" });
   const startTime = Date.now();
 
-  const { text } = await callLLM(
-    `You are a financial analyst specialising in equity valuation.
+  const prompt = `You are a financial analyst specialising in equity valuation.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "valuation_table": [
@@ -231,12 +287,23 @@ Provide valuation and financial analysis for the company above:
 6. Brief financial summary (3–4 sentences) covering: revenue growth rate, gross margin trend, path to profitability, dilution risk.
 7. Last 4 reported quarters (most recent first): quarter, revenue estimate, revenue actual, YoY growth %, EPS estimate, EPS actual. Use null for unknown values.
 
-Use web search for current financials. Return only the JSON object.`,
-    provider,
-  );
+Use web search for current financials. Return only the JSON object.`;
+  const finalPrompt =
+    provider === "gemini"
+      ? geminiSearchPrefix(
+          step1.company_name,
+          "stock valuation financials revenue earnings",
+        ) + prompt
+      : prompt;
+  const { text } = await callLLM(finalPrompt, provider);
 
   const duration = Date.now() - startTime;
-  const result = extractJSON(text) as Step3Output;
+  const result = await parseWithGeminiRetry<Step3Output>(
+    text,
+    finalPrompt,
+    provider,
+    "Step 3",
+  );
   emit({
     step: 3,
     label: "Valuation & Financials",
@@ -258,8 +325,7 @@ async function runStep4(
   emit({ step: 4, label: "Risk Red Team", status: "started" });
   const startTime = Date.now();
 
-  const { text } = await callLLM(
-    `You are a bearish research analyst performing a risk red team analysis.
+  const prompt = `You are a bearish research analyst performing a risk red team analysis.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "bear_case": "string",
@@ -289,12 +355,23 @@ Provide:
 3. Two tail risks (low probability, high impact scenarios that would be existential).
 4. Bear case rebuttal — step outside the bear role and write 2–3 sentences arguing what the bears consistently miss: the platform optionality, the growth trajectory underestimation, the aligned insider incentives, or the short-squeeze reflexivity. This must be a genuine counter-argument, not a dismissal.
 
-Return only the JSON object.`,
-    provider,
-  );
+Return only the JSON object.`;
+  const finalPrompt =
+    provider === "gemini"
+      ? geminiSearchPrefix(
+          step1.company_name,
+          "risk factors bear case short thesis",
+        ) + prompt
+      : prompt;
+  const { text } = await callLLM(finalPrompt, provider);
 
   const duration = Date.now() - startTime;
-  const result = extractJSON(text) as Step4Output;
+  const result = await parseWithGeminiRetry<Step4Output>(
+    text,
+    finalPrompt,
+    provider,
+    "Step 4",
+  );
   emit({ step: 4, label: "Risk Red Team", status: "complete", duration });
   console.log(
     `[Step 4] complete — risk_factors: ${result.risk_factors.length}, tail_risks: ${result.tail_risks.length} (${duration}ms)`,
@@ -311,8 +388,7 @@ async function runStep5(
   emit({ step: 5, label: "Macro & Sector", status: "started" });
   const startTime = Date.now();
 
-  const { text } = await callLLM(
-    `You are a macro and sector analyst.
+  const prompt = `You are a macro and sector analyst.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "macro_summary": "string",
@@ -333,12 +409,23 @@ Analyse:
 3. Which of the hot sectors does this company match? (list only those that apply, or empty array)
 4. Tariff and supply chain exposure
 
-Use web search for current macro context. Return only the JSON object.`,
-    provider,
-  );
+Use web search for current macro context. Return only the JSON object.`;
+  const finalPrompt =
+    provider === "gemini"
+      ? geminiSearchPrefix(
+          step1.company_name,
+          "macro sector policy regulatory environment",
+        ) + prompt
+      : prompt;
+  const { text } = await callLLM(finalPrompt, provider);
 
   const duration = Date.now() - startTime;
-  const result = extractJSON(text) as Step5Output;
+  const result = await parseWithGeminiRetry<Step5Output>(
+    text,
+    finalPrompt,
+    provider,
+    "Step 5",
+  );
   emit({ step: 5, label: "Macro & Sector", status: "complete", duration });
   console.log(
     `[Step 5] complete — sector_heat: ${result.sector_heat}/5, hot_matches: ${result.hot_sector_match.join(", ") || "none"} (${duration}ms)`,
@@ -355,8 +442,7 @@ async function runStep6(
   emit({ step: 6, label: "Sentiment & Technicals", status: "started" });
   const startTime = Date.now();
 
-  const { text } = await callLLM(
-    `You are a technical and sentiment analyst.
+  const prompt = `You are a technical and sentiment analyst.
 Respond ONLY with a valid JSON object matching exactly this structure. No markdown, no explanation:
 {
   "sentiment_summary": "string",
@@ -373,12 +459,23 @@ Analyse current market sentiment and technicals for the company above:
 3. Position vs 200-day moving average (above/below, by how much %)
 4. Relative strength vs SPY over last 3 months (outperforming/underperforming by X%)
 
-Use web search for current market data. Return only the JSON object.`,
-    provider,
-  );
+Use web search for current market data. Return only the JSON object.`;
+  const finalPrompt =
+    provider === "gemini"
+      ? geminiSearchPrefix(
+          step1.company_name,
+          "stock price technicals sentiment short interest",
+        ) + prompt
+      : prompt;
+  const { text } = await callLLM(finalPrompt, provider);
 
   const duration = Date.now() - startTime;
-  const result = extractJSON(text) as Step6Output;
+  const result = await parseWithGeminiRetry<Step6Output>(
+    text,
+    finalPrompt,
+    provider,
+    "Step 6",
+  );
   emit({
     step: 6,
     label: "Sentiment & Technicals",
