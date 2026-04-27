@@ -531,6 +531,7 @@ ${contextSummary}
 
 Return only the JSON object with "report" and "diagram" keys.`,
     provider,
+    false,
   );
 
   const duration = Date.now() - startTime;
@@ -557,7 +558,7 @@ Return only the JSON object with "report" and "diagram" keys.`,
       .delete()
       .eq("ticker_symbol", ticker)
       .eq("step_number", 7);
-    throw new Error(`Synthesis failed: ${message}`);
+    throw new Error(`Synthesis failed (provider: ${provider}): ${message}`);
   }
 
   // Store raw pipeline context for auditability

@@ -83,16 +83,36 @@ async function runClaude(prompt: string): Promise<string> {
 
 // ─── Gemini call with Google Search grounding ─────────────────────────────────
 
-async function runGemini(prompt: string): Promise<string> {
+async function runGemini(
+  prompt: string,
+  useSearch: boolean = true,
+): Promise<string> {
   const client = getGeminiClient();
   const model = client.getGenerativeModel({
     model: GEMINI_MODEL,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    tools: [{ googleSearch: {} } as any],
+    tools: useSearch ? [{ googleSearch: {} } as any] : [],
     systemInstruction: BASE_SYSTEM,
   });
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const currentPrompt =
+      attempt > 1
+        ? prompt +
+          "\n\nIMPORTANT: You MUST return a valid JSON object. Do not return empty text."
+        : prompt;
+    const result = await model.generateContent(currentPrompt);
+    const text = result.response.text();
+    if (text && text.trim().length > 0) return text;
+    console.warn(
+      `[Gemini] Empty response on attempt ${attempt}/${maxAttempts}, retrying...`,
+    );
+  }
+
+  throw new Error(
+    `Gemini returned empty response after ${maxAttempts} attempts`,
+  );
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -100,6 +120,7 @@ async function runGemini(prompt: string): Promise<string> {
 export async function callLLM(
   prompt: string,
   provider?: LLMProvider,
+  useSearch: boolean = true,
 ): Promise<LLMResponse> {
   const resolvedProvider: LLMProvider =
     provider ??
@@ -107,7 +128,7 @@ export async function callLLM(
     "claude";
 
   if (resolvedProvider === "gemini") {
-    const text = await runGemini(prompt);
+    const text = await runGemini(prompt, useSearch);
     return { text, provider: resolvedProvider, model: GEMINI_MODEL };
   }
 
@@ -129,7 +150,7 @@ export function extractJSON(text: string): unknown {
   const end = stripped.lastIndexOf("}");
   if (start === -1 || end === -1) {
     throw new Error(
-      `No JSON object found in LLM response. First 200 chars: ${text.substring(0, 200)}`,
+      `No JSON object found in LLM response. Response length: ${text.length}. First 500 chars: ${text.substring(0, 500)}`,
     );
   }
   return JSON.parse(stripped.substring(start, end + 1));
