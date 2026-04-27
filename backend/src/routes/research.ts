@@ -458,6 +458,12 @@ router.put(
       }
 
       const { report, diagram, runId } = pipelineResult;
+      console.log(
+        `[research PUT] UPDATE SYNTHESIS COMPLETE — keys: ${Object.keys(report).join(", ")}`,
+      );
+      console.log(
+        `[research PUT] UPDATE score: ${String(report.score)}, ${typeof report.score}`,
+      );
       const rawNewScore = report.score;
       const newScore =
         typeof rawNewScore === "number"
@@ -487,6 +493,7 @@ router.put(
             diagram_json: diagram as unknown as Json,
             version: newVersion,
             researched_by: req.user?.id ?? null,
+            updated_at: new Date().toISOString(),
           })
           .eq("id", existingReport.id);
 
@@ -506,6 +513,7 @@ router.put(
           return;
         }
 
+        console.log(`[research PUT] INSERTING version: ${newVersion}`);
         const { error: versionsErr } = await adminClient
           .from("research_versions")
           .insert({
@@ -536,9 +544,9 @@ router.put(
         }
 
         // Verify the save landed correctly
-        const { data: verified, error: verifyErr } = await adminClient
+        const { data: saved, error: verifyErr } = await adminClient
           .from("research_reports")
-          .select("version, updated_at")
+          .select("version, score, updated_at")
           .eq("ticker_symbol", normalised)
           .single();
         if (verifyErr) {
@@ -547,7 +555,7 @@ router.put(
             JSON.stringify(verifyErr),
           );
         } else {
-          console.log("[research PUT] VERIFIED SAVED:", verified);
+          console.log("[research PUT] CONFIRMED SAVED:", saved);
         }
       } catch (saveErr) {
         console.error("[research PUT] SAVE EXCEPTION:", saveErr);
