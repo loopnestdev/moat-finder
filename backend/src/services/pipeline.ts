@@ -19,6 +19,7 @@ import {
   loadCheckpoints,
   clearCheckpoints,
 } from "./checkpoint";
+import { adminClient } from "./supabase";
 
 const HOT_SECTORS = [
   "Energy",
@@ -45,6 +46,24 @@ function createAnthropicClient(): Anthropic {
 function extractJson(text: string): string {
   const match = /```(?:json)?\s*([\s\S]+?)\s*```/.exec(text);
   return match ? (match[1] ?? text.trim()) : text.trim();
+}
+
+/**
+ * Robust JSON extractor for Step 7 synthesis responses.
+ * Strips markdown fences, then finds the outermost { } pair.
+ * Throws if no JSON object is found — caller must catch.
+ */
+function extractJSON(text: string): string {
+  const stripped = text
+    .replace(/```json\n?/g, "")
+    .replace(/```\n?/g, "")
+    .trim();
+  const start = stripped.indexOf("{");
+  const end = stripped.lastIndexOf("}");
+  if (start === -1 || end === -1) {
+    throw new Error("No JSON object found in synthesis response");
+  }
+  return stripped.substring(start, end + 1);
 }
 
 /** Format Step 1 output as a cacheable context string passed to steps 2-6. */
@@ -502,7 +521,13 @@ async function runStep7(
 ): Promise<PipelineResult> {
   const { step1, step2, step3, step4, step5, step6 } = ctx;
 
-  const system = `You are a senior investment analyst synthesising a complete research report.
+  const system = `You must respond with ONLY a valid JSON object.
+No preamble, no explanation, no markdown code blocks,
+no text before or after the JSON.
+Start your response with { and end with }
+Any other format will cause a system failure.
+
+You are a senior investment analyst synthesising a complete research report.
 Respond ONLY with a valid JSON object with exactly two keys: "report" and "diagram".
 No markdown, no explanation, raw JSON only.
 
@@ -625,10 +650,34 @@ RS vs SPY: ${step6.rs_vs_spy ?? ""}`;
   );
   const duration7 = Date.now() - startTime7;
 
-  const parsed = JSON.parse(extractJson(text)) as {
-    report: ReportJson;
-    diagram: DiagramJson;
-  };
+  let parsed: { report: ReportJson; diagram: DiagramJson };
+  try {
+    const jsonStr = extractJSON(text);
+    parsed = JSON.parse(jsonStr) as {
+      report: ReportJson;
+      diagram: DiagramJson;
+    };
+  } catch (parseError) {
+    const message =
+      parseError instanceof Error ? parseError.message : "JSON parse failed";
+    console.error("[Step 7] JSON parse failed:", message);
+    console.error(
+      "[Step 7] Raw response first 500 chars:",
+      text.substring(0, 500),
+    );
+    emit({
+      step: 0,
+      label: "Error",
+      status: "error",
+      data: { message: `Synthesis failed: ${message}` },
+    });
+    await adminClient
+      .from("research_checkpoints")
+      .delete()
+      .eq("ticker_symbol", ticker)
+      .eq("step_number", 7);
+    throw new Error(`Synthesis failed: ${message}`);
+  }
 
   // Store raw pipeline context for auditability
   parsed.report.pipeline_steps_raw = {
