@@ -11,8 +11,8 @@ export interface LLMResponse {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-5";
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-6";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
 
 const BASE_SYSTEM =
   "You must respond with ONLY a valid JSON object when asked for JSON. " +
