@@ -124,7 +124,7 @@ CREATE INDEX idx_research_report_gin ON public.research_reports USING GIN (repor
   "sentiment_summary": "string",
   "pipeline_steps_raw": {},
   "llm_provider": "claude | gemini",
-  "llm_model": "claude-sonnet-4-6 | gemini-2.0-flash"
+  "llm_model": "claude-sonnet-4-6 | gemini-2.0-flash-lite"
 }
 ```
 
