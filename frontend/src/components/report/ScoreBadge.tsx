@@ -9,7 +9,7 @@ const sizeConfig = {
   lg: { px: 80, r: 32, sw: 6, textSize: "text-xl", subSize: "text-xs" },
 };
 
-const MONO = '"Source Code Pro", "JetBrains Mono", monospace';
+const MONO = '"JetBrains Mono", monospace';
 
 export default function ScoreBadge({ score, size = "md" }: ScoreBadgeProps) {
   const cfg = sizeConfig[size];

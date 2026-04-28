@@ -28,9 +28,9 @@
   --color-ruby: #ea2261;
   --color-magenta: #f96bee;
 
-  --font-display: "Inter", "Helvetica Neue", sans-serif;
-  --font-body: "Inter", "Helvetica Neue", sans-serif;
-  --font-mono: "Source Code Pro", "JetBrains Mono", monospace;
+  --font-display: "Plus Jakarta Sans", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
 html,
@@ -39,7 +39,20 @@ body,
   background-color: #0d1b38;
   color: #ffffff;
   min-height: 100vh;
-  font-family: "Inter", "Helvetica Neue", sans-serif;
+  font-family: "Plus Jakarta Sans", sans-serif;
   font-weight: 300;
+  font-optical-sizing: auto;
   font-feature-settings: "ss01";
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 700;
+}
+
+h4,
+h5,
+h6 {
+  font-weight: 600;
 }

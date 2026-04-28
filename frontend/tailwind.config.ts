@@ -21,20 +21,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        display: [
-          "Inter",
-          "Helvetica Neue",
-          "Helvetica",
-          "Arial",
-          "sans-serif",
-        ],
-        body: ["Inter", "Helvetica Neue", "Helvetica", "Arial", "sans-serif"],
-        mono: [
-          '"Source Code Pro"',
-          '"JetBrains Mono"',
-          "ui-monospace",
-          "monospace",
-        ],
+        display: ['"Plus Jakarta Sans"', "sans-serif"],
+        body: ['"Plus Jakarta Sans"', "sans-serif"],
+        mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
       },
       colors: {
         // Score colours — semantic, keep exactly
