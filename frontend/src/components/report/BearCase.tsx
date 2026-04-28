@@ -5,7 +5,6 @@ interface BearCaseProps {
 
 /** Split bear case narrative into numbered points on sentence boundaries */
 function splitToPoints(text: string): string[] {
-  // Split on ". " followed by a capital letter, or on numbered patterns like "1." / "2."
   const byNumber = text.split(/\s*\d+\.\s+/).filter(Boolean);
   if (byNumber.length >= 2) return byNumber;
   const bySentence = text.split(/\.\s+(?=[A-Z])/).filter(Boolean);
@@ -31,27 +30,30 @@ function WarningIcon() {
   );
 }
 
-export default function BearCase({ bearCase, riskFactors = [] }: BearCaseProps) {
-  const points = splitToPoints(bearCase ?? '');
+export default function BearCase({
+  bearCase,
+  riskFactors = [],
+}: BearCaseProps) {
+  const points = splitToPoints(bearCase ?? "");
 
   return (
-    <div className="rounded-xl border border-red-900/50 bg-red-950/20 overflow-hidden">
+    <div className="rounded border-l-4 border-red-500 bg-[#0a0f1e] overflow-hidden">
       {/* Header */}
-      <div className="border-l-4 border-red-500 px-5 py-4 bg-red-950/30">
-        <p className="font-mono text-xs text-red-400 uppercase tracking-[0.2em]">
+      <div className="px-5 py-4">
+        <p className="font-mono text-xs text-red-400 uppercase tracking-widest">
           Bear Case
         </p>
       </div>
 
       {/* Numbered bear case points */}
-      <div className="px-5 py-4 space-y-4 border-b border-red-900/30">
+      <div className="px-5 pb-4 space-y-4 border-b border-white/5">
         {points.map((point, i) => (
           <div key={i} className="flex gap-4">
-            <span className="font-mono text-xl font-bold text-red-700/60 flex-shrink-0 leading-tight w-7">
-              {String(i + 1).padStart(2, '0')}
+            <span className="font-mono text-xl font-bold text-white/20 flex-shrink-0 leading-tight w-7">
+              {String(i + 1).padStart(2, "0")}
             </span>
-            <p className="font-body text-sm text-cream-muted leading-relaxed">
-              {point.replace(/\.$/, '')}.
+            <p className="font-body text-sm text-slate-300 leading-relaxed">
+              {point.replace(/\.$/, "")}.
             </p>
           </div>
         ))}
@@ -60,13 +62,18 @@ export default function BearCase({ bearCase, riskFactors = [] }: BearCaseProps) 
       {/* Risk factors */}
       {riskFactors.length > 0 && (
         <div className="px-5 py-4 space-y-3">
-          <p className="font-mono text-xs text-red-400/70 uppercase tracking-widest mb-3">
-            Risk Factors
+          <p className="font-mono text-xs text-red-400 uppercase tracking-widest mb-3">
+            Key Risks
           </p>
           {riskFactors.map((risk, i) => (
-            <div key={i} className="flex gap-3">
+            <div
+              key={i}
+              className="flex gap-3 bg-[#111827] border-l-2 border-red-500 rounded-r px-3 py-2.5"
+            >
               <WarningIcon />
-              <p className="font-body text-sm text-cream-muted leading-relaxed">{risk}</p>
+              <p className="font-body text-sm text-slate-300 leading-relaxed">
+                {risk}
+              </p>
             </div>
           ))}
         </div>
