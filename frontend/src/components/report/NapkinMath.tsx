@@ -26,21 +26,21 @@ export default function NapkinMath({ data }: NapkinMathProps) {
         Napkin Math
       </p>
 
-      {/* Hero row: target price + upside */}
-      <div className="flex items-end gap-4 mb-6">
-        <div className="flex-1 min-w-0">
+      {/* Hero: target price + upside stacked vertically */}
+      <div className="flex flex-col gap-2 mb-6">
+        <div>
           <p className="font-mono text-xs text-cream-subtle mb-1">
             Target Price
           </p>
-          <p className="font-mono text-2xl sm:text-3xl font-bold text-gold leading-none">
+          <p className="font-mono text-3xl font-bold text-gold leading-none">
             ${data.target_price}
           </p>
         </div>
-        <div className="flex-1 min-w-0 overflow-hidden">
+        <div>
           <p className="font-mono text-xs text-cream-subtle mb-1">Upside</p>
           <p
             className={[
-              "font-mono text-2xl sm:text-3xl lg:text-4xl font-bold leading-none break-all",
+              "font-mono text-3xl font-bold leading-none",
               upsidePositive ? "text-emerald-400" : "text-red-400",
             ].join(" ")}
           >
