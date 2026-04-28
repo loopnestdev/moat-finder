@@ -1,255 +1,322 @@
-# Design System Inspired by Supabase
+# Design System Inspired by Stripe
 
 ## 1. Visual Theme & Atmosphere
 
-Supabase's website is a dark-mode-native developer platform that channels the aesthetic of a premium code editor — deep black backgrounds (`#0f0f0f`, `#171717`) with emerald green accents (`#3ecf8e`, `#00c573`) that reference the brand's open-source, PostgreSQL-green identity. The design system feels like it was born in a terminal window and evolved into a sophisticated marketing surface without losing its developer soul.
+Stripe's website is the gold standard of fintech design -- a system that manages to feel simultaneously technical and luxurious, precise and warm. The page opens on a clean white canvas (`#ffffff`) with deep navy headings (`#061b31`) and a signature purple (`#533afd`) that functions as both brand anchor and interactive accent. This isn't the cold, clinical purple of enterprise software; it's a rich, saturated violet that reads as confident and premium. The overall impression is of a financial institution redesigned by a world-class type foundry.
 
-The typography is built on "Circular" — a geometric sans-serif with rounded terminals that softens the technical edge. At 72px with a 1.00 line-height, the hero text is compressed to its absolute minimum vertical space, creating dense, impactful statements that waste nothing. The monospace companion (Source Code Pro) appears sparingly for uppercase technical labels with 1.2px letter-spacing, creating the "developer console" markers that connect the marketing site to the product experience.
+The custom `sohne-var` variable font is the defining element of Stripe's visual identity. Every text element enables the OpenType `"ss01"` stylistic set, which modifies character shapes for a distinctly geometric, modern feel. At display sizes (48px-56px), sohne-var runs at weight 300 -- an extraordinarily light weight for headlines that creates an ethereal, almost whispered authority. This is the opposite of the "bold hero headline" convention; Stripe's headlines feel like they don't need to shout. The negative letter-spacing (-1.4px at 56px, -0.96px at 48px) tightens the text into dense, engineered blocks. At smaller sizes, the system also uses weight 300 with proportionally reduced tracking, and tabular numerals via `"tnum"` for financial data display.
 
-What makes Supabase distinctive is its sophisticated HSL-based color token system. Rather than flat hex values, Supabase uses HSL with alpha channels for nearly every color (`--colors-crimson4`, `--colors-purple5`, `--colors-slateA12`), enabling a nuanced layering system where colors interact through transparency. This creates depth through translucency — borders at `rgba(46, 46, 46)`, surfaces at `rgba(41, 41, 41, 0.84)`, and accents at partial opacity all blend with the dark background to create a rich, dimensional palette from minimal color ingredients.
-
-The green accent (`#3ecf8e`) appears selectively — in the Supabase logo, in link colors (`#00c573`), and in border highlights (`rgba(62, 207, 142, 0.3)`) — always as a signal of "this is Supabase" rather than as a decorative element. Pill-shaped buttons (9999px radius) for primary CTAs contrast with standard 6px radius for secondary elements, creating a clear visual hierarchy of importance.
+What truly distinguishes Stripe is its shadow system. Rather than the flat or single-layer approach of most sites, Stripe uses multi-layer, blue-tinted shadows: the signature `rgba(50,50,93,0.25)` combined with `rgba(0,0,0,0.1)` creates shadows with a cool, almost atmospheric depth -- like elements are floating in a twilight sky. The blue-gray undertone of the primary shadow color (50,50,93) ties directly to the navy-purple brand palette, making even elevation feel on-brand.
 
 **Key Characteristics:**
-- Dark-mode-native: near-black backgrounds (`#0f0f0f`, `#171717`) — never pure black
-- Emerald green brand accent (`#3ecf8e`, `#00c573`) used sparingly as identity marker
-- Circular font — geometric sans-serif with rounded terminals
-- Source Code Pro for uppercase technical labels (1.2px letter-spacing)
-- HSL-based color token system with alpha channels for translucent layering
-- Pill buttons (9999px) for primary CTAs, 6px radius for secondary
-- Neutral gray scale from `#171717` through `#898989` to `#fafafa`
-- Border system using dark grays (`#2e2e2e`, `#363636`, `#393939`)
-- Minimal shadows — depth through border contrast and transparency
-- Radix color primitives (crimson, purple, violet, indigo, yellow, tomato, orange, slate)
+- sohne-var with OpenType `"ss01"` on all text -- a custom stylistic set that defines the brand's letterforms
+- Weight 300 as the signature headline weight -- light, confident, anti-convention
+- Negative letter-spacing at display sizes (-1.4px at 56px, progressive relaxation downward)
+- Blue-tinted multi-layer shadows using `rgba(50,50,93,0.25)` -- elevation that feels brand-colored
+- Deep navy (`#061b31`) headings instead of black -- warm, premium, financial-grade
+- Conservative border-radius (4px-8px) -- nothing pill-shaped, nothing harsh
+- Ruby (`#ea2261`) and magenta (`#f96bee`) accents for gradient and decorative elements
+- `SourceCodePro` as the monospace companion for code and technical labels
 
 ## 2. Color Palette & Roles
 
-### Brand
-- **Supabase Green** (`#3ecf8e`): Primary brand color, logo, accent borders
-- **Green Link** (`#00c573`): Interactive green for links and actions
-- **Green Border** (`rgba(62, 207, 142, 0.3)`): Subtle green border accent
+### Primary
+- **Stripe Purple** (`#533afd`): Primary brand color, CTA backgrounds, link text, interactive highlights. A saturated blue-violet that anchors the entire system.
+- **Deep Navy** (`#061b31`): `--hds-color-heading-solid`. Primary heading color. Not black, not gray -- a very dark blue that adds warmth and depth to text.
+- **Pure White** (`#ffffff`): Page background, card surfaces, button text on dark backgrounds.
 
-### Neutral Scale (Dark Mode)
-- **Near Black** (`#0f0f0f`): Primary button background, deepest surface
-- **Dark** (`#171717`): Page background, primary canvas
-- **Dark Border** (`#242424`): Horizontal rule, section dividers
-- **Border Dark** (`#2e2e2e`): Card borders, tab borders
-- **Mid Border** (`#363636`): Button borders, dividers
-- **Border Light** (`#393939`): Secondary borders
-- **Charcoal** (`#434343`): Tertiary borders, dark accents
-- **Dark Gray** (`#4d4d4d`): Heavy secondary text
-- **Mid Gray** (`#898989`): Muted text, link color
-- **Light Gray** (`#b4b4b4`): Secondary link text
-- **Near White** (`#efefef`): Light border, subtle surface
-- **Off White** (`#fafafa`): Primary text, button text
+### Brand & Dark
+- **Brand Dark** (`#1c1e54`): `--hds-color-util-brand-900`. Deep indigo for dark sections, footer backgrounds, and immersive brand moments.
+- **Dark Navy** (`#0d253d`): `--hds-color-core-neutral-975`. The darkest neutral -- almost-black with a blue undertone for maximum depth without harshness.
 
-### Radix Color Tokens (HSL-based)
-- **Slate Scale**: `--colors-slate5` through `--colors-slateA12` — neutral progression
-- **Purple**: `--colors-purple4`, `--colors-purple5`, `--colors-purpleA7` — accent spectrum
-- **Violet**: `--colors-violet10` (`hsl(251, 63.2%, 63.2%)`) — vibrant accent
-- **Crimson**: `--colors-crimson4`, `--colors-crimsonA9` — warm accent / alert
-- **Indigo**: `--colors-indigoA2` — subtle blue wash
-- **Yellow**: `--colors-yellowA7` — attention/warning
-- **Tomato**: `--colors-tomatoA4` — error accent
-- **Orange**: `--colors-orange6` — warm accent
+### Accent Colors
+- **Ruby** (`#ea2261`): `--hds-color-accentColorMode-ruby-icon-solid`. Warm red-pink for icons, alerts, and accent elements.
+- **Magenta** (`#f96bee`): `--hds-color-accentColorMode-magenta-icon-gradientMiddle`. Vivid pink-purple for gradients and decorative highlights.
+- **Magenta Light** (`#ffd7ef`): `--hds-color-util-accent-magenta-100`. Tinted surface for magenta-themed cards and badges.
 
-### Surface & Overlay
-- **Glass Dark** (`rgba(41, 41, 41, 0.84)`): Translucent dark overlay
-- **Slate Alpha** (`hsla(210, 87.8%, 16.1%, 0.031)`): Ultra-subtle blue wash
-- **Fixed Scale Alpha** (`hsla(200, 90.3%, 93.4%, 0.109)`): Light frost overlay
+### Interactive
+- **Primary Purple** (`#533afd`): Primary link color, active states, selected elements.
+- **Purple Hover** (`#4434d4`): Darker purple for hover states on primary elements.
+- **Purple Deep** (`#2e2b8c`): `--hds-color-button-ui-iconHover`. Dark purple for icon hover states.
+- **Purple Light** (`#b9b9f9`): `--hds-color-action-bg-subduedHover`. Soft lavender for subdued hover backgrounds.
+- **Purple Mid** (`#665efd`): `--hds-color-input-selector-text-range`. Range selector and input highlight color.
 
-### Shadows
-- Supabase uses **almost no shadows** in its dark theme. Depth is created through border contrast and surface color differences rather than box-shadows. Focus states use `rgba(0, 0, 0, 0.1) 0px 4px 12px` — minimal, functional.
+### Neutral Scale
+- **Heading** (`#061b31`): Primary headings, nav text, strong labels.
+- **Label** (`#273951`): `--hds-color-input-text-label`. Form labels, secondary headings.
+- **Body** (`#64748d`): Secondary text, descriptions, captions.
+- **Success Green** (`#15be53`): Status badges, success indicators (with 0.2-0.4 alpha for backgrounds/borders).
+- **Success Text** (`#108c3d`): Success badge text color.
+- **Lemon** (`#9b6829`): `--hds-color-core-lemon-500`. Warning and highlight accent.
+
+### Surface & Borders
+- **Border Default** (`#e5edf5`): Standard border color for cards, dividers, and containers.
+- **Border Purple** (`#b9b9f9`): Active/selected state borders on buttons and inputs.
+- **Border Soft Purple** (`#d6d9fc`): Subtle purple-tinted borders for secondary elements.
+- **Border Magenta** (`#ffd7ef`): Pink-tinted borders for magenta-themed elements.
+- **Border Dashed** (`#362baa`): Dashed borders for drop zones and placeholder elements.
+
+### Shadow Colors
+- **Shadow Blue** (`rgba(50,50,93,0.25)`): The signature -- blue-tinted primary shadow color.
+- **Shadow Dark Blue** (`rgba(3,3,39,0.25)`): Deeper blue shadow for elevated elements.
+- **Shadow Black** (`rgba(0,0,0,0.1)`): Secondary shadow layer for depth reinforcement.
+- **Shadow Ambient** (`rgba(23,23,23,0.08)`): Soft ambient shadow for subtle elevation.
+- **Shadow Soft** (`rgba(23,23,23,0.06)`): Minimal ambient shadow for light lift.
 
 ## 3. Typography Rules
 
-### Font Families
-- **Primary**: `Circular`, with fallbacks: `custom-font, Helvetica Neue, Helvetica, Arial`
-- **Monospace**: `Source Code Pro`, with fallbacks: `Office Code Pro, Menlo`
+### Font Family
+- **Primary**: `sohne-var`, with fallback: `SF Pro Display`
+- **Monospace**: `SourceCodePro`, with fallback: `SFMono-Regular`
+- **OpenType Features**: `"ss01"` enabled globally on all sohne-var text; `"tnum"` for tabular numbers on financial data and captions.
 
 ### Hierarchy
 
-| Role | Font | Size | Weight | Line Height | Letter Spacing | Notes |
-|------|------|------|--------|-------------|----------------|-------|
-| Display Hero | Circular | 72px (4.50rem) | 400 | 1.00 (tight) | normal | Maximum density, zero waste |
-| Section Heading | Circular | 36px (2.25rem) | 400 | 1.25 (tight) | normal | Feature section titles |
-| Card Title | Circular | 24px (1.50rem) | 400 | 1.33 | -0.16px | Slight negative tracking |
-| Sub-heading | Circular | 18px (1.13rem) | 400 | 1.56 | normal | Secondary headings |
-| Body | Circular | 16px (1.00rem) | 400 | 1.50 | normal | Standard body text |
-| Nav Link | Circular | 14px (0.88rem) | 500 | 1.00–1.43 | normal | Navigation items |
-| Button | Circular | 14px (0.88rem) | 500 | 1.14 (tight) | normal | Button labels |
-| Caption | Circular | 14px (0.88rem) | 400–500 | 1.43 | normal | Metadata, tags |
-| Small | Circular | 12px (0.75rem) | 400 | 1.33 | normal | Fine print, footer links |
-| Code Label | Source Code Pro | 12px (0.75rem) | 400 | 1.33 | 1.2px | `text-transform: uppercase` |
+| Role | Font | Size | Weight | Line Height | Letter Spacing | Features | Notes |
+|------|------|------|--------|-------------|----------------|----------|-------|
+| Display Hero | sohne-var | 56px (3.50rem) | 300 | 1.03 (tight) | -1.4px | ss01 | Maximum size, whisper-weight authority |
+| Display Large | sohne-var | 48px (3.00rem) | 300 | 1.15 (tight) | -0.96px | ss01 | Secondary hero headlines |
+| Section Heading | sohne-var | 32px (2.00rem) | 300 | 1.10 (tight) | -0.64px | ss01 | Feature section titles |
+| Sub-heading Large | sohne-var | 26px (1.63rem) | 300 | 1.12 (tight) | -0.26px | ss01 | Card headings, sub-sections |
+| Sub-heading | sohne-var | 22px (1.38rem) | 300 | 1.10 (tight) | -0.22px | ss01 | Smaller section heads |
+| Body Large | sohne-var | 18px (1.13rem) | 300 | 1.40 | normal | ss01 | Feature descriptions, intro text |
+| Body | sohne-var | 16px (1.00rem) | 300-400 | 1.40 | normal | ss01 | Standard reading text |
+| Button | sohne-var | 16px (1.00rem) | 400 | 1.00 (tight) | normal | ss01 | Primary button text |
+| Button Small | sohne-var | 14px (0.88rem) | 400 | 1.00 (tight) | normal | ss01 | Secondary/compact buttons |
+| Link | sohne-var | 14px (0.88rem) | 400 | 1.00 (tight) | normal | ss01 | Navigation links |
+| Caption | sohne-var | 13px (0.81rem) | 400 | normal | normal | ss01 | Small labels, metadata |
+| Caption Small | sohne-var | 12px (0.75rem) | 300-400 | 1.33-1.45 | normal | ss01 | Fine print, timestamps |
+| Caption Tabular | sohne-var | 12px (0.75rem) | 300-400 | 1.33 | -0.36px | tnum | Financial data, numbers |
+| Micro | sohne-var | 10px (0.63rem) | 300 | 1.15 (tight) | 0.1px | ss01 | Tiny labels, axis markers |
+| Micro Tabular | sohne-var | 10px (0.63rem) | 300 | 1.15 (tight) | -0.3px | tnum | Chart data, small numbers |
+| Nano | sohne-var | 8px (0.50rem) | 300 | 1.07 (tight) | normal | ss01 | Smallest labels |
+| Code Body | SourceCodePro | 12px (0.75rem) | 500 | 2.00 (relaxed) | normal | -- | Code blocks, syntax |
+| Code Bold | SourceCodePro | 12px (0.75rem) | 700 | 2.00 (relaxed) | normal | -- | Bold code, keywords |
+| Code Label | SourceCodePro | 12px (0.75rem) | 500 | 2.00 (relaxed) | normal | uppercase | Technical labels |
+| Code Micro | SourceCodePro | 9px (0.56rem) | 500 | 1.00 (tight) | normal | ss01 | Tiny code annotations |
 
 ### Principles
-- **Weight restraint**: Nearly all text uses weight 400 (regular/book). Weight 500 appears only for navigation links and button labels. There is no bold (700) in the detected system — hierarchy is created through size, not weight.
-- **1.00 hero line-height**: The hero text is compressed to absolute zero leading. This is the defining typographic gesture — text that feels like a terminal command: dense, efficient, no wasted vertical space.
-- **Negative tracking on cards**: Card titles use -0.16px letter-spacing, a subtle tightening that differentiates them from body text without being obvious.
-- **Monospace as ritual**: Source Code Pro in uppercase with 1.2px letter-spacing is the "developer console" voice — used sparingly for technical labels that connect to the product experience.
-- **Geometric personality**: Circular's rounded terminals create warmth in what could otherwise be a cold, technical interface. The font is the humanizing element.
+- **Light weight as signature**: Weight 300 at display sizes is Stripe's most distinctive typographic choice. Where others use 600-700 to command attention, Stripe uses lightness as luxury -- the text is so confident it doesn't need weight to be authoritative.
+- **ss01 everywhere**: The `"ss01"` stylistic set is non-negotiable. It modifies specific glyphs (likely alternate `a`, `g`, `l` forms) to create a more geometric, contemporary feel across all sohne-var text.
+- **Two OpenType modes**: `"ss01"` for display/body text, `"tnum"` for tabular numerals in financial data. These never overlap -- a number in a paragraph uses ss01, a number in a data table uses tnum.
+- **Progressive tracking**: Letter-spacing tightens proportionally with size: -1.4px at 56px, -0.96px at 48px, -0.64px at 32px, -0.26px at 26px, normal at 16px and below.
+- **Two-weight simplicity**: Primarily 300 (body and headings) and 400 (UI/buttons). No bold (700) in the primary font -- SourceCodePro uses 500/700 for code contrast.
 
 ## 4. Component Stylings
 
 ### Buttons
 
-**Primary Pill (Dark)**
-- Background: `#0f0f0f`
-- Text: `#fafafa`
-- Padding: 8px 32px
-- Radius: 9999px (full pill)
-- Border: `1px solid #fafafa` (white border on dark)
-- Focus shadow: `rgba(0, 0, 0, 0.1) 0px 4px 12px`
-- Use: Primary CTA ("Start your project")
+**Primary Purple**
+- Background: `#533afd`
+- Text: `#ffffff`
+- Padding: 8px 16px
+- Radius: 4px
+- Font: 16px sohne-var weight 400, `"ss01"`
+- Hover: `#4434d4` background
+- Use: Primary CTA ("Start now", "Contact sales")
 
-**Secondary Pill (Dark, Muted)**
-- Background: `#0f0f0f`
-- Text: `#fafafa`
-- Padding: 8px 32px
-- Radius: 9999px
-- Border: `1px solid #2e2e2e` (dark border)
-- Opacity: 0.8
-- Use: Secondary CTA alongside primary
-
-**Ghost Button**
+**Ghost / Outlined**
 - Background: transparent
-- Text: `#fafafa`
-- Padding: 8px
-- Radius: 6px
-- Border: `1px solid transparent`
-- Use: Tertiary actions, icon buttons
+- Text: `#533afd`
+- Padding: 8px 16px
+- Radius: 4px
+- Border: `1px solid #b9b9f9`
+- Font: 16px sohne-var weight 400, `"ss01"`
+- Hover: background shifts to `rgba(83,58,253,0.05)`
+- Use: Secondary actions
+
+**Transparent Info**
+- Background: transparent
+- Text: `#2874ad`
+- Padding: 8px 16px
+- Radius: 4px
+- Border: `1px solid rgba(43,145,223,0.2)`
+- Use: Tertiary/info-level actions
+
+**Neutral Ghost**
+- Background: transparent (`rgba(255,255,255,0)`)
+- Text: `rgba(16,16,16,0.3)`
+- Padding: 8px 16px
+- Radius: 4px
+- Outline: `1px solid rgb(212,222,233)`
+- Use: Disabled or muted actions
 
 ### Cards & Containers
-- Background: dark surfaces (`#171717` or slightly lighter)
-- Border: `1px solid #2e2e2e` or `#363636`
-- Radius: 8px–16px
-- No visible shadows — borders define edges
-- Internal padding: 16px–24px
+- Background: `#ffffff`
+- Border: `1px solid #e5edf5` (standard) or `1px solid #061b31` (dark accent)
+- Radius: 4px (tight), 5px (standard), 6px (comfortable), 8px (featured)
+- Shadow (standard): `rgba(50,50,93,0.25) 0px 30px 45px -30px, rgba(0,0,0,0.1) 0px 18px 36px -18px`
+- Shadow (ambient): `rgba(23,23,23,0.08) 0px 15px 35px 0px`
+- Hover: shadow intensifies, often adding the blue-tinted layer
 
-### Tabs
-- Border: `1px solid #2e2e2e`
-- Radius: 9999px (pill tabs)
-- Active: green accent or lighter surface
-- Inactive: dark, muted
+### Badges / Tags / Pills
+**Neutral Pill**
+- Background: `#ffffff`
+- Text: `#000000`
+- Padding: 0px 6px
+- Radius: 4px
+- Border: `1px solid #f6f9fc`
+- Font: 11px weight 400
 
-### Links
-- **Green**: `#00c573` — Supabase-branded links
-- **Primary Light**: `#fafafa` — standard links on dark
-- **Secondary**: `#b4b4b4` — muted links
-- **Muted**: `#898989` — tertiary links, footer
+**Success Badge**
+- Background: `rgba(21,190,83,0.2)`
+- Text: `#108c3d`
+- Padding: 1px 6px
+- Radius: 4px
+- Border: `1px solid rgba(21,190,83,0.4)`
+- Font: 10px weight 300
+
+### Inputs & Forms
+- Border: `1px solid #e5edf5`
+- Radius: 4px
+- Focus: `1px solid #533afd` or purple ring
+- Label: `#273951`, 14px sohne-var
+- Text: `#061b31`
+- Placeholder: `#64748d`
 
 ### Navigation
-- Dark background matching page (`#171717`)
-- Supabase logo with green icon
-- Circular 14px weight 500 for nav links
-- Clean horizontal layout with product dropdown
-- Green "Start your project" CTA pill button
-- Sticky header behavior
+- Clean horizontal nav on white, sticky with blur backdrop
+- Brand logotype left-aligned
+- Links: sohne-var 14px weight 400, `#061b31` text with `"ss01"`
+- Radius: 6px on nav container
+- CTA: purple button right-aligned ("Sign in", "Start now")
+- Mobile: hamburger toggle with 6px radius
+
+### Decorative Elements
+**Dashed Borders**
+- `1px dashed #362baa` (purple) for placeholder/drop zones
+- `1px dashed #ffd7ef` (magenta) for magenta-themed decorative borders
+
+**Gradient Accents**
+- Ruby-to-magenta gradients (`#ea2261` to `#f96bee`) for hero decorations
+- Brand dark sections use `#1c1e54` backgrounds with white text
 
 ## 5. Layout Principles
 
 ### Spacing System
 - Base unit: 8px
-- Scale: 1px, 4px, 6px, 8px, 12px, 16px, 20px, 24px, 32px, 40px, 48px, 90px, 96px, 128px
-- Notable large jumps: 48px → 90px → 96px → 128px for major section spacing
+- Scale: 1px, 2px, 4px, 6px, 8px, 10px, 11px, 12px, 14px, 16px, 18px, 20px
+- Notable: The scale is dense at the small end (every 2px from 4-12), reflecting Stripe's precision-oriented UI for financial data
 
 ### Grid & Container
-- Centered content with generous max-width
-- Full-width dark sections with constrained inner content
-- Feature grids: icon-based grids with consistent card sizes
-- Logo grids for "Trusted by" sections
-- Footer: multi-column on dark background
-
-### Breakpoints
-| Name | Width | Key Changes |
-|------|-------|-------------|
-| Mobile | <600px | Single column, stacked layout |
-| Desktop | >600px | Multi-column grids, expanded layout |
-
-*Note: Supabase uses a notably minimal breakpoint system — primarily a single 600px breakpoint, suggesting a mobile-first approach with progressive enhancement.*
+- Max content width: approximately 1080px
+- Hero: centered single-column with generous padding, lightweight headlines
+- Feature sections: 2-3 column grids for feature cards
+- Full-width dark sections with `#1c1e54` background for brand immersion
+- Code/dashboard previews as contained cards with blue-tinted shadows
 
 ### Whitespace Philosophy
-- **Dramatic section spacing**: 90px–128px between major sections creates a cinematic pacing — each section is its own scene in the dark void.
-- **Dense content blocks**: Within sections, spacing is tight (16px–24px), creating concentrated information clusters.
-- **Border-defined space**: Instead of whitespace + shadows for separation, Supabase uses thin borders on dark backgrounds — separation through line, not gap.
+- **Precision spacing**: Unlike the vast emptiness of minimalist systems, Stripe uses measured, purposeful whitespace. Every gap is a deliberate typographic choice.
+- **Dense data, generous chrome**: Financial data displays (tables, charts) are tightly packed, but the UI chrome around them is generously spaced. This creates a sense of controlled density -- like a well-organized spreadsheet in a beautiful frame.
+- **Section rhythm**: White sections alternate with dark brand sections (`#1c1e54`), creating a dramatic light/dark cadence that prevents monotony without introducing arbitrary color.
 
 ### Border Radius Scale
-- Standard (6px): Ghost buttons, small elements
-- Comfortable (8px): Cards, containers
-- Medium (11px–12px): Mid-size panels
-- Large (16px): Feature cards, major containers
-- Pill (9999px): Primary buttons, tab indicators
+- Micro (1px): Fine-grained elements, subtle rounding
+- Standard (4px): Buttons, inputs, badges, cards -- the workhorse
+- Comfortable (5px): Standard card containers
+- Relaxed (6px): Navigation, larger interactive elements
+- Large (8px): Featured cards, hero elements
+- Compound: `0px 0px 6px 6px` for bottom-rounded containers (tab panels, dropdown footers)
 
 ## 6. Depth & Elevation
 
 | Level | Treatment | Use |
 |-------|-----------|-----|
-| Flat (Level 0) | No shadow, border `#2e2e2e` | Default state, most surfaces |
-| Subtle Border (Level 1) | Border `#363636` or `#393939` | Interactive elements, hover |
-| Focus (Level 2) | `rgba(0, 0, 0, 0.1) 0px 4px 12px` | Focus states only |
-| Green Accent (Level 3) | Border `rgba(62, 207, 142, 0.3)` | Brand-highlighted elements |
+| Flat (Level 0) | No shadow | Page background, inline text |
+| Ambient (Level 1) | `rgba(23,23,23,0.06) 0px 3px 6px` | Subtle card lift, hover hints |
+| Standard (Level 2) | `rgba(23,23,23,0.08) 0px 15px 35px` | Standard cards, content panels |
+| Elevated (Level 3) | `rgba(50,50,93,0.25) 0px 30px 45px -30px, rgba(0,0,0,0.1) 0px 18px 36px -18px` | Featured cards, dropdowns, popovers |
+| Deep (Level 4) | `rgba(3,3,39,0.25) 0px 14px 21px -14px, rgba(0,0,0,0.1) 0px 8px 17px -8px` | Modals, floating panels |
+| Ring (Accessibility) | `2px solid #533afd` outline | Keyboard focus ring |
 
-**Shadow Philosophy**: Supabase deliberately avoids shadows. In a dark-mode-native design, shadows are nearly invisible and serve no purpose. Instead, depth is communicated through a sophisticated border hierarchy — from `#242424` (barely visible) through `#2e2e2e` (standard) to `#393939` (prominent). The green accent border (`rgba(62, 207, 142, 0.3)`) at 30% opacity is the "elevated" state — the brand color itself becomes the depth signal.
+**Shadow Philosophy**: Stripe's shadow system is built on a principle of chromatic depth. Where most design systems use neutral gray or black shadows, Stripe's primary shadow color (`rgba(50,50,93,0.25)`) is a deep blue-gray that echoes the brand's navy palette. This creates shadows that don't just add depth -- they add brand atmosphere. The multi-layer approach pairs this blue-tinted shadow with a pure black secondary layer (`rgba(0,0,0,0.1)`) at a different offset, creating a parallax-like depth where the branded shadow sits farther from the element and the neutral shadow sits closer. The negative spread values (-30px, -18px) ensure shadows don't extend beyond the element's footprint horizontally, keeping elevation vertical and controlled.
+
+### Decorative Depth
+- Dark brand sections (`#1c1e54`) create immersive depth through background color contrast
+- Gradient overlays with ruby-to-magenta transitions for hero decorations
+- Shadow color `rgba(0,55,112,0.08)` (`--hds-color-shadow-sm-top`) for top-edge shadows on sticky elements
 
 ## 7. Do's and Don'ts
 
 ### Do
-- Use near-black backgrounds (`#0f0f0f`, `#171717`) — depth comes from the gray border hierarchy
-- Apply Supabase green (`#3ecf8e`, `#00c573`) sparingly — it's an identity marker, not a decoration
-- Use Circular at weight 400 for nearly everything — 500 only for buttons and nav
-- Set hero text to 1.00 line-height — the zero-leading is the typographic signature
-- Create depth through border color differences (`#242424` → `#2e2e2e` → `#363636`)
-- Use pill shape (9999px) exclusively for primary CTAs and tabs
-- Employ HSL-based colors with alpha for translucent layering effects
-- Use Source Code Pro uppercase labels for developer-context markers
+- Use sohne-var with `"ss01"` on every text element -- the stylistic set IS the brand
+- Use weight 300 for all headlines and body text -- lightness is the signature
+- Apply blue-tinted shadows (`rgba(50,50,93,0.25)`) for all elevated elements
+- Use `#061b31` (deep navy) for headings instead of `#000000` -- the warmth matters
+- Keep border-radius between 4px-8px -- conservative rounding is intentional
+- Use `"tnum"` for any tabular/financial number display
+- Layer shadows: blue-tinted far + neutral close for depth parallax
+- Use `#533afd` purple as the primary interactive/CTA color
 
 ### Don't
-- Don't add box-shadows — they're invisible on dark backgrounds and break the border-defined depth system
-- Don't use bold (700) text weight — the system uses 400 and 500 only
-- Don't apply green to backgrounds or large surfaces — it's for borders, links, and small accents
-- Don't use warm colors (crimson, orange) as primary design elements — they exist as semantic tokens for states
-- Don't increase hero line-height above 1.00 — the density is intentional
-- Don't use large border radius (16px+) on buttons — pills (9999px) or standard (6px), nothing in between
-- Don't lighten the background above `#171717` for primary surfaces — the darkness is structural
-- Don't forget the translucent borders — `rgba` border colors are the layering mechanism
+- Don't use weight 600-700 for sohne-var headlines -- weight 300 is the brand voice
+- Don't use large border-radius (12px+, pill shapes) on cards or buttons -- Stripe is conservative
+- Don't use neutral gray shadows -- always tint with blue (`rgba(50,50,93,...)`)
+- Don't skip `"ss01"` on any sohne-var text -- the alternate glyphs define the personality
+- Don't use pure black (`#000000`) for headings -- always `#061b31` deep navy
+- Don't use warm accent colors (orange, yellow) for interactive elements -- purple is primary
+- Don't apply positive letter-spacing at display sizes -- Stripe tracks tight
+- Don't use the magenta/ruby accents for buttons or links -- they're decorative/gradient only
 
 ## 8. Responsive Behavior
 
 ### Breakpoints
 | Name | Width | Key Changes |
 |------|-------|-------------|
-| Mobile | <600px | Single column, stacked features, condensed nav |
-| Desktop | >600px | Multi-column grids, full nav, expanded sections |
+| Mobile | <640px | Single column, reduced heading sizes, stacked cards |
+| Tablet | 640-1024px | 2-column grids, moderate padding |
+| Desktop | 1024-1280px | Full layout, 3-column feature grids |
+| Large Desktop | >1280px | Centered content with generous margins |
+
+### Touch Targets
+- Buttons use comfortable padding (8px-16px vertical)
+- Navigation links at 14px with adequate spacing
+- Badges have 6px horizontal padding minimum for tap targets
+- Mobile nav toggle with 6px radius button
 
 ### Collapsing Strategy
-- Hero: 72px → scales down proportionally
-- Feature grids: multi-column → single column stacked
-- Logo row: horizontal → wrapped grid
-- Navigation: full → hamburger
-- Section spacing: 90–128px → 48–64px
-- Buttons: inline → full-width stacked
+- Hero: 56px display -> 32px on mobile, weight 300 maintained
+- Navigation: horizontal links + CTAs -> hamburger toggle
+- Feature cards: 3-column -> 2-column -> single column stacked
+- Dark brand sections: maintain full-width treatment, reduce internal padding
+- Financial data tables: horizontal scroll on mobile
+- Section spacing: 64px+ -> 40px on mobile
+- Typography scale compresses: 56px -> 48px -> 32px hero sizes across breakpoints
+
+### Image Behavior
+- Dashboard/product screenshots maintain blue-tinted shadow at all sizes
+- Hero gradient decorations simplify on mobile
+- Code blocks maintain `SourceCodePro` treatment, may horizontally scroll
+- Card images maintain consistent 4px-6px border-radius
 
 ## 9. Agent Prompt Guide
 
 ### Quick Color Reference
-- Background: `#0f0f0f` (button), `#171717` (page)
-- Text: `#fafafa` (primary), `#b4b4b4` (secondary), `#898989` (muted)
-- Brand green: `#3ecf8e` (brand), `#00c573` (links)
-- Borders: `#242424` (subtle), `#2e2e2e` (standard), `#363636` (prominent)
-- Green border: `rgba(62, 207, 142, 0.3)` (accent)
+- Primary CTA: Stripe Purple (`#533afd`)
+- CTA Hover: Purple Dark (`#4434d4`)
+- Background: Pure White (`#ffffff`)
+- Heading text: Deep Navy (`#061b31`)
+- Body text: Slate (`#64748d`)
+- Label text: Dark Slate (`#273951`)
+- Border: Soft Blue (`#e5edf5`)
+- Link: Stripe Purple (`#533afd`)
+- Dark section: Brand Dark (`#1c1e54`)
+- Success: Green (`#15be53`)
+- Accent decorative: Ruby (`#ea2261`), Magenta (`#f96bee`)
 
 ### Example Component Prompts
-- "Create a hero section on #171717 background. Headline at 72px Circular weight 400, line-height 1.00, #fafafa text. Sub-text at 16px Circular weight 400, line-height 1.50, #b4b4b4. Pill CTA button (#0f0f0f bg, #fafafa text, 9999px radius, 8px 32px padding, 1px solid #fafafa border)."
-- "Design a feature card: #171717 background, 1px solid #2e2e2e border, 16px radius. Title at 24px Circular weight 400, letter-spacing -0.16px. Body at 14px weight 400, #898989 text."
-- "Build navigation bar: #171717 background. Circular 14px weight 500 for links, #fafafa text. Supabase logo with green icon left-aligned. Green pill CTA 'Start your project' right-aligned."
-- "Create a technical label: Source Code Pro 12px, uppercase, letter-spacing 1.2px, #898989 text."
-- "Design a framework logo grid: 6-column layout on dark, grayscale logos at 60% opacity, 1px solid #2e2e2e border between sections."
+- "Create a hero section on white background. Headline at 48px sohne-var weight 300, line-height 1.15, letter-spacing -0.96px, color #061b31, font-feature-settings 'ss01'. Subtitle at 18px weight 300, line-height 1.40, color #64748d. Purple CTA button (#533afd, 4px radius, 8px 16px padding, white text) and ghost button (transparent, 1px solid #b9b9f9, #533afd text, 4px radius)."
+- "Design a card: white background, 1px solid #e5edf5 border, 6px radius. Shadow: rgba(50,50,93,0.25) 0px 30px 45px -30px, rgba(0,0,0,0.1) 0px 18px 36px -18px. Title at 22px sohne-var weight 300, letter-spacing -0.22px, color #061b31, 'ss01'. Body at 16px weight 300, #64748d."
+- "Build a success badge: rgba(21,190,83,0.2) background, #108c3d text, 4px radius, 1px 6px padding, 10px sohne-var weight 300, border 1px solid rgba(21,190,83,0.4)."
+- "Create navigation: white sticky header with backdrop-filter blur(12px). sohne-var 14px weight 400 for links, #061b31 text, 'ss01'. Purple CTA 'Start now' right-aligned (#533afd bg, white text, 4px radius). Nav container 6px radius."
+- "Design a dark brand section: #1c1e54 background, white text. Headline 32px sohne-var weight 300, letter-spacing -0.64px, 'ss01'. Body 16px weight 300, rgba(255,255,255,0.7). Cards inside use rgba(255,255,255,0.1) border with 6px radius."
 
 ### Iteration Guide
-1. Start with #171717 background — everything is dark-mode-native
-2. Green is the brand identity marker — use it for links, logo, and accent borders only
-3. Depth comes from borders (#242424 → #2e2e2e → #363636), not shadows
-4. Weight 400 is the default for everything — 500 only for interactive elements
-5. Hero line-height of 1.00 is the signature typographic move
-6. Pill (9999px) for primary actions, 6px for secondary, 8-16px for cards
-7. HSL with alpha channels creates the sophisticated translucent layering
+1. Always enable `font-feature-settings: "ss01"` on sohne-var text -- this is the brand's typographic DNA
+2. Weight 300 is the default; use 400 only for buttons/links/navigation
+3. Shadow formula: `rgba(50,50,93,0.25) 0px Y1 B1 -S1, rgba(0,0,0,0.1) 0px Y2 B2 -S2` where Y1/B1 are larger (far shadow) and Y2/B2 are smaller (near shadow)
+4. Heading color is `#061b31` (deep navy), body is `#64748d` (slate), labels are `#273951` (dark slate)
+5. Border-radius stays in the 4px-8px range -- never use pill shapes or large rounding
+6. Use `"tnum"` for any numbers in tables, charts, or financial displays
+7. Dark sections use `#1c1e54` -- not black, not gray, but a deep branded indigo
+8. SourceCodePro for code at 12px/500 with 2.00 line-height (very generous for readability)
