@@ -11,6 +11,21 @@ function splitToPoints(text: string): string[] {
   return bySentence.length >= 2 ? bySentence : [text];
 }
 
+/** Split "Title: description" into parts; returns null if no colon found early */
+function parseRiskTitle(text: string): { title: string; body: string } | null {
+  const colonIdx = text.indexOf(":");
+  if (colonIdx > 0 && colonIdx < 80) {
+    return {
+      title: text
+        .slice(0, colonIdx)
+        .replace(/^\*+|\*+$/g, "")
+        .trim(),
+      body: text.slice(colonIdx + 1).trim(),
+    };
+  }
+  return null;
+}
+
 function WarningIcon() {
   return (
     <svg
@@ -52,7 +67,7 @@ export default function BearCase({
             <span className="font-mono text-xl font-bold text-white/20 flex-shrink-0 leading-tight w-7">
               {String(i + 1).padStart(2, "0")}
             </span>
-            <p className="font-body text-sm text-slate-300 leading-relaxed">
+            <p className="font-body text-sm text-slate-300 font-light leading-relaxed">
               {point.replace(/\.$/, "")}.
             </p>
           </div>
@@ -65,17 +80,33 @@ export default function BearCase({
           <p className="font-mono text-xs text-red-400 uppercase tracking-widest mb-3">
             Key Risks
           </p>
-          {riskFactors.map((risk, i) => (
-            <div
-              key={i}
-              className="flex gap-3 bg-[#111827] border-l-2 border-red-500 rounded-r px-3 py-2.5"
-            >
-              <WarningIcon />
-              <p className="font-body text-sm text-slate-300 leading-relaxed">
-                {risk}
-              </p>
-            </div>
-          ))}
+          {riskFactors.map((risk, i) => {
+            const parsed = parseRiskTitle(risk);
+            return (
+              <div
+                key={i}
+                className="flex gap-3 border-l-2 border-red-500 px-3 py-2.5"
+              >
+                <WarningIcon />
+                <div>
+                  {parsed ? (
+                    <>
+                      <p className="font-body text-sm text-white font-semibold leading-snug mb-0.5">
+                        {parsed.title}
+                      </p>
+                      <p className="font-body text-sm text-slate-300 font-light leading-relaxed">
+                        {parsed.body}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="font-body text-sm text-slate-300 font-light leading-relaxed">
+                      {risk}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -1,4 +1,4 @@
-import type { NapkinMath as NapkinMathType } from '../../types/report.types';
+import type { NapkinMath as NapkinMathType } from "../../types/report.types";
 
 interface NapkinMathProps {
   data: NapkinMathType;
@@ -21,37 +21,42 @@ export default function NapkinMath({ data }: NapkinMathProps) {
   const guideKey = extractGuideNumbers(data.revenue_guidance);
 
   return (
-    <div className="rounded-xl bg-navy-950 border border-navy-700 p-5 sm:p-6">
+    <div className="rounded bg-navy-950 border border-navy-700 p-5 sm:p-6 overflow-hidden">
       <p className="font-mono text-xs text-gold/60 uppercase tracking-[0.2em] mb-5">
         Napkin Math
       </p>
 
       {/* Hero row: target price + upside */}
-      <div className="flex items-end gap-6 mb-6">
-        <div>
-          <p className="font-mono text-xs text-cream-subtle mb-1">Target Price</p>
-          <p className="font-mono text-3xl font-bold text-gold leading-none">
+      <div className="flex items-end gap-4 mb-6">
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-xs text-cream-subtle mb-1">
+            Target Price
+          </p>
+          <p className="font-mono text-2xl sm:text-3xl font-bold text-gold leading-none">
             ${data.target_price}
           </p>
         </div>
-        <div>
+        <div className="flex-1 min-w-0 overflow-hidden">
           <p className="font-mono text-xs text-cream-subtle mb-1">Upside</p>
           <p
             className={[
-              'font-mono text-4xl font-bold leading-none',
-              upsidePositive ? 'text-emerald-400' : 'text-red-400',
-            ].join(' ')}
+              "font-mono text-2xl sm:text-3xl lg:text-4xl font-bold leading-none break-all",
+              upsidePositive ? "text-emerald-400" : "text-red-400",
+            ].join(" ")}
           >
-            {upsidePositive ? '+' : ''}{data.upside_percent}%
+            {upsidePositive ? "+" : ""}
+            {data.upside_percent}%
           </p>
         </div>
       </div>
 
       {/* Supporting data */}
       <div className="grid grid-cols-2 gap-4 border-t border-navy-700 pt-4">
-        {/* Fix 5: Revenue guidance — key figure prominent, full text below */}
+        {/* Revenue guidance — key figure prominent, full text below */}
         <div>
-          <p className="font-mono text-xs text-cream-subtle mb-1">Revenue Guidance</p>
+          <p className="font-mono text-xs text-cream-subtle mb-1">
+            Revenue Guidance
+          </p>
           {guideKey ? (
             <>
               <p className="font-mono text-xl font-bold text-gold leading-tight mb-1">
@@ -69,10 +74,11 @@ export default function NapkinMath({ data }: NapkinMathProps) {
         </div>
 
         <div>
-          <p className="font-mono text-xs text-cream-subtle mb-1">Comp Multiple</p>
+          <p className="font-mono text-xs text-cream-subtle mb-1">
+            Comp Multiple
+          </p>
           <p className="font-mono text-sm text-cream">
-            <span className="text-gold">{data.comp_ticker}</span>
-            {' '}
+            <span className="text-gold">{data.comp_ticker}</span>{" "}
             <span className="text-cream-muted">{data.comp_multiple}x</span>
           </p>
         </div>
