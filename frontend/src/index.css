@@ -1,27 +1,38 @@
 @import "tailwindcss";
 
 @theme {
-  --color-navy-950: #0d1526;
-  --color-navy-900: #0f1a2e;
-  --color-navy-800: #1a2744;
-  --color-navy-700: #243558;
-  --color-navy-600: #2e4370;
-  --color-cream: #f0e8d8;
+  --color-navy-950: #0f0f0f;
+  --color-navy-900: #171717;
+  --color-navy-800: #1a1a1a;
+  --color-navy-750: #1d1d1d;
+  --color-navy-700: #2e2e2e;
+  --color-navy-600: #363636;
+  --color-navy-400: #434343;
+  --color-navy-300: #4d4d4d;
+  --color-cream: #fafafa;
+  --color-cream-muted: #b4b4b4;
+  --color-cream-subtle: #898989;
   --color-gold: #d4a853;
+  --color-gold-light: #e8c07a;
+  --color-gold-dark: #a87c35;
   --color-score-high: #10b981;
   --color-score-mid: #f59e0b;
   --color-score-low: #ef4444;
-  --color-moat: #f59e0b;
-  --color-revenue: #10b981;
+  --color-moat: #fb923c;
+  --color-revenue: #34d399;
+  --color-green: #3ecf8e;
+  --color-green-link: #00c573;
 
-  --font-display: 'Playfair Display', serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: "Inter", "Helvetica Neue", sans-serif;
+  --font-body: "Inter", "Helvetica Neue", sans-serif;
+  --font-mono: "Source Code Pro", "JetBrains Mono", monospace;
 }
 
-html, body, #root {
-  background-color: #0d1526;
-  color: #f0e8d8;
+html,
+body,
+#root {
+  background-color: #171717;
+  color: #fafafa;
   min-height: 100vh;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", "Helvetica Neue", sans-serif;
 }

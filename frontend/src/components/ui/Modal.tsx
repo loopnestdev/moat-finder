@@ -1,5 +1,5 @@
-import { useEffect, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   isOpen: boolean;
@@ -8,14 +8,19 @@ interface ModalProps {
   children: ReactNode;
 }
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export default function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+}: ModalProps) {
   useEffect(() => {
     if (!isOpen) return;
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.addEventListener('keydown', handleKey);
-    return () => document.removeEventListener('keydown', handleKey);
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -25,19 +30,19 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       aria-modal="true"
       role="dialog"
-      aria-labelledby={title ? 'modal-title' : undefined}
+      aria-labelledby={title ? "modal-title" : undefined}
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 transition-opacity"
+        className="absolute inset-0 bg-black/60 transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
       {/* Panel */}
-      <div className="relative z-10 w-full max-w-md rounded-lg bg-white shadow-xl">
+      <div className="relative z-10 w-full max-w-md rounded-lg bg-navy-900 border border-navy-700 shadow-xl">
         {title && (
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
+          <div className="border-b border-navy-700 px-6 py-4">
+            <h2 id="modal-title" className="text-lg font-semibold text-cream">
               {title}
             </h2>
           </div>

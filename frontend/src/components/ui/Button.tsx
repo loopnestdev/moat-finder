@@ -1,30 +1,33 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "primary" | "secondary" | "danger";
+  size?: "sm" | "md" | "lg";
   isLoading?: boolean;
 }
 
-const variantClasses: Record<NonNullable<ButtonProps['variant']>, string> = {
-  primary: 'bg-blue-600 hover:bg-blue-700 text-white focus-visible:ring-blue-500',
-  secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-900 focus-visible:ring-gray-400',
-  danger: 'bg-red-600 hover:bg-red-700 text-white focus-visible:ring-red-500',
+const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
+  primary:
+    "rounded-full bg-navy-950 hover:bg-navy-800 text-cream border border-cream focus-visible:ring-cream/50",
+  secondary:
+    "rounded-full bg-navy-950 hover:bg-navy-800 text-cream border border-navy-700 focus-visible:ring-navy-600",
+  danger:
+    "rounded-md bg-red-900/80 hover:bg-red-900 text-red-200 border border-red-700/50 focus-visible:ring-red-500",
 };
 
-const sizeClasses: Record<NonNullable<ButtonProps['size']>, string> = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
-  lg: 'px-6 py-3 text-base',
+const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
+  sm: "px-3 py-1.5 text-sm",
+  md: "px-4 py-2 text-sm",
+  lg: "px-6 py-3 text-base",
 };
 
 export default function Button({
-  variant = 'primary',
-  size = 'md',
+  variant = "primary",
+  size = "md",
   isLoading = false,
   disabled,
   children,
-  className = '',
+  className = "",
   ...props
 }: ButtonProps) {
   const isDisabled = disabled ?? isLoading;
@@ -33,15 +36,15 @@ export default function Button({
     <button
       disabled={isDisabled}
       className={[
-        'inline-flex items-center justify-center gap-2 rounded-md font-medium',
-        'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        "inline-flex items-center justify-center gap-2 font-medium",
+        "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-navy-900",
         variantClasses[variant],
         sizeClasses[size],
-        isDisabled ? 'opacity-50 cursor-not-allowed' : '',
+        isDisabled ? "opacity-50 cursor-not-allowed" : "",
         className,
       ]
         .filter(Boolean)
-        .join(' ')}
+        .join(" ")}
       {...props}
     >
       {isLoading && (

@@ -1,20 +1,20 @@
 interface SpinnerProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   className?: string;
 }
 
-const sizeClasses: Record<NonNullable<SpinnerProps['size']>, string> = {
-  sm: 'h-4 w-4',
-  md: 'h-6 w-6',
-  lg: 'h-8 w-8',
+const sizeClasses: Record<NonNullable<SpinnerProps["size"]>, string> = {
+  sm: "h-4 w-4",
+  md: "h-6 w-6",
+  lg: "h-8 w-8",
 };
 
-export default function Spinner({ size = 'md', className = '' }: SpinnerProps) {
+export default function Spinner({ size = "md", className = "" }: SpinnerProps) {
   return (
     <svg
-      className={['animate-spin text-blue-600', sizeClasses[size], className]
+      className={["animate-spin text-green", sizeClasses[size], className]
         .filter(Boolean)
-        .join(' ')}
+        .join(" ")}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"

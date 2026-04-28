@@ -9,15 +9,22 @@ function FlameIcon({ active }: { active: boolean }) {
       aria-hidden="true"
     >
       <defs>
-        <linearGradient id="flame-active" x1="11" y1="28" x2="11" y2="0" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="flame-active"
+          x1="11"
+          y1="28"
+          x2="11"
+          y2="0"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0%" stopColor="#f97316" />
           <stop offset="100%" stopColor="#fbbf24" />
         </linearGradient>
       </defs>
       <path
         d="M11 2C11 2 14 7 14 10C14 10 16 8 15.5 5.5C18 8 20 11.5 20 15C20 20.5 16 26 11 26C6 26 2 20.5 2 15C2 11.5 4 8 6.5 5.5C6 8 8 10 8 10C8 7 11 2 11 2Z"
-        fill={active ? 'url(#flame-active)' : '#1e2d47'}
-        stroke={active ? 'none' : '#2a3f5f'}
+        fill={active ? "url(#flame-active)" : "#2e2e2e"}
+        stroke={active ? "none" : "#363636"}
         strokeWidth={active ? 0 : 1}
       />
       {active && (

@@ -1,15 +1,17 @@
 interface ScoreBadgeProps {
   score: number | null;
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 }
 
 const sizeConfig = {
-  sm: { px: 44,  r: 17, sw: 4,  textSize: 'text-sm',  subSize: 'text-[9px]' },
-  md: { px: 56,  r: 22, sw: 5,  textSize: 'text-base', subSize: 'text-[10px]' },
-  lg: { px: 80,  r: 32, sw: 6,  textSize: 'text-xl',   subSize: 'text-xs' },
+  sm: { px: 44, r: 17, sw: 4, textSize: "text-sm", subSize: "text-[9px]" },
+  md: { px: 56, r: 22, sw: 5, textSize: "text-base", subSize: "text-[10px]" },
+  lg: { px: 80, r: 32, sw: 6, textSize: "text-xl", subSize: "text-xs" },
 };
 
-export default function ScoreBadge({ score, size = 'md' }: ScoreBadgeProps) {
+const MONO = '"Source Code Pro", "JetBrains Mono", monospace';
+
+export default function ScoreBadge({ score, size = "md" }: ScoreBadgeProps) {
   const cfg = sizeConfig[size];
   const cx = cfg.px / 2;
   const cy = cfg.px / 2;
@@ -17,7 +19,6 @@ export default function ScoreBadge({ score, size = 'md' }: ScoreBadgeProps) {
   const circumference = 2 * Math.PI * r;
 
   if (score === null) {
-    const dashOffset = circumference; // empty ring
     return (
       <svg
         width={cfg.px}
@@ -28,27 +29,37 @@ export default function ScoreBadge({ score, size = 'md' }: ScoreBadgeProps) {
       >
         {/* Track */}
         <circle
-          cx={cx} cy={cy} r={r}
+          cx={cx}
+          cy={cy}
+          r={r}
           fill="none"
-          stroke="#1e2d47"
+          stroke="#2e2e2e"
           strokeWidth={cfg.sw}
         />
         {/* Arc (empty) */}
         <circle
-          cx={cx} cy={cy} r={r}
+          cx={cx}
+          cy={cy}
+          r={r}
           fill="none"
-          stroke="#5a7aa8"
+          stroke="#434343"
           strokeWidth={cfg.sw}
           strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
+          strokeDashoffset={circumference}
           strokeLinecap="round"
           transform={`rotate(-90 ${cx} ${cy})`}
         />
         <text
-          x={cx} y={cy - 2}
-          textAnchor="middle" dominantBaseline="middle"
-          className={`${cfg.textSize} fill-cream-muted font-mono font-semibold`}
-          style={{ fontFamily: '"JetBrains Mono", monospace' }}
+          x={cx}
+          y={cy - 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#b4b4b4"
+          style={{
+            fontFamily: MONO,
+            fontSize: size === "lg" ? "18px" : size === "md" ? "14px" : "11px",
+            fontWeight: 600,
+          }}
         >
           N/A
         </text>
@@ -60,15 +71,14 @@ export default function ScoreBadge({ score, size = 'md' }: ScoreBadgeProps) {
   const fillFraction = clamped / 10;
   const dashOffset = circumference * (1 - fillFraction);
 
-  const colour =
-    score >= 8 ? '#10b981' :
-    score >= 5 ? '#fbbf24' :
-                 '#ef4444';
+  const colour = score >= 8 ? "#10b981" : score >= 5 ? "#fbbf24" : "#ef4444";
 
   const glowClass =
-    score >= 8 ? 'animate-pulse-glow-emerald' :
-    score >= 5 ? 'animate-pulse-glow-amber' :
-                 'animate-pulse-glow-red';
+    score >= 8
+      ? "animate-pulse-glow-emerald"
+      : score >= 5
+        ? "animate-pulse-glow-amber"
+        : "animate-pulse-glow-red";
 
   return (
     <svg
@@ -80,14 +90,18 @@ export default function ScoreBadge({ score, size = 'md' }: ScoreBadgeProps) {
     >
       {/* Track ring */}
       <circle
-        cx={cx} cy={cy} r={r}
+        cx={cx}
+        cy={cy}
+        r={r}
         fill="none"
-        stroke="#1e2d47"
+        stroke="#2e2e2e"
         strokeWidth={cfg.sw}
       />
       {/* Filled arc */}
       <circle
-        cx={cx} cy={cy} r={r}
+        cx={cx}
+        cy={cy}
+        r={r}
         fill="none"
         stroke={colour}
         strokeWidth={cfg.sw}
@@ -98,19 +112,27 @@ export default function ScoreBadge({ score, size = 'md' }: ScoreBadgeProps) {
       />
       {/* Score number */}
       <text
-        x={cx} y={cy - 2}
-        textAnchor="middle" dominantBaseline="middle"
+        x={cx}
+        y={cy - 2}
+        textAnchor="middle"
+        dominantBaseline="middle"
         fill={colour}
-        style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: size === 'lg' ? '18px' : size === 'md' ? '14px' : '11px', fontWeight: 600 }}
+        style={{
+          fontFamily: MONO,
+          fontSize: size === "lg" ? "18px" : size === "md" ? "14px" : "11px",
+          fontWeight: 600,
+        }}
       >
         {score.toFixed(1)}
       </text>
       {/* /10 sub-label */}
       <text
-        x={cx} y={cy + (size === 'lg' ? 16 : size === 'md' ? 13 : 11)}
-        textAnchor="middle" dominantBaseline="middle"
-        fill="#7a7268"
-        style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: size === 'lg' ? '10px' : '8px' }}
+        x={cx}
+        y={cy + (size === "lg" ? 16 : size === "md" ? 13 : 11)}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill="#898989"
+        style={{ fontFamily: MONO, fontSize: size === "lg" ? "10px" : "8px" }}
       >
         /10
       </text>
