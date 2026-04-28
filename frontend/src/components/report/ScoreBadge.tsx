@@ -33,7 +33,7 @@ export default function ScoreBadge({ score, size = "md" }: ScoreBadgeProps) {
           cy={cy}
           r={r}
           fill="none"
-          stroke="#2e2e2e"
+          stroke="#2a2e7a"
           strokeWidth={cfg.sw}
         />
         {/* Arc (empty) */}
@@ -42,7 +42,7 @@ export default function ScoreBadge({ score, size = "md" }: ScoreBadgeProps) {
           cy={cy}
           r={r}
           fill="none"
-          stroke="#434343"
+          stroke="rgba(83,58,253,0.3)"
           strokeWidth={cfg.sw}
           strokeDasharray={circumference}
           strokeDashoffset={circumference}
@@ -54,7 +54,7 @@ export default function ScoreBadge({ score, size = "md" }: ScoreBadgeProps) {
           y={cy - 2}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill="#b4b4b4"
+          fill="rgba(255,255,255,0.45)"
           style={{
             fontFamily: MONO,
             fontSize: size === "lg" ? "18px" : size === "md" ? "14px" : "11px",
@@ -94,7 +94,7 @@ export default function ScoreBadge({ score, size = "md" }: ScoreBadgeProps) {
         cy={cy}
         r={r}
         fill="none"
-        stroke="#2e2e2e"
+        stroke="#2a2e7a"
         strokeWidth={cfg.sw}
       />
       {/* Filled arc */}
@@ -131,7 +131,7 @@ export default function ScoreBadge({ score, size = "md" }: ScoreBadgeProps) {
         y={cy + (size === "lg" ? 16 : size === "md" ? 13 : 11)}
         textAnchor="middle"
         dominantBaseline="middle"
-        fill="#898989"
+        fill="rgba(255,255,255,0.45)"
         style={{ fontFamily: MONO, fontSize: size === "lg" ? "10px" : "8px" }}
       >
         /10

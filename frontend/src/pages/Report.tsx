@@ -70,16 +70,16 @@ function parseBullets(
 
 // ─── Shared UI pieces ─────────────────────────────────────────────────────────
 
-/** Decorative gold-border section heading */
+/** Decorative section heading with purple left border */
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="font-display text-xl font-semibold text-cream border-l-2 border-gold pl-3 mb-4 leading-snug">
+    <h2 className="font-display text-xl font-light text-cream border-l-2 border-purple-light pl-3 mb-4 leading-snug tracking-tight">
       {children}
     </h2>
   );
 }
 
-/** Renders a parsed numbered list as gold-accented rows */
+/** Renders a parsed numbered list as accent rows */
 function NumberedSegments({ items }: { items: string[] }) {
   // Single item → just a paragraph
   if (items.length === 1) {
@@ -95,9 +95,9 @@ function NumberedSegments({ items }: { items: string[] }) {
         return (
           <li
             key={i}
-            className="flex gap-4 border-l-2 border-gold/30 pl-4 py-1"
+            className="flex gap-4 border-l-2 border-purple/20 pl-4 py-1"
           >
-            <span className="font-mono text-lg font-bold text-gold/40 flex-shrink-0 w-7 leading-tight">
+            <span className="font-mono text-lg font-bold text-cream-subtle flex-shrink-0 w-7 leading-tight">
               {String(i + 1).padStart(2, "0")}
             </span>
             <p className="font-body text-cream-muted leading-relaxed">
@@ -120,7 +120,7 @@ function NumberedSegments({ items }: { items: string[] }) {
   );
 }
 
-/** Renders parsed bullets with gold dot and optional bold label */
+/** Renders parsed bullets with purple dot and optional bold label */
 function BulletList({
   bullets,
 }: {
@@ -139,7 +139,7 @@ function BulletList({
     <ul className="space-y-3">
       {bullets.map((b, i) => (
         <li key={i} className="flex gap-3">
-          <span className="text-gold font-bold flex-shrink-0 mt-0.5 leading-tight">
+          <span className="text-purple-light font-bold flex-shrink-0 mt-0.5 leading-tight">
             •
           </span>
           <p className="font-body text-cream-muted leading-relaxed">
@@ -178,10 +178,10 @@ function MoatPillars({
         return (
           <div
             key={i}
-            className="rounded-lg bg-navy-800 border border-navy-600 p-4"
+            className="rounded bg-navy-800 border border-navy-700 p-4"
           >
             <div className="flex gap-3">
-              <span className="font-mono text-sm font-bold text-gold/50 flex-shrink-0 w-6 leading-tight">
+              <span className="font-mono text-sm font-bold text-cream-subtle flex-shrink-0 w-6 leading-tight">
                 {String(i + 1).padStart(2, "0")}
               </span>
               <div>
@@ -284,7 +284,7 @@ export default function Report() {
   return (
     <div className="space-y-0">
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <div className="rounded-2xl bg-navy-950 border border-navy-700 px-6 py-8 sm:px-10 sm:py-10 mb-8">
+      <div className="rounded-xl bg-gradient-to-br from-navy-800 via-[#1f2170] to-navy-950 border border-navy-700 shadow-[rgba(50,50,93,0.25)_0px_30px_45px_-30px,rgba(0,0,0,0.1)_0px_18px_36px_-18px] px-6 py-8 sm:px-10 sm:py-10 mb-8">
         <div className="flex flex-col sm:flex-row sm:items-start gap-6">
           {/* Left: ticker + company + thesis */}
           <div className="flex-1 min-w-0">
@@ -304,23 +304,23 @@ export default function Report() {
                 {" · "}
                 <Link
                   to={`/research/${ticker}/versions`}
-                  className="text-gold/70 hover:text-gold transition-colors underline underline-offset-2"
+                  className="text-purple-light hover:text-cream transition-colors underline underline-offset-2"
                 >
                   version history
                 </Link>
               </p>
               {rj.llm_provider === "gemini" ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-blue-900/60 border border-blue-700/50 px-2 py-0.5 font-mono text-[10px] text-blue-300">
+                <span className="inline-flex items-center gap-1 rounded border border-purple-light/20 bg-purple/10 px-2 py-0.5 font-mono text-[10px] text-purple-light">
                   ◆ Gemini
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-purple-900/60 border border-purple-700/50 px-2 py-0.5 font-mono text-[10px] text-purple-300">
+                <span className="inline-flex items-center gap-1 rounded border border-purple-light/20 bg-purple/10 px-2 py-0.5 font-mono text-[10px] text-purple-light">
                   ✦ Claude
                 </span>
               )}
             </div>
             {/* Thesis callout */}
-            <p className="block w-full font-body italic text-cream/90 text-lg leading-relaxed border-l-2 border-gold/40 pl-4 whitespace-normal break-words">
+            <p className="block w-full font-body italic text-cream/90 text-lg leading-relaxed border-l-2 border-purple/40 pl-4 whitespace-normal break-words">
               {thesisText}
             </p>
           </div>
@@ -335,7 +335,7 @@ export default function Report() {
             {isApproved &&
               !isUpdateRunning &&
               (showProviderSelect ? (
-                <div className="rounded-lg bg-navy-900 border border-amber-400/20 p-4 w-full space-y-3">
+                <div className="rounded bg-navy-800 border border-purple/20 p-4 w-full space-y-3">
                   <p className="font-body text-xs text-cream-subtle uppercase tracking-widest">
                     Select Research Engine
                   </p>
@@ -344,35 +344,31 @@ export default function Report() {
                     onChange={(e) =>
                       setSelectedProvider(e.target.value as "claude" | "gemini")
                     }
-                    className="w-full rounded-lg border border-navy-600 bg-navy-800 text-cream font-body text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold"
+                    className="w-full rounded border border-navy-700 bg-navy-750 text-cream font-body text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple focus:border-purple"
                   >
                     <option value="claude">✦ Claude (Anthropic)</option>
                     <option value="gemini">◆ Gemini (Google)</option>
                   </select>
                   <div className="flex gap-2">
                     <Button
-                      variant="secondary"
+                      variant="primary"
                       onClick={() => {
                         void startUpdate();
                       }}
-                      className="!bg-transparent !text-amber-400 !text-sm border border-amber-400 hover:!bg-amber-400 hover:!text-navy-950 font-body font-medium px-4 py-2 rounded-md transition-all duration-200 flex-1"
+                      className="flex-1"
                     >
                       Start Update
                     </Button>
                     <button
                       onClick={() => setShowProviderSelect(false)}
-                      className="font-body text-sm text-cream-subtle hover:text-cream transition-colors px-3 py-2 rounded-md"
+                      className="font-body text-sm text-cream-subtle hover:text-cream transition-colors px-3 py-2 rounded"
                     >
                       Cancel
                     </button>
                   </div>
                 </div>
               ) : (
-                <Button
-                  variant="secondary"
-                  onClick={handleUpdateClick}
-                  className="!bg-transparent !text-amber-400 !text-base border border-amber-400 hover:!bg-amber-400 hover:!text-navy-950 font-body font-medium tracking-wide px-6 py-2.5 rounded-md transition-all duration-200"
-                >
+                <Button variant="primary" onClick={handleUpdateClick}>
                   Update Research
                 </Button>
               ))}
@@ -407,7 +403,7 @@ export default function Report() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
         {/* ── Left column — narrative ─────────────────────────────────────── */}
         <div className="space-y-10 min-w-0">
-          {/* Fix 1: Business Model Canvas (pure React) */}
+          {/* Business Model Canvas (pure React) */}
           <section>
             <SectionHeading>Business Model</SectionHeading>
             <ErrorBoundary>
@@ -415,7 +411,7 @@ export default function Report() {
             </ErrorBoundary>
           </section>
 
-          {/* Fix 2: How It Makes Money — numbered segments */}
+          {/* How It Makes Money — numbered segments */}
           <section>
             <SectionHeading>How It Makes Money</SectionHeading>
             <NumberedSegments items={businessModelSegments} />
@@ -427,7 +423,7 @@ export default function Report() {
             <ol className="space-y-5">
               {(rj.catalysts ?? []).map((c, i) => (
                 <li key={i} className="flex gap-4">
-                  <span className="font-mono text-2xl font-bold text-gold/40 flex-shrink-0 leading-tight w-8">
+                  <span className="font-mono text-2xl font-bold text-cream-subtle flex-shrink-0 leading-tight w-8">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <p className="font-body text-cream-muted leading-relaxed">
@@ -438,7 +434,7 @@ export default function Report() {
             </ol>
           </section>
 
-          {/* Fix 3: Moat — parsed pillars */}
+          {/* Moat — parsed pillars */}
           <section>
             <SectionHeading>Moat &amp; Competitors</SectionHeading>
             <div className="mb-5">
@@ -449,7 +445,7 @@ export default function Report() {
                 {(rj.competitors ?? []).map((c) => (
                   <span
                     key={c.ticker}
-                    className="text-sm border border-navy-600 bg-navy-800 rounded-full px-3 py-1"
+                    className="text-sm border border-navy-700 bg-navy-800 rounded px-3 py-1"
                   >
                     <span className="font-mono text-gold">{c.ticker}</span>
                     <span className="font-body text-cream-subtle ml-1.5">
@@ -470,13 +466,13 @@ export default function Report() {
             />
           </section>
 
-          {/* Fix 4a: Macro — bullet list */}
+          {/* Macro — bullet list */}
           <section>
             <SectionHeading>Macro &amp; Policy</SectionHeading>
             <BulletList bullets={macroBullets} />
           </section>
 
-          {/* Fix 4b: Sentiment — bullet list */}
+          {/* Sentiment — bullet list */}
           <section>
             <SectionHeading>Sentiment &amp; Technicals</SectionHeading>
             <BulletList bullets={sentimentBullets} />
@@ -493,7 +489,7 @@ export default function Report() {
 
         {/* ── Right column — data cards ────────────────────────────────────── */}
         <div className="space-y-6 lg:sticky lg:top-6">
-          {/* Fix 5: NapkinMath with hierarchical revenue guidance */}
+          {/* NapkinMath with hierarchical revenue guidance */}
           <NapkinMath data={rj.napkin_math} />
 
           {/* Quarterly Results card */}
@@ -501,8 +497,8 @@ export default function Report() {
             <QuarterlyResults results={rj.quarterly_results} />
           </ErrorBoundary>
 
-          {/* Fix 6: ValuationTable card grid */}
-          <div className="rounded-xl bg-navy-800 border border-navy-700 overflow-hidden">
+          {/* ValuationTable card grid */}
+          <div className="rounded bg-navy-800 border border-navy-700 overflow-hidden">
             <div className="px-4 py-3 border-b border-navy-700">
               <p className="font-mono text-xs text-gold/70 uppercase tracking-[0.2em]">
                 Valuation vs Peers
@@ -514,7 +510,7 @@ export default function Report() {
           </div>
 
           {/* Sector Heat card */}
-          <div className="rounded-xl bg-navy-800 border border-navy-700 px-4 py-4">
+          <div className="rounded bg-navy-800 border border-navy-700 px-4 py-4">
             <p className="font-mono text-xs text-gold/70 uppercase tracking-[0.2em] mb-3">
               Sector Heat
             </p>

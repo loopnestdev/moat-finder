@@ -101,11 +101,11 @@ export default function Home() {
   return (
     <div className="space-y-10">
       {/* Hero */}
-      <div className="rounded-2xl bg-navy-950 border border-navy-700 px-6 py-12 sm:px-12 sm:py-16 text-center">
-        <p className="text-gold font-mono text-xs tracking-[0.3em] uppercase mb-4">
+      <div className="rounded-xl bg-gradient-to-br from-navy-800 via-[#1f2170] to-navy-950 border border-navy-700 shadow-[rgba(50,50,93,0.25)_0px_30px_45px_-30px,rgba(0,0,0,0.1)_0px_18px_36px_-18px] px-6 py-12 sm:px-12 sm:py-16 text-center">
+        <p className="text-purple-light font-mono text-xs tracking-[0.3em] uppercase mb-4">
           AI-Powered Investment Research
         </p>
-        <h1 className="font-display text-4xl sm:text-5xl font-bold text-cream mb-4 leading-tight">
+        <h1 className="font-display text-4xl sm:text-5xl font-light text-cream mb-4 leading-tight tracking-tight">
           Find the Moat
         </h1>
         <p className="text-cream-muted font-body text-base sm:text-lg mb-10 max-w-md mx-auto leading-relaxed">
@@ -132,10 +132,10 @@ export default function Home() {
               maxLength={10}
               aria-label="Stock ticker"
               className={[
-                "w-full rounded-lg border px-4 py-3 text-lg font-mono tracking-wider",
+                "w-full rounded border px-4 py-3 text-lg font-mono tracking-wider",
                 "bg-navy-800 text-cream placeholder:text-cream-subtle",
-                "focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold",
-                inputError ? "border-red-500" : "border-navy-600",
+                "focus:outline-none focus:ring-2 focus:ring-purple focus:border-purple",
+                inputError ? "border-red-500" : "border-navy-700",
               ].join(" ")}
             />
             {inputError && (
@@ -155,7 +155,7 @@ export default function Home() {
         </form>
 
         {showMessage && (
-          <p className="mt-4 text-sm text-cream-muted bg-navy-800 border border-navy-600 rounded-lg px-4 py-3 max-w-md mx-auto">
+          <p className="mt-4 text-sm text-cream-muted bg-navy-750 border border-navy-700 rounded px-4 py-3 max-w-md mx-auto">
             {showMessage}
           </p>
         )}
@@ -163,7 +163,7 @@ export default function Home() {
 
       {/* Ticker grid */}
       <div>
-        <h2 className="font-display text-xl text-cream mb-5">
+        <h2 className="font-display text-xl font-light text-cream mb-5">
           Previously Researched
         </h2>
         {listLoading ? (
@@ -178,7 +178,7 @@ export default function Home() {
                 onClick={() => {
                   void navigate(`/research/${report.ticker_symbol}`);
                 }}
-                className="text-left rounded-xl border border-navy-700 bg-navy-800 p-5 hover:border-gold/50 hover:bg-navy-750 transition-all group"
+                className="text-left rounded border border-navy-700 bg-navy-800 p-5 hover:border-purple/50 hover:bg-navy-750 transition-all group"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <span className="text-2xl font-bold font-mono text-gold group-hover:text-gold-light transition-colors">
@@ -193,7 +193,7 @@ export default function Home() {
                 )}
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {report.tickers?.sector && (
-                    <span className="text-xs border border-gold/40 text-gold/80 px-2 py-0.5 rounded-full font-mono">
+                    <span className="text-xs border border-purple-light/30 text-purple-light px-2 py-0.5 rounded font-mono">
                       {report.tickers.sector}
                     </span>
                   )}
@@ -231,7 +231,7 @@ export default function Home() {
             onChange={(e) =>
               setSelectedProvider(e.target.value as "claude" | "gemini")
             }
-            className="w-full rounded-lg border border-navy-600 bg-navy-800 text-cream font-body text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gold focus:border-gold"
+            className="w-full rounded border border-navy-700 bg-navy-800 text-cream font-body text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple focus:border-purple"
           >
             <option value="claude">Claude (Anthropic)</option>
             <option value="gemini">Gemini (Google)</option>

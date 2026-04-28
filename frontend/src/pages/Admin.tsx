@@ -79,7 +79,7 @@ function UsersTab() {
           id="role-filter"
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
-          className="rounded-md border border-navy-700 bg-navy-800 text-cream px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green/50"
+          className="rounded border border-navy-700 bg-navy-800 text-cream px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple/50"
         >
           <option value="">All</option>
           <option value="pending">Pending</option>
@@ -264,14 +264,14 @@ function AuditTab() {
               page: 1,
             }))
           }
-          className="rounded-md border border-navy-700 bg-navy-800 text-cream px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green/50"
+          className="rounded border border-navy-700 bg-navy-800 text-cream px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple/50"
         />
         <select
           value={filters.action}
           onChange={(e) =>
             setFilters((f) => ({ ...f, action: e.target.value, page: 1 }))
           }
-          className="rounded-md border border-navy-700 bg-navy-800 text-cream px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green/50"
+          className="rounded border border-navy-700 bg-navy-800 text-cream px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple/50"
         >
           <option value="">All actions</option>
           <option value="research_triggered">research_triggered</option>
@@ -288,7 +288,7 @@ function AuditTab() {
           onChange={(e) =>
             setFilters((f) => ({ ...f, dateFrom: e.target.value, page: 1 }))
           }
-          className="rounded-md border border-navy-700 bg-navy-800 text-cream px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green/50"
+          className="rounded border border-navy-700 bg-navy-800 text-cream px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple/50"
         />
         <input
           type="date"
@@ -296,7 +296,7 @@ function AuditTab() {
           onChange={(e) =>
             setFilters((f) => ({ ...f, dateTo: e.target.value, page: 1 }))
           }
-          className="rounded-md border border-navy-700 bg-navy-800 text-cream px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green/50"
+          className="rounded border border-navy-700 bg-navy-800 text-cream px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple/50"
         />
       </div>
 
@@ -420,7 +420,7 @@ export default function Admin() {
             className={[
               "px-4 py-2 text-sm font-medium capitalize -mb-px border-b-2 transition-colors",
               tab === t
-                ? "border-green text-green"
+                ? "border-purple text-purple"
                 : "border-transparent text-cream-subtle hover:text-cream",
             ].join(" ")}
           >

@@ -39,7 +39,7 @@ export default function Modal({
         aria-hidden="true"
       />
       {/* Panel */}
-      <div className="relative z-10 w-full max-w-md rounded-lg bg-navy-900 border border-navy-700 shadow-xl">
+      <div className="relative z-10 w-full max-w-md rounded-lg bg-navy-800 border border-navy-700 shadow-[rgba(50,50,93,0.25)_0px_30px_45px_-30px,rgba(0,0,0,0.1)_0px_18px_36px_-18px]">
         {title && (
           <div className="border-b border-navy-700 px-6 py-4">
             <h2 id="modal-title" className="text-lg font-semibold text-cream">

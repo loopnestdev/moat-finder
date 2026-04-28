@@ -54,7 +54,7 @@ export default function Nav() {
           {/* Logo */}
           <Link
             to="/"
-            className="flex-shrink-0 flex items-center gap-2 text-xl font-bold text-gold font-mono tracking-tight"
+            className="flex-shrink-0 flex items-center gap-2 text-xl font-bold text-cream font-display tracking-tight"
           >
             <svg
               width="40"
@@ -112,10 +112,10 @@ export default function Nav() {
                   maxLength={10}
                   aria-label="Search ticker"
                   className={[
-                    "w-full rounded-md border px-3 py-2 text-sm font-mono",
+                    "w-full rounded border px-3 py-2 text-sm font-mono",
                     "bg-navy-800 text-cream placeholder:text-cream-subtle",
-                    "focus:outline-none focus:ring-1 focus:ring-gold focus:border-gold",
-                    searchError ? "border-red-500" : "border-navy-600",
+                    "focus:outline-none focus:ring-1 focus:ring-purple focus:border-purple",
+                    searchError ? "border-red-500" : "border-navy-700",
                   ].join(" ")}
                 />
                 {searchError && (
@@ -142,7 +142,7 @@ export default function Nav() {
                   aria-expanded={userMenuOpen}
                   aria-haspopup="true"
                 >
-                  <span className="h-8 w-8 rounded-full bg-navy-700 border border-gold/40 flex items-center justify-center text-gold font-medium text-xs font-mono">
+                  <span className="h-8 w-8 rounded-full bg-navy-750 border border-purple/40 flex items-center justify-center text-purple-light font-medium text-xs font-mono">
                     {user.email[0]?.toUpperCase() ?? "?"}
                   </span>
                   <span className="hidden md:block max-w-32 truncate font-body text-cream">
@@ -150,12 +150,12 @@ export default function Nav() {
                   </span>
                 </button>
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-md bg-navy-800 shadow-xl border border-navy-600 z-20">
+                  <div className="absolute right-0 mt-2 w-48 rounded bg-navy-800 shadow-[rgba(50,50,93,0.25)_0px_30px_45px_-30px,rgba(0,0,0,0.1)_0px_18px_36px_-18px] border border-navy-700 z-20">
                     {isAdmin && (
                       <Link
                         to="/admin"
                         onClick={() => setUserMenuOpen(false)}
-                        className="block px-4 py-2 text-sm text-cream-muted hover:text-cream hover:bg-navy-700 transition-colors"
+                        className="block px-4 py-2 text-sm text-cream-muted hover:text-cream hover:bg-navy-750 transition-colors"
                       >
                         Admin panel
                       </Link>
@@ -165,7 +165,7 @@ export default function Nav() {
                         setUserMenuOpen(false);
                         void signOut();
                       }}
-                      className="w-full text-left px-4 py-2 text-sm text-cream-muted hover:text-cream hover:bg-navy-700 transition-colors"
+                      className="w-full text-left px-4 py-2 text-sm text-cream-muted hover:text-cream hover:bg-navy-750 transition-colors"
                     >
                       Sign out
                     </button>
@@ -175,7 +175,7 @@ export default function Nav() {
             ) : (
               <button
                 onClick={handleSignIn}
-                className="rounded-full border border-cream px-5 py-1.5 text-sm font-medium text-cream hover:bg-navy-800 transition-colors"
+                className="rounded bg-purple hover:bg-purple-dark px-5 py-1.5 text-sm font-medium text-cream transition-colors"
               >
                 Log in
               </button>
@@ -188,7 +188,7 @@ export default function Nav() {
               onClick={() => setMenuOpen((o) => !o)}
               aria-label={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
-              className="p-2 rounded-md text-cream-muted hover:text-cream hover:bg-navy-800 transition-colors"
+              className="p-2 rounded text-cream-muted hover:text-cream hover:bg-navy-750 transition-colors"
             >
               {menuOpen ? (
                 <svg
@@ -239,10 +239,10 @@ export default function Nav() {
               maxLength={10}
               aria-label="Search ticker"
               className={[
-                "w-full rounded-md border px-3 py-2 text-sm font-mono",
+                "w-full rounded border px-3 py-2 text-sm font-mono",
                 "bg-navy-800 text-cream placeholder:text-cream-subtle",
-                "focus:outline-none focus:ring-1 focus:ring-gold",
-                searchError ? "border-red-500" : "border-navy-600",
+                "focus:outline-none focus:ring-1 focus:ring-purple",
+                searchError ? "border-red-500" : "border-navy-700",
               ].join(" ")}
             />
             {searchError && (
@@ -250,7 +250,7 @@ export default function Nav() {
             )}
             <button
               type="submit"
-              className="mt-2 w-full rounded-full border border-cream py-2 text-sm text-cream font-medium hover:bg-navy-800 transition-colors"
+              className="mt-2 w-full rounded bg-purple hover:bg-purple-dark py-2 text-sm text-cream font-medium transition-colors"
             >
               Search
             </button>
@@ -291,7 +291,7 @@ export default function Nav() {
                 setMenuOpen(false);
                 handleSignIn();
               }}
-              className="w-full rounded-full border border-cream py-2 text-sm text-cream font-medium hover:bg-navy-800 transition-colors"
+              className="w-full rounded bg-purple hover:bg-purple-dark py-2 text-sm text-cream font-medium transition-colors"
             >
               Log in
             </button>

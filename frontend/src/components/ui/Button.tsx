@@ -8,11 +8,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
-    "rounded-full bg-navy-950 hover:bg-navy-800 text-cream border border-cream focus-visible:ring-cream/50",
+    "rounded bg-purple hover:bg-purple-dark text-cream focus-visible:ring-purple/50",
   secondary:
-    "rounded-full bg-navy-950 hover:bg-navy-800 text-cream border border-navy-700 focus-visible:ring-navy-600",
+    "rounded bg-transparent hover:bg-navy-750 text-cream border border-navy-700 focus-visible:ring-navy-600",
   danger:
-    "rounded-md bg-red-900/80 hover:bg-red-900 text-red-200 border border-red-700/50 focus-visible:ring-red-500",
+    "rounded bg-red-900/80 hover:bg-red-900 text-red-200 border border-red-700/50 focus-visible:ring-red-500",
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {

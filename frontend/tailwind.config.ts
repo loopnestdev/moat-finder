@@ -39,26 +39,26 @@ export default {
       colors: {
         // Score colours — semantic, keep exactly
         "score-high": "#10b981",
-        "score-mid": "#fbbf24",
+        "score-mid": "#f59e0b",
         "score-low": "#ef4444",
         moat: "#fb923c",
         revenue: "#34d399",
-        // Supabase-inspired dark surface hierarchy
+        // Stripe dark adaptation — purple-tinted surface hierarchy
         navy: {
-          950: "#0f0f0f",
-          900: "#171717",
-          800: "#1a1a1a",
-          750: "#1d1d1d",
-          700: "#2e2e2e",
-          600: "#363636",
-          400: "#434343",
-          300: "#4d4d4d",
+          950: "#06091a",
+          900: "#0d1b38",
+          800: "#1c1e54",
+          750: "#22256a",
+          700: "#2a2e7a",
+          600: "#362baa",
+          400: "#533afd",
+          300: "#b9b9f9",
         },
-        // Supabase neutral text scale
+        // White text scale for dark-mode adaptation
         cream: {
-          DEFAULT: "#fafafa",
-          muted: "#b4b4b4",
-          subtle: "#898989",
+          DEFAULT: "#ffffff",
+          muted: "rgba(255,255,255,0.70)",
+          subtle: "rgba(255,255,255,0.45)",
         },
         // moat-finder gold — keep for key financial data per spec
         gold: {
@@ -66,12 +66,17 @@ export default {
           light: "#e8c07a",
           dark: "#a87c35",
         },
-        // Supabase brand green
-        green: {
-          DEFAULT: "#3ecf8e",
-          link: "#00c573",
-          border: "rgba(62,207,142,0.3)",
+        // Stripe purple scale
+        purple: {
+          DEFAULT: "#533afd",
+          dark: "#4434d4",
+          deep: "#2e2b8c",
+          light: "#b9b9f9",
+          mid: "#665efd",
         },
+        // Stripe accent colors
+        ruby: "#ea2261",
+        magenta: "#f96bee",
       },
       keyframes: {
         "pulse-glow-emerald": {

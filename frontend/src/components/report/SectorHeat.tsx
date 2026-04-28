@@ -23,8 +23,8 @@ function FlameIcon({ active }: { active: boolean }) {
       </defs>
       <path
         d="M11 2C11 2 14 7 14 10C14 10 16 8 15.5 5.5C18 8 20 11.5 20 15C20 20.5 16 26 11 26C6 26 2 20.5 2 15C2 11.5 4 8 6.5 5.5C6 8 8 10 8 10C8 7 11 2 11 2Z"
-        fill={active ? "url(#flame-active)" : "#2e2e2e"}
-        stroke={active ? "none" : "#363636"}
+        fill={active ? "url(#flame-active)" : "#1c1e54"}
+        stroke={active ? "none" : "#2a2e7a"}
         strokeWidth={active ? 0 : 1}
       />
       {active && (
@@ -60,7 +60,7 @@ export default function SectorHeat({ heat, sectors = [] }: SectorHeatProps) {
         {sectors.map((sector) => (
           <span
             key={sector}
-            className="text-xs border border-gold/60 text-gold bg-gold/10 px-3 py-1 rounded-full font-mono tracking-wide"
+            className="text-xs border border-purple-light/30 text-purple-light bg-purple/10 px-3 py-1 rounded font-mono tracking-wide"
           >
             {sector}
           </span>

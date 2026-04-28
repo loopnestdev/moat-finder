@@ -49,7 +49,7 @@ export default function Versions() {
             <span className="font-mono font-bold text-cream text-xl">
               {ticker}
             </span>
-            <span className="text-xs text-cream-subtle font-mono bg-navy-800 border border-navy-700 px-2 py-0.5 rounded">
+            <span className="text-xs text-cream-subtle font-mono bg-navy-750 border border-navy-700 px-2 py-0.5 rounded">
               v{selected.version}
             </span>
             <ScoreBadge score={selected.score} />
@@ -59,41 +59,37 @@ export default function Versions() {
           </span>
         </div>
 
-        <div className="bg-amber-400/10 border border-amber-400/30 rounded-md px-4 py-2 text-sm text-amber-400">
+        <div className="bg-amber-400/10 border border-amber-400/30 rounded px-4 py-2 text-sm text-amber-400">
           Read-only — viewing version {selected.version}
         </div>
 
-        <div className="text-xl font-semibold text-cream leading-snug border-l-4 border-green pl-4">
+        <div className="text-xl font-light text-cream leading-snug border-l-4 border-purple-light pl-4">
           {rj.thesis}
         </div>
 
         <section>
-          <h2 className="text-lg font-semibold text-cream mb-3">
-            Business Model
-          </h2>
+          <h2 className="text-lg font-light text-cream mb-3">Business Model</h2>
           <BusinessDiagram diagram={selected.diagram_json} />
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-cream mb-3">Sector Heat</h2>
+          <h2 className="text-lg font-light text-cream mb-3">Sector Heat</h2>
           <SectorHeat heat={rj.sector_heat} sectors={rj.hot_sector_match} />
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-cream mb-2">
-            Business Model
-          </h2>
+          <h2 className="text-lg font-light text-cream mb-2">Business Model</h2>
           <p className="text-cream-muted leading-relaxed">
             {rj.business_model}
           </p>
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-cream mb-2">Catalysts</h2>
+          <h2 className="text-lg font-light text-cream mb-2">Catalysts</h2>
           <ul className="space-y-2">
             {rj.catalysts.map((c, i) => (
               <li key={i} className="flex gap-2 text-cream-muted">
-                <span className="text-green flex-shrink-0">→</span>
+                <span className="text-purple-light flex-shrink-0">→</span>
                 <span>{c}</span>
               </li>
             ))}
@@ -101,7 +97,7 @@ export default function Versions() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-cream mb-3">Valuation</h2>
+          <h2 className="text-lg font-light text-cream mb-3">Valuation</h2>
           <ValuationTable rows={rj.valuation_table} ticker={ticker} />
         </section>
 
@@ -110,7 +106,7 @@ export default function Versions() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-cream mb-2">Moat</h2>
+          <h2 className="text-lg font-light text-cream mb-2">Moat</h2>
           <p className="text-cream-muted leading-relaxed">{rj.moat}</p>
         </section>
 
@@ -122,12 +118,12 @@ export default function Versions() {
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-cream mb-2">Macro</h2>
+          <h2 className="text-lg font-light text-cream mb-2">Macro</h2>
           <p className="text-cream-muted leading-relaxed">{rj.macro_summary}</p>
         </section>
 
         <section>
-          <h2 className="text-lg font-semibold text-cream mb-2">Sentiment</h2>
+          <h2 className="text-lg font-light text-cream mb-2">Sentiment</h2>
           <p className="text-cream-muted leading-relaxed">
             {rj.sentiment_summary}
           </p>
@@ -141,7 +137,7 @@ export default function Versions() {
       <div className="flex items-center gap-4 mb-6">
         <Link
           to={`/research/${ticker}`}
-          className="text-sm text-green-link hover:underline"
+          className="text-sm text-purple-light hover:underline"
         >
           ← Back to report
         </Link>
@@ -159,10 +155,10 @@ export default function Versions() {
               <button
                 key={v.id}
                 onClick={() => setSelected(v)}
-                className="w-full text-left rounded-lg border border-navy-700 bg-navy-800 px-4 py-3 hover:border-navy-600 hover:bg-navy-750 transition-all"
+                className="w-full text-left rounded border border-navy-700 bg-navy-800 px-4 py-3 hover:border-navy-600 hover:bg-navy-750 transition-all"
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs bg-navy-700 text-cream-subtle px-2 py-0.5 rounded">
+                  <span className="font-mono text-xs bg-navy-750 text-cream-subtle px-2 py-0.5 rounded">
                     v{v.version}
                   </span>
                   <span className="text-sm text-cream-muted">
@@ -182,7 +178,7 @@ export default function Versions() {
 
       {versions && versions.length > 1 && (
         <div className="mt-8">
-          <h2 className="text-base font-semibold text-cream mb-3">Changelog</h2>
+          <h2 className="text-base font-light text-cream mb-3">Changelog</h2>
           <Changelog versions={versions} />
         </div>
       )}

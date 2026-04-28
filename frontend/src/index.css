@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --color-navy-950: #0f0f0f;
-  --color-navy-900: #171717;
-  --color-navy-800: #1a1a1a;
-  --color-navy-750: #1d1d1d;
-  --color-navy-700: #2e2e2e;
-  --color-navy-600: #363636;
-  --color-navy-400: #434343;
-  --color-navy-300: #4d4d4d;
-  --color-cream: #fafafa;
-  --color-cream-muted: #b4b4b4;
-  --color-cream-subtle: #898989;
+  --color-navy-950: #06091a;
+  --color-navy-900: #0d1b38;
+  --color-navy-800: #1c1e54;
+  --color-navy-750: #22256a;
+  --color-navy-700: #2a2e7a;
+  --color-navy-600: #362baa;
+  --color-navy-400: #533afd;
+  --color-navy-300: #b9b9f9;
+  --color-cream: #ffffff;
+  --color-cream-muted: rgba(255, 255, 255, 0.7);
+  --color-cream-subtle: rgba(255, 255, 255, 0.45);
   --color-gold: #d4a853;
   --color-gold-light: #e8c07a;
   --color-gold-dark: #a87c35;
@@ -20,8 +20,13 @@
   --color-score-low: #ef4444;
   --color-moat: #fb923c;
   --color-revenue: #34d399;
-  --color-green: #3ecf8e;
-  --color-green-link: #00c573;
+  --color-purple: #533afd;
+  --color-purple-dark: #4434d4;
+  --color-purple-deep: #2e2b8c;
+  --color-purple-light: #b9b9f9;
+  --color-purple-mid: #665efd;
+  --color-ruby: #ea2261;
+  --color-magenta: #f96bee;
 
   --font-display: "Inter", "Helvetica Neue", sans-serif;
   --font-body: "Inter", "Helvetica Neue", sans-serif;
@@ -31,8 +36,10 @@
 html,
 body,
 #root {
-  background-color: #171717;
-  color: #fafafa;
+  background-color: #0d1b38;
+  color: #ffffff;
   min-height: 100vh;
   font-family: "Inter", "Helvetica Neue", sans-serif;
+  font-weight: 300;
+  font-feature-settings: "ss01";
 }

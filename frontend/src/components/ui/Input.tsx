@@ -37,7 +37,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             "disabled:bg-navy-700 disabled:text-cream-subtle disabled:cursor-not-allowed",
             error
               ? "border-red-700/50 text-red-300 focus:border-red-500 focus:ring-red-500"
-              : "border-navy-700 focus:border-navy-600 focus:ring-green/50",
+              : "border-navy-700 focus:border-purple focus:ring-purple/50",
             className,
           ]
             .filter(Boolean)
