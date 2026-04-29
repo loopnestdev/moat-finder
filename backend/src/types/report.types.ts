@@ -85,6 +85,8 @@ export interface ReportJson {
   // v0.3.0 fields — multi-LLM support
   llm_provider?: string;
   llm_model?: string;
+  // v0.5.2 — independent management assessment, never factored into investment score
+  management_rating?: ManagementRating;
 }
 
 export interface DiagramNode {
@@ -153,6 +155,15 @@ export interface Step1Output {
   primary_region: string;
 }
 
+export interface ManagementRating {
+  grade: "A" | "B" | "C" | "D" | "F";
+  score: number;
+  summary: string;
+  ceo_assessment: string;
+  recent_changes: string;
+  capital_allocation: string;
+}
+
 export interface Step2Output {
   business_model: string;
   moat: string;
@@ -163,6 +174,8 @@ export interface Step2Output {
   rerating_catalyst?: string;
   // v0.2.1 — absent in runs before this version
   constraint_analysis?: ConstraintAnalysis;
+  // v0.5.2 — independent management assessment, never factored into investment score
+  management_rating?: ManagementRating;
 }
 
 export interface Step3Output {

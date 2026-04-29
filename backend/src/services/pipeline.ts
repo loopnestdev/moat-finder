@@ -160,6 +160,14 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
     "investable": true_or_false,
     "who_relieves": "string",
     "window": "string"
+  },
+  "management_rating": {
+    "grade": "A|B|C|D|F",
+    "score": number_0_to_100,
+    "summary": "string",
+    "ceo_assessment": "string",
+    "recent_changes": "string",
+    "capital_allocation": "string"
   }
 }
 platform_type must be exactly "platform" or "single-product".
@@ -211,6 +219,22 @@ Perform a deep dive analysis on the company above:
    G. WHO RELIEVES THE CONSTRAINT — identify: (i) who has the power to relieve this bottleneck (a specific company, regulator, or technology shift); (ii) what their incentive is; (iii) what their strategic ability is; (iv) what sits OUTSIDE their control (raw material availability, geopolitical factors, physics limits, qualification timelines). Be specific — name the players.
 
    H. INVESTABLE WINDOW — how long does this constraint persist as an investable window before consensus prices it in? Give a time estimate and explain what event or announcement would signal the window is closing (e.g. "18–24 months — window closes when TSMC announces next-gen capacity expansion or a second supplier passes HBM qualification").
+
+10. MANAGEMENT QUALITY ASSESSMENT — rate management independently of the investment thesis. This assessment is purely about execution capability and capital stewardship; it does NOT influence the investment score.
+
+   Grade A (90–100): exceptional — founder-led or proven CEO with consistent outperformance, strong insider alignment, disciplined capital allocation, clear and credible communication.
+   Grade B (70–89): solid — experienced team, generally good execution, minor concerns (high stock-based comp, modest guidance misses, recent transition).
+   Grade C (50–69): average — mixed track record, some execution gaps, unclear succession, or capital allocation concerns (acquisitions at poor prices, excessive dilution).
+   Grade D (30–49): below average — repeated guidance misses, sudden senior departures, insider selling at scale, weak board oversight.
+   Grade F (0–29): poor — fraud allegations, SEC investigation, governance failures, CEO departure under pressure, or consistent destruction of shareholder value.
+
+   management_rating fields:
+   - grade: letter grade A/B/C/D/F
+   - score: numeric 0–100
+   - summary: 2–3 sentence executive summary of management quality
+   - ceo_assessment: 1–2 sentences on CEO specifically (tenure, track record, alignment)
+   - recent_changes: any CEO/CFO/CTO changes in the past 12 months and whether each is a positive or negative signal (if no changes, state that explicitly)
+   - capital_allocation: 1–2 sentences on how management deploys capital (buybacks, M&A, R&D intensity, dilution discipline)
 
 Use web search for current information. Return only the JSON object.`;
   const finalPrompt =
@@ -675,6 +699,12 @@ Return only the JSON object with "report" and "diagram" keys.`,
   // Carry quarterly results from Step 3 into the final report
   if (step3.quarterly_results && step3.quarterly_results.length > 0) {
     parsed.report.quarterly_results = step3.quarterly_results;
+  }
+
+  // Carry management_rating from Step 2 — injected after LLM synthesis so it
+  // cannot influence the investment score calculation.
+  if (step2.management_rating) {
+    parsed.report.management_rating = step2.management_rating;
   }
 
   await saveCheckpoint(ticker, runId, {

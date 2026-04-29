@@ -15,6 +15,7 @@ import PipelineProgress from "../components/research/PipelineProgress";
 import Button from "../components/ui/Button";
 import Spinner from "../components/ui/Spinner";
 import QuarterlyResults from "../components/report/QuarterlyResults";
+import ManagementRating from "../components/report/ManagementRating";
 import ErrorBoundary from "../components/ErrorBoundary";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -519,6 +520,11 @@ export default function Report() {
               sectors={rj.hot_sector_match ?? []}
             />
           </div>
+
+          {/* Management Rating — independent card, separate from investment score */}
+          {rj.management_rating && (
+            <ManagementRating data={rj.management_rating} />
+          )}
         </div>
       </div>
     </div>
