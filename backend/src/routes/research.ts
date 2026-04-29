@@ -47,7 +47,7 @@ router.get("/", async (_req, res) => {
     const { data, error } = await anonClient
       .from("research_reports")
       .select(
-        "ticker_symbol, score, updated_at, version, tickers(company_name, sector)",
+        "ticker_symbol, score, updated_at, version, report_json, tickers(company_name, sector)",
       )
       .order("updated_at", { ascending: false });
 
@@ -58,7 +58,30 @@ router.get("/", async (_req, res) => {
       return;
     }
 
-    res.json({ data: data ?? [] });
+    const enriched = (data ?? []).map((r) => {
+      const rj = r.report_json as unknown as ReportJson | null;
+      const tickers = r.tickers as {
+        company_name: string | null;
+        sector: string | null;
+      } | null;
+      return {
+        ticker_symbol: r.ticker_symbol,
+        company_name: tickers?.company_name ?? null,
+        sector: tickers?.sector ?? null,
+        score: r.score ?? null,
+        updated_at: r.updated_at,
+        version: r.version,
+        upside_percent: rj?.napkin_math?.upside_percent ?? null,
+        target_price: rj?.napkin_math?.target_price ?? null,
+        hot_sector_match: rj?.hot_sector_match ?? [],
+        llm_provider: rj?.llm_provider ?? "claude",
+        sector_heat: rj?.sector_heat ?? null,
+        thesis:
+          typeof rj?.thesis === "string" ? rj.thesis.substring(0, 150) : "",
+      };
+    });
+
+    res.json({ data: enriched });
   } catch {
     res
       .status(500)

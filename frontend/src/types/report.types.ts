@@ -173,6 +173,21 @@ export interface ResearchVersion {
   created_at: string;
 }
 
+export interface ResearchListItem {
+  ticker_symbol: string;
+  company_name: string | null;
+  sector: string | null;
+  score: number | null;
+  updated_at: string;
+  version: number;
+  upside_percent: number | null;
+  target_price: number | null;
+  hot_sector_match: string[];
+  llm_provider: "claude" | "gemini";
+  sector_heat: number | null;
+  thesis: string;
+}
+
 export interface AuditLog {
   id: string;
   action: string;

@@ -343,6 +343,13 @@ from the existing report. Only Steps 1, 3, 5, 6, and 7 run — reducing API cost
 
 ## Changelog
 
+### v0.6.0
+
+- **Management rating backfill**: update pipeline detects reports missing `management_rating` and forces a fresh Step 2 re-run to generate one. New research pipeline also invalidates any stale Step 2 checkpoint missing the field.
+- **Enriched list API**: `GET /api/v1/research` now returns `upside_percent`, `target_price`, `hot_sector_match`, `sector_heat`, `thesis`, `company_name`, and `sector` — no extra API calls needed on the frontend.
+- **Napkin math on home cards**: target price (gold) and upside (green/red) shown on every stock card. First hot-sector match tag shown as a muted pill.
+- **Filter & sort bar**: above the researched-tickers grid — filter by Score ≥, Upside ≥, Sector (substring), and sort by date/score/upside. Client-side only, instant. "Showing X of Y stocks" count.
+
 ### v0.5.2
 
 - **Management Rating**: independent A–F management quality assessment generated in Step 2 (Deep Dive). Covers CEO track record, recent leadership changes, and capital allocation. Injected into the report after Step 7 synthesis — the scoring LLM never sees it, so it cannot influence the 1–10 investment score. New `ManagementRating.tsx` sidebar card with subtitle "Independent assessment — not included in investment score". Field `report_json.management_rating` is optional; absent in pre-v0.5.2 reports.

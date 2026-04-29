@@ -11,7 +11,7 @@ import PipelineProgress from "../components/research/PipelineProgress";
 import Modal from "../components/ui/Modal";
 import Button from "../components/ui/Button";
 import Spinner from "../components/ui/Spinner";
-import type { ResearchReport } from "../types/report.types";
+import type { ResearchListItem } from "../types/report.types";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-AU", {
@@ -19,6 +19,20 @@ function formatDate(iso: string): string {
     month: "short",
     year: "numeric",
   });
+}
+
+function formatUpside(pct: number): string {
+  return (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%";
+}
+
+function formatTargetPrice(price: number): string {
+  return (
+    "$" +
+    price.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
 }
 
 export default function Home() {
@@ -38,6 +52,39 @@ export default function Home() {
   const [selectedProvider, setSelectedProvider] = useState<"claude" | "gemini">(
     "claude",
   );
+
+  // Filter & sort state
+  const [minScore, setMinScore] = useState<number | null>(null);
+  const [minUpside, setMinUpside] = useState<number | null>(null);
+  const [sectorFilter, setSectorFilter] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "score" | "upside">("date");
+
+  const isFiltered =
+    minScore !== null ||
+    minUpside !== null ||
+    sectorFilter !== "" ||
+    sortBy !== "date";
+
+  const filtered: ResearchListItem[] = (reportList ?? [])
+    .filter((r) => minScore === null || (r.score ?? 0) >= minScore)
+    .filter(
+      (r) => minUpside === null || (r.upside_percent ?? -999) >= minUpside,
+    )
+    .filter(
+      (r) =>
+        !sectorFilter ||
+        r.hot_sector_match.some((s) =>
+          s.toLowerCase().includes(sectorFilter.toLowerCase()),
+        ),
+    )
+    .sort((a, b) => {
+      if (sortBy === "score") return (b.score ?? 0) - (a.score ?? 0);
+      if (sortBy === "upside")
+        return (b.upside_percent ?? -999) - (a.upside_percent ?? -999);
+      return (
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+    });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -163,47 +210,189 @@ export default function Home() {
 
       {/* Ticker grid */}
       <div>
-        <h2 className="font-display text-xl font-light text-cream mb-5">
+        <h2 className="font-display text-xl font-light text-cream mb-4">
           Previously Researched
         </h2>
+
+        {/* Filter & sort bar */}
+        {!listLoading && reportList && reportList.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-3 items-end">
+            {/* Score ≥ */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-cream-subtle font-mono uppercase tracking-wider">
+                Score ≥
+              </label>
+              <input
+                type="number"
+                placeholder="8.0"
+                step={0.5}
+                min={0}
+                max={10}
+                value={minScore ?? ""}
+                onChange={(e) =>
+                  setMinScore(
+                    e.target.value !== "" ? parseFloat(e.target.value) : null,
+                  )
+                }
+                className="w-20 rounded border border-navy-700 bg-navy-800 text-cream font-mono text-sm px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple focus:border-purple"
+              />
+            </div>
+
+            {/* Upside ≥ */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-cream-subtle font-mono uppercase tracking-wider">
+                Upside ≥
+              </label>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  placeholder="50"
+                  value={minUpside ?? ""}
+                  onChange={(e) =>
+                    setMinUpside(
+                      e.target.value !== "" ? parseFloat(e.target.value) : null,
+                    )
+                  }
+                  className="w-20 rounded border border-navy-700 bg-navy-800 text-cream font-mono text-sm px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple focus:border-purple"
+                />
+                <span className="text-xs text-cream-subtle font-mono">%</span>
+              </div>
+            </div>
+
+            {/* Sector */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-cream-subtle font-mono uppercase tracking-wider">
+                Sector
+              </label>
+              <input
+                type="text"
+                placeholder="AI, Energy…"
+                value={sectorFilter}
+                onChange={(e) => setSectorFilter(e.target.value)}
+                className="w-28 rounded border border-navy-700 bg-navy-800 text-cream font-body text-sm px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple focus:border-purple"
+              />
+            </div>
+
+            {/* Sort */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-cream-subtle font-mono uppercase tracking-wider">
+                Sort
+              </label>
+              <select
+                value={sortBy}
+                onChange={(e) =>
+                  setSortBy(e.target.value as "date" | "score" | "upside")
+                }
+                className="rounded border border-navy-700 bg-navy-800 text-cream font-body text-sm px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple focus:border-purple"
+              >
+                <option value="date">Newest</option>
+                <option value="score">Score ↓</option>
+                <option value="upside">Upside ↓</option>
+              </select>
+            </div>
+
+            {/* Clear */}
+            {isFiltered && (
+              <button
+                onClick={() => {
+                  setMinScore(null);
+                  setMinUpside(null);
+                  setSectorFilter("");
+                  setSortBy("date");
+                }}
+                className="rounded border border-navy-700 text-cream-subtle font-mono text-xs px-3 py-1.5 hover:border-purple/50 hover:text-cream transition-all self-end"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Count */}
+        {!listLoading && reportList && reportList.length > 0 && (
+          <p className="text-xs text-cream-subtle font-mono mb-4">
+            Showing {filtered.length} of {reportList.length} stock
+            {reportList.length !== 1 ? "s" : ""}
+          </p>
+        )}
+
         {listLoading ? (
           <div className="flex justify-center py-8">
             <Spinner size="lg" />
           </div>
-        ) : reportList && reportList.length > 0 ? (
+        ) : filtered.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {reportList.map((report: ResearchReport) => (
+            {filtered.map((report) => (
               <button
-                key={report.id}
+                key={report.ticker_symbol}
                 onClick={() => {
                   void navigate(`/research/${report.ticker_symbol}`);
                 }}
                 className="text-left rounded border border-navy-700 bg-navy-800 p-5 hover:border-purple/50 hover:bg-navy-750 transition-all group"
               >
+                {/* Header row */}
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <span className="text-2xl font-bold font-mono text-gold group-hover:text-gold-light transition-colors">
                     {report.ticker_symbol}
                   </span>
                   <ScoreBadge score={report.score} />
                 </div>
-                {report.tickers?.company_name && (
-                  <p className="text-sm text-cream-muted mb-3 truncate font-body">
-                    {report.tickers.company_name}
+
+                {/* Company name */}
+                {report.company_name && (
+                  <p className="text-sm text-cream-muted mb-2 truncate font-body">
+                    {report.company_name}
                   </p>
                 )}
+
+                {/* Napkin math row */}
+                {(report.target_price !== null ||
+                  report.upside_percent !== null) && (
+                  <div className="flex items-center gap-3 mb-3">
+                    {report.target_price !== null && (
+                      <span className="font-mono text-sm text-gold">
+                        {formatTargetPrice(report.target_price)}
+                      </span>
+                    )}
+                    {report.upside_percent !== null && (
+                      <span
+                        className={`font-mono text-sm ${
+                          report.upside_percent >= 0
+                            ? "text-emerald-400"
+                            : "text-red-400"
+                        }`}
+                      >
+                        {formatUpside(report.upside_percent)}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Sector pills */}
                 <div className="flex flex-wrap gap-1.5 mb-3">
-                  {report.tickers?.sector && (
+                  {report.sector && (
                     <span className="text-xs border border-purple-light/30 text-purple-light px-2 py-0.5 rounded font-mono">
-                      {report.tickers.sector}
+                      {report.sector}
+                    </span>
+                  )}
+                  {report.hot_sector_match.length > 0 && (
+                    <span className="text-xs border border-navy-700 text-cream-subtle px-2 py-0.5 rounded font-mono bg-navy-950">
+                      {report.hot_sector_match[0]}
                     </span>
                   )}
                 </div>
+
+                {/* Date */}
                 <p className="text-xs text-cream-subtle font-mono">
                   {formatDate(report.updated_at)}
                 </p>
               </button>
             ))}
           </div>
+        ) : reportList && reportList.length > 0 ? (
+          <p className="text-cream-subtle text-sm font-body">
+            No stocks match the current filters.
+          </p>
         ) : (
           <p className="text-cream-subtle text-sm font-body">
             No research yet. Be the first to research a ticker.

@@ -1,13 +1,17 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '../lib/api';
-import type { ResearchReport, ResearchVersion } from '../types/report.types';
+import { useQuery } from "@tanstack/react-query";
+import { apiFetch } from "../lib/api";
+import type {
+  ResearchListItem,
+  ResearchReport,
+  ResearchVersion,
+} from "../types/report.types";
 
 export function useReportList() {
   return useQuery({
-    queryKey: ['research'],
+    queryKey: ["research"],
     queryFn: async () => {
-      const res = await apiFetch('/api/v1/research');
-      return ((await res.json()) as { data: ResearchReport[] }).data;
+      const res = await apiFetch("/api/v1/research");
+      return ((await res.json()) as { data: ResearchListItem[] }).data;
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -15,7 +19,7 @@ export function useReportList() {
 
 export function useReport(ticker: string, enabled = true) {
   return useQuery({
-    queryKey: ['research', ticker],
+    queryKey: ["research", ticker],
     queryFn: async () => {
       const res = await apiFetch(`/api/v1/research/${ticker}`);
       return ((await res.json()) as { data: ResearchReport }).data;
@@ -28,7 +32,7 @@ export function useReport(ticker: string, enabled = true) {
 
 export function useVersions(ticker: string) {
   return useQuery({
-    queryKey: ['research', ticker, 'versions'],
+    queryKey: ["research", ticker, "versions"],
     queryFn: async () => {
       const res = await apiFetch(`/api/v1/research/${ticker}/versions`);
       return ((await res.json()) as { data: ResearchVersion[] }).data;

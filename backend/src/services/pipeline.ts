@@ -14,7 +14,11 @@ import type {
   Step5Output,
   Step6Output,
 } from "../types/report.types";
-import { saveCheckpoint, loadCheckpoints } from "./checkpoint";
+import {
+  saveCheckpoint,
+  loadCheckpoints,
+  deleteStepCheckpoint,
+} from "./checkpoint";
 import { adminClient } from "./supabase";
 
 const HOT_SECTORS = [
@@ -902,6 +906,18 @@ export async function runPipeline(
     );
   }
 
+  // If Step 2 is cached from a run that predates management_rating, force re-run
+  if (cachedSteps.has(2)) {
+    const step2Cached = cachedSteps.get(2) as Step2Output | undefined;
+    if (!step2Cached?.management_rating) {
+      console.log(
+        `[${ticker}] Cached Step 2 missing management_rating — forcing Step 2 re-run`,
+      );
+      cachedSteps.delete(2);
+      await deleteStepCheckpoint(ticker, runId, 2);
+    }
+  }
+
   // Step 1 — Discovery (always fast; run fresh to get current company data)
   let step1: Step1Output;
   if (cachedSteps.has(1)) {
@@ -956,26 +972,12 @@ export async function runUpdatePipeline(
     output_json: step1 as unknown as Record<string, unknown>,
   });
 
-  // Reconstruct step2/step4 from existing report — these are skipped
+  // Reconstruct base data from existing report
   const rawSteps = existingReport.pipeline_steps_raw;
   const rawStep2 = rawSteps["step2"] as Partial<Step2Output> | undefined;
   const rawStep4 = rawSteps["step4"] as Partial<Step4Output> | undefined;
 
-  const cachedStep2: Step2Output = {
-    business_model: existingReport.business_model ?? "",
-    moat: existingReport.moat ?? "",
-    technological_advantage: rawStep2?.technological_advantage ?? "",
-    catalysts: existingReport.catalysts ?? [],
-    platform_type: rawStep2?.platform_type ?? undefined,
-    platform_optionality:
-      existingReport.platform_optionality ??
-      rawStep2?.platform_optionality ??
-      "",
-    rerating_catalyst:
-      existingReport.rerating_catalyst ?? rawStep2?.rerating_catalyst ?? "",
-    constraint_analysis:
-      existingReport.constraint_analysis ?? rawStep2?.constraint_analysis,
-  };
+  // Step 4 is always reused from the existing report
   const cachedStep4: Step4Output = {
     bear_case: existingReport.bear_case ?? "",
     risk_factors: existingReport.risk_factors ?? [],
@@ -983,60 +985,142 @@ export async function runUpdatePipeline(
     bear_case_rebuttal:
       existingReport.bear_case_rebuttal ?? rawStep4?.bear_case_rebuttal ?? "",
   };
-
-  emit({
-    step: 2,
-    label: "Deep Dive",
-    status: "cached",
-    data: { message: "Using previous research" },
-  });
   emit({
     step: 4,
     label: "Risk Red Team",
     status: "cached",
     data: { message: "Using previous research" },
   });
-  console.log("[Update] Steps 2 and 4 skipped — reusing cached data");
 
-  // Run only steps 3, 5, 6 concurrently — steps 2 and 4 are reused above
-  const [step3, step5, step6] = await Promise.all([
-    runStepWithFallback(
-      3,
-      "Valuation & Financials",
-      () => runStep3(step1, emit, provider),
-      DEFAULT_STEP3,
-      ticker,
-      runId,
-      emit,
-    ),
-    runStepWithFallback(
-      5,
-      "Macro & Sector",
-      () => runStep5(step1, emit, provider),
-      DEFAULT_STEP5,
-      ticker,
-      runId,
-      emit,
-    ),
-    runStepWithFallback(
-      6,
-      "Sentiment & Technicals",
-      () => runStep6(step1, emit, provider),
-      DEFAULT_STEP6,
-      ticker,
-      runId,
-      emit,
-    ),
-  ]);
+  const needsManagementRating = !existingReport.management_rating;
+
+  let step2: Step2Output;
+  let step3: Step3Output;
+  let step5: Step5Output;
+  let step6: Step6Output;
+
+  if (needsManagementRating) {
+    console.log(
+      `[${ticker}] management_rating missing — forcing Step 2 re-run`,
+    );
+    // Clear any stale Step 2 checkpoint (housekeeping — update always uses fresh runId)
+    await adminClient
+      .from("research_checkpoints")
+      .delete()
+      .eq("ticker_symbol", ticker)
+      .eq("step_number", 2);
+
+    // Run Step 2 fresh, concurrently with 3/5/6
+    const fresh = await Promise.all([
+      runStepWithFallback(
+        2,
+        "Deep Dive",
+        () => runStep2(step1, emit, provider),
+        DEFAULT_STEP2,
+        ticker,
+        runId,
+        emit,
+      ),
+      runStepWithFallback(
+        3,
+        "Valuation & Financials",
+        () => runStep3(step1, emit, provider),
+        DEFAULT_STEP3,
+        ticker,
+        runId,
+        emit,
+      ),
+      runStepWithFallback(
+        5,
+        "Macro & Sector",
+        () => runStep5(step1, emit, provider),
+        DEFAULT_STEP5,
+        ticker,
+        runId,
+        emit,
+      ),
+      runStepWithFallback(
+        6,
+        "Sentiment & Technicals",
+        () => runStep6(step1, emit, provider),
+        DEFAULT_STEP6,
+        ticker,
+        runId,
+        emit,
+      ),
+    ]);
+    step2 = fresh[0];
+    step3 = fresh[1];
+    step5 = fresh[2];
+    step6 = fresh[3];
+  } else {
+    console.log(`[${ticker}] management_rating exists — using cached Step 2`);
+    // Carry existing management_rating through so Step 7 can inject it post-synthesis
+    step2 = {
+      business_model: existingReport.business_model ?? "",
+      moat: existingReport.moat ?? "",
+      technological_advantage: rawStep2?.technological_advantage ?? "",
+      catalysts: existingReport.catalysts ?? [],
+      platform_type: rawStep2?.platform_type ?? undefined,
+      platform_optionality:
+        existingReport.platform_optionality ??
+        rawStep2?.platform_optionality ??
+        "",
+      rerating_catalyst:
+        existingReport.rerating_catalyst ?? rawStep2?.rerating_catalyst ?? "",
+      constraint_analysis:
+        existingReport.constraint_analysis ?? rawStep2?.constraint_analysis,
+      management_rating: existingReport.management_rating,
+    };
+    emit({
+      step: 2,
+      label: "Deep Dive",
+      status: "cached",
+      data: { message: "Using previous research" },
+    });
+    console.log("[Update] Steps 2 and 4 skipped — reusing cached data");
+
+    const cached = await Promise.all([
+      runStepWithFallback(
+        3,
+        "Valuation & Financials",
+        () => runStep3(step1, emit, provider),
+        DEFAULT_STEP3,
+        ticker,
+        runId,
+        emit,
+      ),
+      runStepWithFallback(
+        5,
+        "Macro & Sector",
+        () => runStep5(step1, emit, provider),
+        DEFAULT_STEP5,
+        ticker,
+        runId,
+        emit,
+      ),
+      runStepWithFallback(
+        6,
+        "Sentiment & Technicals",
+        () => runStep6(step1, emit, provider),
+        DEFAULT_STEP6,
+        ticker,
+        runId,
+        emit,
+      ),
+    ]);
+    step3 = cached[0];
+    step5 = cached[1];
+    step6 = cached[2];
+  }
 
   const ctx: PipelineContext = {
     step1,
-    step2: cachedStep2,
+    step2,
     step3,
     step4: cachedStep4,
     step5,
     step6,
   };
-
   return runStep7(ctx, ticker, runId, emit, provider);
 }

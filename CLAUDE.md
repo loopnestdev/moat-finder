@@ -166,6 +166,9 @@ npm run deploy     # wrangler deploy (Cloudflare Workers production deploy)
 - **ErrorBoundary**: wraps `BusinessDiagram` and `QuarterlyResults` in Report.tsx — renders a dark navy fallback card instead of crashing.
 - **Design system**: Stripe dark adaptation — navy tokens remapped to purple-tinted indigo (`navy-800: #1c1e54`, `navy-900: #0d1b38`). Purple (`#533afd`) for all UI chrome. Gold (`#d4a853`) preserved for financial data only. Score colors (emerald/amber/red) preserved exactly.
 - **ManagementRating**: generated in Step 2 (Deep Dive) as an independent LLM assessment. Injected into `parsed.report` after Step 7 synthesis completes — the scoring LLM never sees it and it does NOT influence the 1–10 investment score. Field: `report_json.management_rating` (optional, absent in pre-v0.5.2 reports).
+- **Management rating backfill**: `runUpdatePipeline` checks for a missing `management_rating` on the existing report before deciding whether to reuse cached Step 2 data. If missing, Step 2 re-runs fresh. If present, `management_rating` is carried into the reconstructed `Step2Output`. Similarly, `runPipeline` deletes any cached Step 2 checkpoint that lacks `management_rating` so old checkpoints don't bypass the re-run.
+- **Enriched list API**: `GET /api/v1/research` returns `ResearchListItem` objects (flat — no nested `tickers`) including `upside_percent`, `target_price`, `hot_sector_match`, `llm_provider`, `sector_heat`, `thesis`, `company_name`, `sector`.
+- **Home page filter bar**: client-side filter and sort over the enriched list — Score ≥, Upside ≥, Sector substring, and sort by date/score/upside. Stock cards now show target price and upside from `napkin_math`, plus a hot-sector pill.
 - **Cloudflare Workers deploy**: `wrangler.jsonc` configures SPA routing (`not_found_handling: single-page-application`) and Node.js compatibility flags. Deploy with `npm run deploy` from `frontend/`.
 - **Railway deploy**: Backend runs as a Docker container (multi-stage `node:22-alpine` build). `railway.toml` specifies the Dockerfile path, healthcheck at `/api/v1/health`, restart policy `on_failure`. Server **must** bind to `0.0.0.0` (not `127.0.0.1`) and use `process.env.PORT` — Railway assigns the port dynamically.
 - **Tailwind v4**: Migrated from v3 to v4. Config uses the new `@import "tailwindcss"` syntax in CSS. Custom theme tokens live in `tailwind.config.ts` but the CSS entry uses `@theme` blocks in `index.css`.
@@ -211,7 +214,8 @@ The AI research pipeline was upgraded based on real backtest results from resear
 - **Gemini may return markdown-wrapped JSON**: `extractJSON()` in `backend/src/services/llm.ts` strips fences and finds the outermost `{…}` — do not remove this guard.
 - **Provider is stored per-report**: `report_json.llm_provider` records which LLM generated the report. Update research re-uses the same provider automatically (read from the existing report in `Report.tsx → handleUpdate`).
 - **LLM abstraction layer**: all pipeline steps call `callLLM(prompt, provider)` in `backend/src/services/llm.ts`. Add new providers there; pipeline.ts stays provider-agnostic.
-- **management_rating in old reports**: absent in reports generated before v0.5.2. Always guard with optional chaining (`rj.management_rating && <ManagementRating ...>`). Do NOT add a fallback render — just don't show it.
+- **management_rating in old reports**: absent in reports generated before v0.5.2. Always guard with optional chaining (`rj.management_rating && <ManagementRating ...>`). Do NOT add a fallback render — just don't show it. The update pipeline will regenerate it on next update.
+- **`ResearchListItem` vs `ResearchReport`**: the list API (`GET /api/v1/research`) returns `ResearchListItem[]` (flat, enriched). Individual report fetches (`GET /api/v1/research/:ticker`) still return `ResearchReport` (full). Do not use `ResearchReport` in the home page cards — it does not have `upside_percent`, `target_price`, etc.
 - **Stripe color token remapping**: navy scale was remapped in-place (same token names, new values). `navy-800` is now `#1c1e54` (Stripe brand dark), `navy-900` is `#0d1b38`. Components did not need class name changes — only the token values changed.
 - **Gold vs purple rule**: gold (`#d4a853`) is for financial data only (ticker symbols, target price, valuation labels, timing data). Purple (`#533afd`) is for all UI chrome (buttons, focus rings, borders, accents, spinners). Never use gold for navigation, buttons, or interactive elements.
 
@@ -228,6 +232,15 @@ The AI research pipeline was upgraded based on real backtest results from resear
 ---
 
 ## Changelog
+
+### v0.6.0
+
+- **Management rating backfill** (`runUpdatePipeline`): checks `existingReport.management_rating` before deciding whether to use cached Step 2. If missing, deletes stale Step 2 checkpoint and re-runs Step 2 fresh (concurrently with Steps 3/5/6) to generate a new `management_rating`. If present, carries it into the reconstructed `Step2Output` so Step 7's post-synthesis injection still works.
+- **Checkpoint resume guard** (`runPipeline`): if a cached Step 2 checkpoint is loaded but missing `management_rating` (from an old run), it is deleted from both the in-memory map and the DB checkpoint, forcing a fresh re-run.
+- **Enriched list API** (`GET /api/v1/research`): now selects `report_json` alongside existing columns and maps each row to include `upside_percent`, `target_price`, `hot_sector_match`, `llm_provider`, `sector_heat`, `thesis` (truncated to 150 chars), plus `company_name` and `sector` from the `tickers` join. Returns flat objects (no nested `tickers`).
+- **`ResearchListItem` type**: new frontend interface (`frontend/src/types/report.types.ts`) for the enriched list API response. `useReportList()` now returns `ResearchListItem[]`.
+- **Napkin math on home cards**: each stock card now shows target price (gold, JetBrains Mono) and upside percent (emerald if ≥0, red if <0, always shows sign). First `hot_sector_match` tag displayed as a muted pill alongside the existing sector pill.
+- **Filter & sort bar**: compact filter bar above the stock grid with Score ≥, Upside ≥, Sector (substring match on `hot_sector_match`), and Sort (Newest / Score ↓ / Upside ↓). All filtering is client-side — no new API calls. "Showing X of Y stocks" count shown below the bar. "Clear Filters" button appears only when any filter is active.
 
 ### v0.5.2
 
