@@ -78,7 +78,8 @@ moat-finder/
 │       │   ├── layout/          # Nav.tsx, Layout.tsx
 │       │   ├── report/          # ScoreBadge, SectorHeat, ValuationTable,
 │       │   │                    # NapkinMath, BearCase, Changelog,
-│       │   │                    # BusinessDiagram, QuarterlyResults
+│       │   │                    # BusinessDiagram, QuarterlyResults,
+│       │   │                    # ManagementRating
 │       │   ├── research/        # PipelineProgress, DiffModal
 │       │   ├── ui/              # Button, Input, Modal, Badge, Spinner
 │       │   └── ErrorBoundary.tsx
@@ -161,11 +162,20 @@ npm run deploy     # wrangler deploy (Cloudflare Workers production deploy)
 - **All backend routes**: prefixed `/api/v1/`.
 - **CF-Connecting-IP**: used for real IP in audit logs — never `req.ip`.
 - **React Flow**: removed. Business diagram is now a pure React/Tailwind 4-zone stacked canvas (moat → business → customers → risks).
-- **Font stack**: Playfair Display (headings / `font-display`), Inter (body / `font-body`), JetBrains Mono (data / `font-mono`).
+- **Font stack**: Plus Jakarta Sans (headings + body / `font-display` + `font-body`), JetBrains Mono (data / `font-mono`). Global `font-weight: 300` with heading overrides (h1–h3 → 700, h4–h6 → 600).
 - **ErrorBoundary**: wraps `BusinessDiagram` and `QuarterlyResults` in Report.tsx — renders a dark navy fallback card instead of crashing.
+- **Design system**: Stripe dark adaptation — navy tokens remapped to purple-tinted indigo (`navy-800: #1c1e54`, `navy-900: #0d1b38`). Purple (`#533afd`) for all UI chrome. Gold (`#d4a853`) preserved for financial data only. Score colors (emerald/amber/red) preserved exactly.
+- **ManagementRating**: generated in Step 2 (Deep Dive) as an independent LLM assessment. Injected into `parsed.report` after Step 7 synthesis completes — the scoring LLM never sees it and it does NOT influence the 1–10 investment score. Field: `report_json.management_rating` (optional, absent in pre-v0.5.2 reports).
 - **Cloudflare Workers deploy**: `wrangler.jsonc` configures SPA routing (`not_found_handling: single-page-application`) and Node.js compatibility flags. Deploy with `npm run deploy` from `frontend/`.
 - **Railway deploy**: Backend runs as a Docker container (multi-stage `node:22-alpine` build). `railway.toml` specifies the Dockerfile path, healthcheck at `/api/v1/health`, restart policy `on_failure`. Server **must** bind to `0.0.0.0` (not `127.0.0.1`) and use `process.env.PORT` — Railway assigns the port dynamically.
 - **Tailwind v4**: Migrated from v3 to v4. Config uses the new `@import "tailwindcss"` syntax in CSS. Custom theme tokens live in `tailwind.config.ts` but the CSS entry uses `@theme` blocks in `index.css`.
+
+### Pipeline v2 + Management Rating (v0.5.2)
+
+- **management_rating** is generated in Step 2 (Deep Dive) as a structured independent assessment: grade (A–F), score (0–100), summary, CEO assessment, recent changes, capital allocation.
+- In `runStep7()`, after the LLM synthesis JSON is parsed, `step2.management_rating` is injected directly into `parsed.report`. The Step 7 scoring prompt never receives it — the 1–10 investment score is based solely on moat quality, valuation vs peers, revenue growth, sector heat, and asymmetric setup.
+- `ManagementRating.tsx` sidebar card displays the rating with grade color coding and a subtitle: "Independent assessment — not included in investment score".
+- `report_json.management_rating` is optional — old reports without it render nothing (no fallback needed).
 
 ### Pipeline v2 (backtest improvements — IBRX/AMPX lessons)
 
@@ -201,6 +211,9 @@ The AI research pipeline was upgraded based on real backtest results from resear
 - **Gemini may return markdown-wrapped JSON**: `extractJSON()` in `backend/src/services/llm.ts` strips fences and finds the outermost `{…}` — do not remove this guard.
 - **Provider is stored per-report**: `report_json.llm_provider` records which LLM generated the report. Update research re-uses the same provider automatically (read from the existing report in `Report.tsx → handleUpdate`).
 - **LLM abstraction layer**: all pipeline steps call `callLLM(prompt, provider)` in `backend/src/services/llm.ts`. Add new providers there; pipeline.ts stays provider-agnostic.
+- **management_rating in old reports**: absent in reports generated before v0.5.2. Always guard with optional chaining (`rj.management_rating && <ManagementRating ...>`). Do NOT add a fallback render — just don't show it.
+- **Stripe color token remapping**: navy scale was remapped in-place (same token names, new values). `navy-800` is now `#1c1e54` (Stripe brand dark), `navy-900` is `#0d1b38`. Components did not need class name changes — only the token values changed.
+- **Gold vs purple rule**: gold (`#d4a853`) is for financial data only (ticker symbols, target price, valuation labels, timing data). Purple (`#533afd`) is for all UI chrome (buttons, focus rings, borders, accents, spinners). Never use gold for navigation, buttons, or interactive elements.
 
 ---
 
@@ -211,3 +224,33 @@ The AI research pipeline was upgraded based on real backtest results from resear
 - Test role-based rendering in frontend components
 - Mock Supabase and Anthropic SDK in all tests — never call live APIs in tests
 - Every custom hook tested with React Testing Library
+
+---
+
+## Changelog
+
+### v0.5.2
+
+- **Management Rating**: new independent management assessment field generated in Step 2 (Deep Dive). Grade A–F, score 0–100, CEO assessment, recent changes, capital allocation. Injected into report post-synthesis so Step 7 scoring LLM never sees it. New `ManagementRating.tsx` sidebar card with subtitle "Independent assessment — not included in investment score". Field: `report_json.management_rating` (optional, absent in pre-v0.5.2 reports).
+
+### v0.5.1
+
+- **BusinessDiagram RiskZone readability**: KEY RISKS zone inside the Business Model diagram had red text on red-tinted background. Fixed: `border-l-4 border-red-500 bg-navy-900` container, risk card title → `text-white font-semibold`, detail → `text-slate-300 font-light`, icon stays `text-red-400`.
+
+### v0.5.0
+
+- **NapkinMath vertical stack**: Target Price and Upside stacked vertically (`flex flex-col gap-2`) instead of side-by-side, preventing overflow at any viewport width. Both use `text-3xl font-bold`.
+- **BearCase readability**: Key Risks zone fixed from red text on dark red background to `border-l-4 border-red-500` left accent only, dark navy background, `text-white font-semibold` title, `text-slate-300 font-light` body.
+- **BearCase title parsing**: Risk strings formatted as `"Title: Description"` now split into bold title + body text via `parseRiskTitle()`.
+
+### v0.4.0 (Stripe design system)
+
+- **Stripe dark design system**: Color palette migrated to Stripe-inspired dark adaptation. Navy tokens remapped to purple-tinted indigo. Purple (`#533afd`) replaces green/gold for all UI chrome. Gold (`#d4a853`) preserved exclusively for financial data. Score colors (emerald/amber/red) preserved.
+- **Font replacement**: Söhne (proprietary) → Plus Jakarta Sans (Google Fonts). Playfair Display and Inter removed. Both `font-display` and `font-body` now resolve to Plus Jakarta Sans. JetBrains Mono kept. Global `font-weight: 300` with h1–h3 → 700 overrides.
+- **Button**: 4px radius, purple primary (`bg-purple hover:bg-purple-dark`), ghost secondary with `border-navy-700`.
+- **Nav**: white logo text (`text-cream font-display`), purple CTA buttons (replaced rounded-full border-cream style).
+- **ScoreBadge / SectorHeat**: SVG hardcoded hex literals updated to match new navy palette.
+- **PipelineProgress**: amber/gold spinner → purple; gold accents → purple.
+- **Hero sections** (Home + Report): `bg-gradient-to-br from-navy-800 via-[#1f2170] to-navy-950` with Stripe blue-tinted shadow.
+- **Report headings**: `font-light tracking-tight` with purple-light left border (was `font-semibold` with gold border).
+- **Admin + Versions**: green accents → purple throughout.

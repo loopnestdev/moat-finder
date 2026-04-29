@@ -176,8 +176,9 @@ Step 1 — DISCOVERY
 Step 2 — DEEP DIVE
   Input:  Step 1 output
   Task:   Business model, moat analysis, technological advantage,
-          upcoming catalysts (12-month horizon)
-  Output: Narrative sections + structured data
+          upcoming catalysts (12-month horizon), constraint & value chain
+          analysis, management quality assessment (independent of score)
+  Output: Narrative sections + structured data + management_rating
 
 Step 3 — VALUATION & FINANCIALS
   Input:  Step 1 + 2 output
@@ -208,7 +209,7 @@ Step 6 — SENTIMENT & TECHNICALS
   Output: Sentiment summary
 
 Step 7 — SYNTHESIS
-  Input:  Steps 1–6 complete output
+  Input:  Steps 1–6 complete output (management_rating excluded from prompt)
   Task:   Generate final report:
           - Score (1.0–10.0, one decimal) with weighted rubric
           - One-liner thesis
@@ -220,6 +221,8 @@ Step 7 — SYNTHESIS
           - Sector heat (1–5)
           - Platform type + optionality
           - Re-rating catalyst
+  Post-synthesis: management_rating from Step 2 injected into parsed.report
+                  AFTER the LLM response is received — it never influences score
   Output: Structured JSON report saved to Supabase
 ```
 

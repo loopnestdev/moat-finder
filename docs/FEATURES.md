@@ -10,12 +10,12 @@ Reports are cached, versioned, publicly readable, and diff-tracked on update.
 
 ## User Roles
 
-| Role      | Can Do |
-|-----------|--------|
-| Public    | Search cached tickers, view cached reports, view version history |
-| Pending   | Logged in but awaiting admin approval — same as public |
-| Approved  | Everything public + trigger new research + trigger updates |
-| Admin     | Everything approved + approve/reject users + view audit log |
+| Role     | Can Do                                                           |
+| -------- | ---------------------------------------------------------------- |
+| Public   | Search cached tickers, view cached reports, view version history |
+| Pending  | Logged in but awaiting admin approval — same as public           |
+| Approved | Everything public + trigger new research + trigger updates       |
+| Admin    | Everything approved + approve/reject users + view audit log      |
 
 ---
 
@@ -55,17 +55,24 @@ Reports are cached, versioned, publicly readable, and diff-tracked on update.
 
 ### Report Sections (in order)
 
-1. **One-liner thesis** — bold callout at the top
-2. **Business Model Diagram** — React Flow interactive diagram (Feature 6)
+1. **One-liner thesis** — italic callout with purple left border
+2. **Business Model Diagram** — pure React/Tailwind 4-zone canvas (moat → business → customers → risks); no React Flow
 3. **Sector Heat Check** — 1–5 flame icons + hot sector tags
-4. **Business Model Narrative** — how the company makes money
-5. **Why Now (Catalysts)** — bullet list of 3–5 upcoming catalysts
-6. **Valuation Table** — comparison vs competitors (P/S, EV/EBITDA, gross margin, YoY growth)
-7. **Napkin Math** — upside scenario with comp multiple
-8. **Moat & Competitors** — what protects the business
-9. **Bear Case** — 3-point risk summary
-10. **Macro & Policy** — macro tailwinds/headwinds
-11. **Sentiment & Technicals** — short interest, 200-day MA, RS vs SPY
+4. **Business Model Narrative** — how the company makes money (numbered segments)
+5. **Why Now (Catalysts)** — numbered list of 3–5 upcoming catalysts
+6. **Moat & Competitors** — pillar cards + competitor tags
+7. **Bear Case** — numbered risk points + Key Risks with title/body parsing
+8. **Macro & Policy** — macro tailwinds/headwinds (bullet list)
+9. **Sentiment & Technicals** — short interest, 200-day MA, RS vs SPY (bullet list)
+10. **Version History** — changelog accordion (if >0 versions)
+
+**Right sidebar (sticky on desktop):**
+
+- **Napkin Math** — target price + upside stacked vertically; Revenue Guidance + Comp Multiple below
+- **Quarterly Results** — last 4 quarters earnings table
+- **Valuation vs Peers** — comparison table (P/S, EV/EBITDA, gross margin, YoY growth)
+- **Sector Heat** — flame icons + hot sector chips
+- **Management Rating** — independent A–F grade assessment; not included in investment score
 
 ### Report Footer
 

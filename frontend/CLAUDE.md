@@ -7,9 +7,9 @@ making any changes to the frontend.
 
 ## Stack
 
-- React 18 + Vite + TypeScript strict
-- Tailwind CSS v3 — mobile-first, all layout via Tailwind utilities only
-- React Router v6 — client-side routing
+- React 19 + Vite + TypeScript strict
+- Tailwind CSS v4 — mobile-first, all layout via Tailwind utilities only
+- React Router v7 — client-side routing
 - TanStack Query (React Query) v5 — all server state, caching, loading states
 - Supabase Auth JS v2 — session management, OAuth (Google)
 - Zod — ticker input validation (shared schema with backend)
@@ -30,17 +30,18 @@ frontend/
 │   │   └── NotFound.tsx
 │   ├── components/
 │   │   ├── layout/
-│   │   │   ├── Nav.tsx       # Responsive navbar — dark navy, gold logo
+│   │   │   ├── Nav.tsx       # Responsive navbar — dark navy, white logo, purple CTA
 │   │   │   └── Layout.tsx    # Page wrapper (bg-navy-900)
 │   │   ├── report/
 │   │   │   ├── ScoreBadge.tsx       # SVG circular gauge (sm/md/lg)
 │   │   │   ├── SectorHeat.tsx       # SVG flame icons + sector chips
 │   │   │   ├── ValuationTable.tsx   # 2-col card grid (subject highlighted)
-│   │   │   ├── NapkinMath.tsx       # Target price + upside hero card
-│   │   │   ├── BearCase.tsx         # Numbered red card
+│   │   │   ├── NapkinMath.tsx       # Target price + upside (stacked vertically)
+│   │   │   ├── BearCase.tsx         # Numbered dark card, red left border
 │   │   │   ├── Changelog.tsx        # Dark navy version history accordion
 │   │   │   ├── BusinessDiagram.tsx  # 4-zone pure-React canvas (no React Flow)
-│   │   │   └── QuarterlyResults.tsx # Last 4 quarters earnings card
+│   │   │   ├── QuarterlyResults.tsx # Last 4 quarters earnings card
+│   │   │   └── ManagementRating.tsx # Independent management assessment sidebar card
 │   │   ├── research/
 │   │   │   ├── PipelineProgress.tsx # SSE step progress — dark navy themed
 │   │   │   └── DiffModal.tsx        # Update confirmation modal
@@ -89,13 +90,22 @@ frontend/
 
 ## Design System
 
-### Colours (tailwind.config.ts)
+### Colours (tailwind.config.ts) — Stripe dark adaptation
 
 ```text
-navy:  950=#070d1a  900=#0f1729  800=#162035  700=#1e2d47  600=#2a3f5f
-cream: DEFAULT=#f5f0e8  muted=#b8b0a0  subtle=#7a7268
-gold:  DEFAULT=#c9a84c  light=#e4c97e  dark=#9a7530
+navy:   950=#06091a  900=#0d1b38  800=#1c1e54  750=#22256a  700=#2a2e7a  600=#362baa  400=#533afd  300=#b9b9f9
+cream:  DEFAULT=#ffffff  muted=rgba(255,255,255,0.70)  subtle=rgba(255,255,255,0.45)
+gold:   DEFAULT=#d4a853  light=#e8c07a  dark=#a87c35   ← financial data only
+purple: DEFAULT=#533afd  dark=#4434d4  deep=#2e2b8c  light=#b9b9f9  mid=#665efd
+ruby:   #ea2261   magenta: #f96bee
 ```
+
+**Color rules:**
+
+- **Purple** (`#533afd`) — all UI chrome: buttons, focus rings, borders, spinners, active tabs, section heading accents
+- **Gold** (`#d4a853`) — financial data only: ticker symbols, target price, valuation multiples, duration badges
+- **Score colors** — preserved exactly: `#10b981` (emerald, high), `#f59e0b` (amber, mid), `#ef4444` (red, low)
+- **Red accent pattern** — risk zones use `border-l-4 border-red-500` accent only; `bg-navy-900` dark surface; `text-white font-semibold` title; `text-slate-300 font-light` body; `text-red-400` icon/label only
 
 Score badge thresholds:
 
@@ -105,11 +115,13 @@ Score badge thresholds:
 
 ### Typography
 
-| Class | Font | Use |
-| --- | --- | --- |
-| `font-display` | Playfair Display | Section headings (h2, SectionHeading) |
-| `font-body` | Inter | Body text, descriptions, labels |
-| `font-mono` | JetBrains Mono | Tickers, scores, numbers, data values |
+| Class          | Font              | Use                                                      |
+| -------------- | ----------------- | -------------------------------------------------------- |
+| `font-display` | Plus Jakarta Sans | Section headings (h2, SectionHeading), hero labels       |
+| `font-body`    | Plus Jakarta Sans | Body text, descriptions, labels (same family as display) |
+| `font-mono`    | JetBrains Mono    | Tickers, scores, numbers, data values, mono labels       |
+
+Global default weight: `300`. Heading overrides: `h1–h3 → 700`, `h4–h6 → 600`. Loaded via Google Fonts in `index.html`.
 
 ### Report Layout (Report.tsx)
 
@@ -122,9 +134,12 @@ Score badge thresholds:
 - **Thesis word-per-line bug**: `report_json.thesis` may be an array in older reports. Always coerce: `Array.isArray(v) ? v.join(' ') : String(v)` before rendering. Apply `block w-full whitespace-normal break-words` to the thesis `<p>`.
 - **Sector tag overflow**: right hero column must have `max-w-xs sm:max-w-sm` — otherwise many sector tags overflow and collapse the left (thesis) column to 0px width.
 - **`normPct()` guard**: `gross_margin` and `yoy_growth` may be stored as decimals (0.39) or percentages (39.0). If `|value × 100| > 200`, use the value as-is.
-- **PipelineProgress cached steps**: `SSEEvent.status` can be `'cached'` (from smart update). Treat `cached` the same as `complete` for step tracking; render with a gold circular-arrow icon instead of a green checkmark.
+- **PipelineProgress cached steps**: `SSEEvent.status` can be `'cached'` (from smart update). Treat `cached` the same as `complete` for step tracking; render with a circular-arrow icon instead of a checkmark.
 - **BusinessDiagram**: React Flow was removed. The component is now pure React/Tailwind — 4 zones: MoatZone, BusinessZone (3 cols), CustomerZone, RiskZone. Export via `html-to-image` toPng.
-- **`font-body` on Update Research button**: Button.tsx uses `text-sm` by default; override with `!text-base` in the className prop when larger text is needed.
+- **Risk zone red pattern**: both `BearCase.tsx` Key Risks and `BusinessDiagram.tsx` RiskZone use `border-l-4 border-red-500` left accent only — NOT a red background. Title text is `text-white font-semibold`, body is `text-slate-300 font-light`, icon/label stays `text-red-400`.
+- **ManagementRating optional field**: `rj.management_rating` is absent in reports generated before v0.5.2. Always gate with `{rj.management_rating && <ManagementRating data={rj.management_rating} />}` — no fallback render needed.
+- **Tailwind v4 `@theme` + config**: custom tokens live in both `tailwind.config.ts` (for IDE autocomplete) and the `@theme {}` block in `index.css`. Keep both in sync when adding new tokens.
+- **Purple vs gold rule**: purple (`text-purple`, `border-purple`, etc.) for all interactive chrome. Gold (`text-gold`) for financial data display only — never on buttons, tabs, or nav elements.
 
 ## Commands
 

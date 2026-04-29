@@ -14,6 +14,7 @@ research report in 60–90 seconds — powered by Claude Sonnet or Gemini with l
 - **Constraint & value chain analysis** — classifies primary bottleneck, tests ownership, assesses durability, investability, and rent capture
 - **Platform classification** — identifies platform vs single-product companies, maps adjacent-market TAMs
 - **Re-rating catalyst** — the single event that could force a 2–3x reprice within 24 months
+- **Independent management rating** — grade A–F assessment (CEO track record, capital allocation, recent changes) generated separately from the investment score and never factoring into it
 - **Diff-tracked versioning** — every update shows exactly what changed between research runs
 - **Role-based auth** — public read / approved write / admin manage
 - **Publicly cached** — reports are readable without login; only approved users can trigger new research
@@ -62,25 +63,25 @@ graph TB
 
 ## Tech Stack
 
-| Layer              | Technology              | Version           |
-| ------------------ | ----------------------- | ----------------- |
-| Frontend framework | React                   | 19                |
-| Build tool         | Vite                    | 8                 |
-| Styling            | Tailwind CSS            | v4                |
-| Routing            | React Router            | v7                |
-| Server state       | TanStack Query          | v5                |
-| Frontend hosting   | Cloudflare Workers      | —                 |
-| Backend runtime    | Node.js                 | v22 LTS           |
-| Backend framework  | Express                 | 4                 |
-| Backend hosting    | Railway                 | —                 |
-| Container          | Docker (node:22-alpine) | multi-stage       |
-| Auth               | Supabase Auth           | v2                |
-| Database           | Supabase Postgres       | —                 |
-| AI — Claude        | Anthropic SDK           | claude-sonnet-4-6 |
-| AI — Gemini        | Google Generative AI    | gemini-2.5-flash-lite  |
-| Input validation   | Zod                     | —                 |
-| Security headers   | Helmet                  | —                 |
-| Language           | TypeScript              | strict            |
+| Layer              | Technology              | Version               |
+| ------------------ | ----------------------- | --------------------- |
+| Frontend framework | React                   | 19                    |
+| Build tool         | Vite                    | 8                     |
+| Styling            | Tailwind CSS            | v4                    |
+| Routing            | React Router            | v7                    |
+| Server state       | TanStack Query          | v5                    |
+| Frontend hosting   | Cloudflare Workers      | —                     |
+| Backend runtime    | Node.js                 | v22 LTS               |
+| Backend framework  | Express                 | 4                     |
+| Backend hosting    | Railway                 | —                     |
+| Container          | Docker (node:22-alpine) | multi-stage           |
+| Auth               | Supabase Auth           | v2                    |
+| Database           | Supabase Postgres       | —                     |
+| AI — Claude        | Anthropic SDK           | claude-sonnet-4-6     |
+| AI — Gemini        | Google Generative AI    | gemini-2.5-flash-lite |
+| Input validation   | Zod                     | —                     |
+| Security headers   | Helmet                  | —                     |
+| Language           | TypeScript              | strict                |
 
 ---
 
@@ -95,16 +96,22 @@ Each report includes:
 3. Sector heat check (1–5 flames + hot sector tags)
 4. Business model narrative
 5. Why Now — upcoming catalysts
-6. Valuation table vs growth-stage-matched peers
-7. 3-scenario napkin math (Bear / Base / Bull)
-8. Moat & competitors
-9. Bear case + bull rebuttal
-10. Constraint & value chain analysis (bottleneck type, ownership, durability, rent capture)
-11. Macro & policy impact
-12. Sentiment & technicals (short interest, 200-day MA, RS vs SPY)
-13. Platform optionality map (if platform company)
-14. Re-rating catalyst
-15. LLM provider badge (Claude or Gemini) shown in report header
+6. Moat & competitors
+7. Bear case + bull rebuttal + key risks
+8. Constraint & value chain analysis (bottleneck type, ownership, durability, rent capture)
+9. Macro & policy impact
+10. Sentiment & technicals (short interest, 200-day MA, RS vs SPY)
+11. Platform optionality map (if platform company)
+12. Re-rating catalyst
+13. LLM provider badge (Claude or Gemini) shown in report header
+
+**Right sidebar:**
+
+- Napkin math — target price + upside + 3-scenario (Bear/Base/Bull)
+- Quarterly results (last 4 quarters)
+- Valuation table vs growth-stage-matched peers
+- Sector heat
+- Management quality rating — independent A–F grade, not factored into investment score
 
 ### User Roles
 
@@ -336,7 +343,22 @@ from the existing report. Only Steps 1, 3, 5, 6, and 7 run — reducing API cost
 
 ## Changelog
 
-### v0.3.0 (develop)
+### v0.5.2
+
+- **Management Rating**: independent A–F management quality assessment generated in Step 2 (Deep Dive). Covers CEO track record, recent leadership changes, and capital allocation. Injected into the report after Step 7 synthesis — the scoring LLM never sees it, so it cannot influence the 1–10 investment score. New `ManagementRating.tsx` sidebar card with subtitle "Independent assessment — not included in investment score". Field `report_json.management_rating` is optional; absent in pre-v0.5.2 reports.
+
+### v0.5.1
+
+- **BusinessDiagram RiskZone readability**: KEY RISKS zone had red text on a red-tinted background. Fixed to `border-l-4 border-red-500` left accent with dark navy surface, `text-white` titles, `text-slate-300` body text.
+
+### v0.5.0
+
+- **Stripe design system**: full frontend restyle. Navy palette remapped to purple-tinted indigo. Purple (`#533afd`) replaces green/gold for all UI chrome. Gold (`#d4a853`) reserved for financial data. Stripe blue-tinted shadow on hero sections. Hero sections use `bg-gradient-to-br from-navy-800 via-[#1f2170] to-navy-950`.
+- **Font replacement**: proprietary Söhne replaced with Plus Jakarta Sans (Google Fonts). Playfair Display and Inter removed. Global `font-weight: 300` default with heading overrides. JetBrains Mono kept for financial data.
+- **BearCase readability**: Key Risks section fixed from red-on-red to left-border-only accent with readable dark surface.
+- **NapkinMath layout**: Target Price and Upside now stack vertically (`flex-col gap-2`) instead of side-by-side, eliminating overflow at all viewport widths.
+
+### v0.3.0
 
 - **Multi-LLM support**: new `llm.ts` abstraction layer routes research to Claude (`claude-sonnet-4-6` + `web_search` tool) or Gemini (`gemini-2.5-flash-lite` + `googleSearch` grounding), selectable per run
 - **LLM selector**: provider dropdown (Claude / Gemini) in the research confirm modal; defaults to Claude
