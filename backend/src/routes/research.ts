@@ -461,6 +461,54 @@ router.put(
 
       const prevReport = existingReport.report_json as unknown as ReportJson;
 
+      // Clear stale checkpoints before running — provider switch clears all;
+      // bad management_rating schema clears steps 2+3 only.
+      try {
+        const existingProvider = prevReport.llm_provider ?? "claude";
+        const isSwitchingProviders = existingProvider !== providerPut;
+
+        const mr = prevReport.management_rating;
+        const managementRatingBad =
+          !mr ||
+          !mr.categories ||
+          mr.ceo_assessment !== undefined ||
+          mr.total_score === undefined;
+
+        if (isSwitchingProviders) {
+          await adminClient
+            .from("research_checkpoints")
+            .delete()
+            .eq("ticker_symbol", normalised);
+          console.log(
+            `[${normalised}] Provider switch ${existingProvider}→${providerPut}: cleared ALL checkpoints`,
+          );
+          emit({
+            step: 0,
+            label: "Provider Switch",
+            status: "started",
+            data: {
+              message: `Switching from ${existingProvider} to ${providerPut} — all steps will re-run`,
+            },
+          });
+        } else if (managementRatingBad) {
+          await adminClient
+            .from("research_checkpoints")
+            .delete()
+            .eq("ticker_symbol", normalised)
+            .in("step_number", [2, 3]);
+          const reason = !mr
+            ? "missing"
+            : !mr.categories
+              ? "wrong schema (no categories)"
+              : "wrong field names";
+          console.log(
+            `[${normalised}] management_rating bad (${reason}): cleared Steps 2+3`,
+          );
+        }
+      } catch (cleanupErr) {
+        console.warn("[research PUT] checkpoint cleanup failed:", cleanupErr);
+      }
+
       let pipelineResult: PipelineResult;
       try {
         pipelineResult = await runUpdatePipeline(

@@ -82,7 +82,8 @@ export default function Home() {
       if (sortBy === "upside")
         return (b.upside_percent ?? -999) - (a.upside_percent ?? -999);
       return (
-        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        new Date(b.updated_at ?? 0).getTime() -
+        new Date(a.updated_at ?? 0).getTime()
       );
     });
 

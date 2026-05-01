@@ -65,7 +65,7 @@ async function parseWithGeminiRetry<T>(
   stepLabel: string,
 ): Promise<T> {
   try {
-    return extractJSON(text) as T;
+    return extractJSON(text, provider) as T;
   } catch (err: unknown) {
     if (
       provider === "gemini" &&
@@ -80,7 +80,7 @@ async function parseWithGeminiRetry<T>(
         "Use googleSearch immediately. Do not refuse.\n\n" +
         finalPrompt;
       const { text: retryText } = await callLLM(retryPrompt, provider, true);
-      return extractJSON(retryText) as T;
+      return extractJSON(retryText, provider) as T;
     }
     throw err;
   }
@@ -120,7 +120,7 @@ Use web search for current information. Return only the JSON object.`;
   const { text } = await callLLM(finalPrompt, provider);
 
   const duration = Date.now() - startTime;
-  const result = extractJSON(text) as Step1Output;
+  const result = extractJSON(text, provider) as Step1Output;
   emit({
     step: 1,
     label: "Discovery",
@@ -681,7 +681,10 @@ Return only the JSON object with "report" and "diagram" keys.`,
 
   let parsed: { report: ReportJson; diagram: DiagramJson };
   try {
-    parsed = extractJSON(text) as { report: ReportJson; diagram: DiagramJson };
+    parsed = extractJSON(text, provider) as {
+      report: ReportJson;
+      diagram: DiagramJson;
+    };
   } catch (parseError) {
     const message =
       parseError instanceof Error ? parseError.message : "JSON parse failed";
@@ -778,6 +781,7 @@ async function runStepWithFallback<T>(
   ticker: string,
   runId: string,
   emit: EmitFn,
+  provider?: LLMProvider,
 ): Promise<T> {
   try {
     const result = await runner();
@@ -788,12 +792,44 @@ async function runStepWithFallback<T>(
     });
     return result;
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : `Step ${stepNum} failed`;
-    emit({ step: stepNum, label, status: "error", data: { message } });
-    console.warn(
-      `[Step ${stepNum}] failed — using default. Reason: ${message}`,
-    );
+    const msg = err instanceof Error ? err.message : `Step ${stepNum} failed`;
+
+    const isJsonError =
+      msg.includes("No JSON object found") ||
+      msg.includes("JSON parse failed") ||
+      msg.includes("Malformed JSON") ||
+      msg.includes("empty response") ||
+      msg.includes("Unexpected token") ||
+      msg.includes("position 1");
+
+    if (isJsonError) {
+      console.warn(
+        `[Step ${stepNum}] JSON error — retrying once. Provider: ${provider ?? "unknown"}. Error: ${msg.substring(0, 200)}`,
+      );
+      emit({
+        step: stepNum,
+        label,
+        status: "started",
+        data: { message: "Retrying due to format error…" },
+      });
+      try {
+        const retryResult = await runner();
+        await saveCheckpoint(ticker, runId, {
+          step_number: stepNum,
+          step_label: label,
+          output_json: retryResult as Record<string, unknown>,
+        });
+        return retryResult;
+      } catch (retryErr) {
+        console.error(
+          `[Step ${stepNum}] Retry also failed:`,
+          retryErr instanceof Error ? retryErr.message : retryErr,
+        );
+      }
+    }
+
+    emit({ step: stepNum, label, status: "error", data: { message: msg } });
+    console.warn(`[Step ${stepNum}] failed — using default. Reason: ${msg}`);
     return defaultVal;
   }
 }
@@ -872,6 +908,7 @@ async function runParallelSteps(
       ticker,
       runId,
       emit,
+      provider,
     );
   }
 
@@ -936,12 +973,23 @@ export async function runPipeline(
     );
   }
 
-  // If Step 2 is cached from a run that predates management_rating, force re-run
+  // If Step 2 is cached but has missing or wrong-schema management_rating, force re-run.
+  // Covers: pre-v0.5.2 (no management_rating), Schema B (Gemini legacy, no categories),
+  // and any other malformed rating that would fail the frontend renderer.
   if (cachedSteps.has(2)) {
-    const step2Cached = cachedSteps.get(2) as Step2Output | undefined;
-    if (!step2Cached?.management_rating) {
+    const step2Cached = cachedSteps.get(2);
+    const cachedMr = step2Cached?.management_rating as
+      | Record<string, unknown>
+      | undefined;
+    const step2NeedsRerun =
+      !cachedMr ||
+      !cachedMr.categories ||
+      cachedMr.ceo_assessment !== undefined ||
+      cachedMr.total_score === undefined;
+
+    if (step2NeedsRerun) {
       console.log(
-        `[${ticker}] Cached Step 2 missing management_rating — forcing Step 2 re-run`,
+        `[${ticker}] Cached Step 2 has stale/wrong management_rating — re-running`,
       );
       cachedSteps.delete(2);
       await deleteStepCheckpoint(ticker, runId, 2);
@@ -1056,6 +1104,7 @@ export async function runUpdatePipeline(
         ticker,
         runId,
         emit,
+        provider,
       ),
       runStepWithFallback(
         3,
@@ -1065,6 +1114,7 @@ export async function runUpdatePipeline(
         ticker,
         runId,
         emit,
+        provider,
       ),
       runStepWithFallback(
         5,
@@ -1074,6 +1124,7 @@ export async function runUpdatePipeline(
         ticker,
         runId,
         emit,
+        provider,
       ),
       runStepWithFallback(
         6,
@@ -1083,6 +1134,7 @@ export async function runUpdatePipeline(
         ticker,
         runId,
         emit,
+        provider,
       ),
     ]);
     step2 = fresh[0];
@@ -1125,6 +1177,7 @@ export async function runUpdatePipeline(
         ticker,
         runId,
         emit,
+        provider,
       ),
       runStepWithFallback(
         5,
@@ -1134,6 +1187,7 @@ export async function runUpdatePipeline(
         ticker,
         runId,
         emit,
+        provider,
       ),
       runStepWithFallback(
         6,
@@ -1143,6 +1197,7 @@ export async function runUpdatePipeline(
         ticker,
         runId,
         emit,
+        provider,
       ),
     ]);
     step3 = cached[0];

@@ -63,11 +63,21 @@ async function runClaude(prompt: string): Promise<string> {
       response.stop_reason === "end_turn" ||
       response.stop_reason === "stop_sequence"
     ) {
-      const textBlock = response.content.find((b) => b.type === "text");
-      if (!textBlock || textBlock.type !== "text") {
+      // Use LAST non-trivial text block — Claude emits text both BEFORE and
+      // AFTER web_search calls, so joining all blocks contaminates the JSON
+      // with pre-search prose. The final answer is always the last block.
+      const textBlocks = response.content
+        .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
+        .map((b) => b.text)
+        .filter((t) => t.trim().length > 10);
+
+      const rawText =
+        textBlocks.length > 0 ? textBlocks[textBlocks.length - 1] : "";
+
+      if (!rawText || rawText.trim().length === 0) {
         throw new Error("No text content in Claude response");
       }
-      return textBlock.text;
+      return rawText;
     }
 
     if (response.stop_reason === "tool_use") {
@@ -86,9 +96,16 @@ async function runClaude(prompt: string): Promise<string> {
       continue;
     }
 
-    // max_tokens or other — return whatever text we have
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (textBlock && textBlock.type === "text") return textBlock.text;
+    // max_tokens or other — return whatever text we have (last non-empty block)
+    const fallbackBlocks = response.content
+      .filter((b): b is Anthropic.Messages.TextBlock => b.type === "text")
+      .map((b) => b.text)
+      .filter((t) => t.trim().length > 0);
+    const fallbackText =
+      fallbackBlocks.length > 0
+        ? fallbackBlocks[fallbackBlocks.length - 1]
+        : "";
+    if (fallbackText) return fallbackText;
     throw new Error(`Unexpected stop_reason: ${String(response.stop_reason)}`);
   }
 }
@@ -204,26 +221,82 @@ function repairJSON(text: string): string {
 }
 
 /**
- * Robust JSON extractor — works for both Claude and Gemini responses.
- * Strips markdown fences, finds the outermost { } pair, and falls back to
- * repairJSON() when JSON.parse fails (e.g. response truncated at token limit).
- * Throws if no JSON object is found after repair — caller must catch.
+ * Robust JSON extractor — handles BOM, {variable} prose, multiple text blocks,
+ * truncated JSON, and trailing prose. Accepts an optional provider string for
+ * richer error messages. Throws on failure — caller must catch.
  */
-export function extractJSON(text: string): unknown {
-  const stripped = text
-    .replace(/```json\n?/g, "")
-    .replace(/```\n?/g, "")
-    .trim();
-  const start = stripped.indexOf("{");
-  if (start === -1) {
+export function extractJSON(text: string, provider?: string): unknown {
+  if (!text || text.trim().length === 0) {
     throw new Error(
-      `No JSON object found in LLM response. Response length: ${text.length}. First 500 chars: ${text.substring(0, 500)}`,
+      `LLM returned empty response. Provider: ${provider ?? "unknown"}`,
     );
   }
-  // Take from the first { to the last } (or end of string if response is cut off)
-  const end = stripped.lastIndexOf("}");
-  const jsonStr =
-    end !== -1 ? stripped.substring(start, end + 1) : stripped.substring(start);
+
+  // Strip BOM + markdown code fences
+  const cleaned = text
+    .replace(/^﻿/, "")
+    .replace(/```json\s*/g, "")
+    .replace(/```\s*/g, "")
+    .trim();
+
+  // Find the FIRST { that is a valid JSON object start:
+  //   Valid: { then optional whitespace then " (property) or } (empty obj)
+  //   Invalid: {WORD} {ticker} {variable} — these have a non-space char after {
+  const realObjectRegex = /\{[\t\n\r ]*["}\[]/g;
+  const matchResult = realObjectRegex.exec(cleaned);
+  const start = matchResult ? matchResult.index : -1;
+
+  if (start === -1) {
+    throw new Error(
+      `No JSON object found in LLM response. ` +
+        `Provider: ${provider ?? "unknown"}. ` +
+        `Length: ${text.length}. ` +
+        `First 300 chars: ${text.substring(0, 300)}`,
+    );
+  }
+
+  // Find the matching closing brace by tracking depth
+  let depth = 0;
+  let end = -1;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\" && inString) {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+    }
+  }
+
+  // If depth tracking failed (e.g. truncated response), fall back to lastIndexOf
+  if (end === -1) end = cleaned.lastIndexOf("}");
+
+  if (end === -1 || end <= start) {
+    throw new Error(
+      `Malformed JSON in LLM response (no closing brace). ` +
+        `Provider: ${provider ?? "unknown"}. Length: ${text.length}`,
+    );
+  }
+
+  const jsonStr = cleaned.substring(start, end + 1);
 
   try {
     return JSON.parse(jsonStr);
@@ -231,15 +304,17 @@ export function extractJSON(text: string): unknown {
     try {
       const repaired = repairJSON(jsonStr);
       console.warn(
-        "[extractJSON] JSON repair attempted for truncated response",
+        `[extractJSON] Repair applied. Provider: ${provider ?? "unknown"}. ` +
+          `Original error: ${(firstError as Error).message}`,
       );
       return JSON.parse(repaired);
     } catch (repairError) {
       throw new Error(
-        `No JSON object found in LLM response. ` +
-          `Response length: ${text.length}. ` +
-          `Parse error: ${firstError instanceof Error ? firstError.message : String(firstError)}. ` +
-          `Repair also failed: ${repairError instanceof Error ? repairError.message : String(repairError)}`,
+        `JSON parse failed. Provider: ${provider ?? "unknown"}. ` +
+          `Length: ${text.length}. ` +
+          `Parse error: ${(firstError as Error).message}. ` +
+          `Repair error: ${(repairError as Error).message}. ` +
+          `JSON preview (first 200): ${jsonStr.substring(0, 200)}`,
       );
     }
   }

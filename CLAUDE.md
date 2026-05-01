@@ -235,6 +235,18 @@ The AI research pipeline was upgraded based on real backtest results from resear
 
 ## Changelog
 
+### v0.6.5
+
+- **Bulletproof `extractJSON`** (`llm.ts`): Replaced with depth-tracking implementation that handles BOM, `{variable}` prose before JSON, multiple text blocks concatenated, and trailing prose after JSON. Valid-object regex `/\{[\t\n\r ]*["}\[]/g` skips `{TICKER}` patterns. Closing brace found by bracket-depth tracking; falls back to `lastIndexOf` only on truncated responses. Accepts optional `provider` arg for richer error context.
+- **Claude last-text-block** (`llm.ts`): `runClaude` now collects ALL non-trivial text blocks and returns the LAST one. Claude emits prose before web_search tool calls, then the real JSON after — joining all blocks contaminated the JSON with pre-search prose. Both `end_turn` and `max_tokens` fallback paths updated.
+- **Per-step JSON retry** (`pipeline.ts`): `runStepWithFallback` now detects JSON errors (`No JSON object found`, `JSON parse failed`, `Malformed JSON`, `empty response`, `Unexpected token`, `position 1`) and retries the step runner once before falling back to defaults. Emits `started` event with retry message. Accepts `provider` param for logging. All callers in `runParallelSteps` and `runUpdatePipeline` updated.
+- **Provider-switch checkpoint clearing** (`routes/research.ts` PUT handler): Before calling `runUpdatePipeline`, the route now checks if the provider changed. Provider switch → delete ALL checkpoint rows for that ticker. Same provider + bad management_rating schema → delete steps 2+3 only. Wrapped in try/catch so cleanup failure never blocks the pipeline.
+- **Expanded stale Step 2 cache check** (`pipeline.ts` `runPipeline`): The cached-Step-2 invalidation now checks for Schema B as well as missing management_rating — specifically: `!categories`, `ceo_assessment !== undefined`, `total_score === undefined`. Previously only caught the "completely missing" case.
+- **`NapkinMath.tsx` null guards**: All field accesses use optional chaining and `?? 0` / `?? ""` fallbacks — `upside_percent`, `target_price`, `revenue_guidance`, `comp_ticker`, `comp_multiple`. Prevents crashes when LLM returns null for typed-as-number fields.
+- **`ValuationTable.tsx` null guards**: `ticker.toUpperCase()` in sort comparator and `isSubject` check both guarded with `(ticker ?? "").toUpperCase()` — prevents crash if LLM returns null for ticker field.
+- **`Home.tsx` date sort null guard**: `new Date(b.updated_at ?? 0).getTime()` — defensive guard on `updated_at` in the date sort comparator.
+- **`extractJSON` provider arg propagated**: All callers in `pipeline.ts` (`runStep1`, `parseWithGeminiRetry` ×2, `runStep7`) now pass `provider` to `extractJSON` for richer error logs.
+
 ### v0.6.3
 
 - **DELETE /api/v1/research/:ticker** (`backend/src/routes/research.ts`): Admin-only endpoint that hard-deletes a ticker and all associated data. Deletes in dependency order: `research_checkpoints` → `research_versions` → `research_reports`. Uses `authenticate` + `requireRole("admin")` middleware. Returns `{ success: true, message }` on success or `{ error, details }` on failure.
