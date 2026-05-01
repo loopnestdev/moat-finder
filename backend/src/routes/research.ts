@@ -622,4 +622,56 @@ router.put(
   },
 );
 
+// ─── DELETE /api/v1/research/:ticker ─────────────────────────────────────────
+
+router.delete(
+  "/:ticker",
+  authenticate,
+  requireRole("admin"),
+  async (req, res) => {
+    const ticker = getTickerParam(req.params.ticker).toUpperCase();
+
+    const { valid, normalised } = validateTicker(ticker);
+    if (!valid) {
+      res
+        .status(400)
+        .json({ error: "Invalid ticker symbol", code: "INVALID_TICKER" });
+      return;
+    }
+
+    try {
+      await adminClient
+        .from("research_checkpoints")
+        .delete()
+        .eq("ticker_symbol", normalised);
+
+      await adminClient
+        .from("research_versions")
+        .delete()
+        .eq("ticker_symbol", normalised);
+
+      const { error } = await adminClient
+        .from("research_reports")
+        .delete()
+        .eq("ticker_symbol", normalised);
+
+      if (error) {
+        res
+          .status(500)
+          .json({ error: "Delete failed", details: error.message });
+        return;
+      }
+
+      console.log(`[DELETE] ${normalised} removed from database`);
+      res.json({
+        success: true,
+        message: `${normalised} deleted successfully`,
+      });
+    } catch (err) {
+      console.error("Delete error:", err);
+      res.status(500).json({ error: "Delete failed", details: String(err) });
+    }
+  },
+);
+
 export default router;

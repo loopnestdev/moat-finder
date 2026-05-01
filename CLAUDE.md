@@ -235,6 +235,10 @@ The AI research pipeline was upgraded based on real backtest results from resear
 
 ## Changelog
 
+### v0.6.3
+
+- **DELETE /api/v1/research/:ticker** (`backend/src/routes/research.ts`): Admin-only endpoint that hard-deletes a ticker and all associated data. Deletes in dependency order: `research_checkpoints` → `research_versions` → `research_reports`. Uses `authenticate` + `requireRole("admin")` middleware. Returns `{ success: true, message }` on success or `{ error, details }` on failure.
+
 ### v0.6.2
 
 - **Dual-schema ManagementRating support** (`ManagementRating.tsx`, both `report.types.ts`): Component now handles Schema A (canonical: `total_score`, `categories` with 5 scored sub-dimensions, `key_person`, `red_flags`, `green_flags`) and Schema B (Gemini legacy: `score`, `ceo_assessment`, `recent_changes`, `capital_allocation`). Schema detected via `!!rating?.categories`. Schema A renders 5 progress bars; Schema B renders simplified text view. Null/undefined `data` prop shows "not available" message. All field accesses guarded with optional chaining.
