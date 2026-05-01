@@ -49,13 +49,32 @@ export interface ConstraintAnalysis {
   window: string;
 }
 
+export interface ManagementRatingCategory {
+  score: number;
+  max: number;
+  evidence: string;
+}
+
 export interface ManagementRating {
   grade: "A" | "B" | "C" | "D" | "F";
-  score: number;
-  summary: string;
-  ceo_assessment: string;
-  recent_changes: string;
-  capital_allocation: string;
+  summary?: string;
+  // Schema A fields (canonical format enforced since v0.6.2)
+  total_score?: number;
+  categories?: {
+    say_do_ratio?: ManagementRatingCategory;
+    communication?: ManagementRatingCategory;
+    capital_discipline?: ManagementRatingCategory;
+    insider_alignment?: ManagementRatingCategory;
+    strategic_focus?: ManagementRatingCategory;
+  };
+  key_person?: string;
+  red_flags?: string[];
+  green_flags?: string[];
+  // Schema B fields (Gemini legacy format — backward compat only)
+  score?: number;
+  ceo_assessment?: string;
+  recent_changes?: string;
+  capital_allocation?: string;
 }
 
 export interface ReportJson {

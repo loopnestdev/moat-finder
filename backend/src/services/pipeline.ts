@@ -166,12 +166,19 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
     "window": "string"
   },
   "management_rating": {
+    "total_score": number_0_to_100,
     "grade": "A|B|C|D|F",
-    "score": number_0_to_100,
-    "summary": "string",
-    "ceo_assessment": "string",
-    "recent_changes": "string",
-    "capital_allocation": "string"
+    "summary": "string_max_150_chars",
+    "categories": {
+      "say_do_ratio": {"score": number_0_to_30, "max": 30, "evidence": "string_max_100_chars"},
+      "communication": {"score": number_0_to_20, "max": 20, "evidence": "string_max_100_chars"},
+      "capital_discipline": {"score": number_0_to_25, "max": 25, "evidence": "string_max_100_chars"},
+      "insider_alignment": {"score": number_0_to_15, "max": 15, "evidence": "string_max_100_chars"},
+      "strategic_focus": {"score": number_0_to_10, "max": 10, "evidence": "string_max_100_chars"}
+    },
+    "key_person": "CEO_name_and_tenure_max_80_chars",
+    "red_flags": ["string_max_60_chars_each"],
+    "green_flags": ["string_max_60_chars_each"]
   }
 }
 platform_type must be exactly "platform" or "single-product".
@@ -233,12 +240,19 @@ Perform a deep dive analysis on the company above:
    Grade F (0–29): poor — fraud allegations, SEC investigation, governance failures, CEO departure under pressure, or consistent destruction of shareholder value.
 
    management_rating fields:
-   - grade: letter grade A/B/C/D/F
-   - score: numeric 0–100
-   - summary: 2–3 sentence executive summary of management quality
-   - ceo_assessment: 1–2 sentences on CEO specifically (tenure, track record, alignment)
-   - recent_changes: any CEO/CFO/CTO changes in the past 12 months and whether each is a positive or negative signal (if no changes, state that explicitly)
-   - capital_allocation: 1–2 sentences on how management deploys capital (buybacks, M&A, R&D intensity, dilution discipline)
+   - total_score: sum of all category scores (0–100)
+   - grade: A if 90–100, B if 70–89, C if 50–69, D if 30–49, F if <30
+   - summary: 1–2 sentence executive overview (max 150 chars)
+   - categories.say_do_ratio: 0–30 — does management consistently hit its own guidance targets?
+   - categories.communication: 0–20 — quality and clarity of investor communication and disclosure
+   - categories.capital_discipline: 0–25 — quality of buybacks, M&A, R&D allocation decisions
+   - categories.insider_alignment: 0–15 — insider ownership levels, dilution discipline
+   - categories.strategic_focus: 0–10 — consistent execution vs strategy drift/pivots
+   - key_person: CEO name and tenure only (max 80 chars, e.g. "John Smith, CEO since 2019")
+   - red_flags: 0–3 specific concerns (max 60 chars each)
+   - green_flags: 0–3 specific positives (max 60 chars each)
+
+CRITICAL: Use EXACTLY the management_rating structure shown above. DO NOT use ceo_assessment, recent_changes, or capital_allocation field names — those are WRONG. Use ONLY: total_score, grade, summary, categories (with 5 sub-fields), key_person, red_flags, green_flags. Keep all string values SHORT to avoid JSON size issues.
 
 Use web search for current information. Return only the JSON object.`;
   const finalPrompt =
@@ -608,6 +622,8 @@ IMPORTANT SCORING CONSTRAINTS:
 
 NAPKIN MATH RULE: Use the Base scenario comp for the primary napkin_math target_price. NEVER use the Bear scenario comp as the primary target for a company growing >50% YoY — that produces a misleadingly pessimistic anchor. The Bear scenario belongs in the scenarios array, not as the headline number.
 
+MANAGEMENT RATING NOTE: Do NOT include management_rating in your synthesis report JSON — it is computed separately in Step 2 (Deep Dive) and merged automatically after synthesis completes. Your "report" JSON must not have a management_rating key.
+
 "report" must match this exact structure:
 {
   "thesis": "One-liner investment thesis",
@@ -688,10 +704,22 @@ Return only the JSON object with "report" and "diagram" keys.`,
     throw new Error(`Synthesis failed (provider: ${provider}): ${message}`);
   }
 
-  // Store raw pipeline context for auditability
+  // Store raw pipeline context for auditability — strip management_rating text
+  // fields from step2 to keep stored JSON small; management_rating lives at top level
+  const step2ForRaw = {
+    ...step2,
+    management_rating: step2.management_rating
+      ? {
+          total_score:
+            step2.management_rating.total_score ??
+            step2.management_rating.score,
+          grade: step2.management_rating.grade,
+        }
+      : undefined,
+  };
   parsed.report.pipeline_steps_raw = {
     step1,
-    step2,
+    step2: step2ForRaw,
     step3,
     step4,
     step5,
@@ -994,7 +1022,13 @@ export async function runUpdatePipeline(
     data: { message: "Using previous research" },
   });
 
-  const needsManagementRating = !existingReport.management_rating;
+  const hasSchemaB =
+    !!existingReport.management_rating?.ceo_assessment &&
+    !existingReport.management_rating?.categories;
+  const needsManagementRating =
+    !existingReport.management_rating ||
+    !existingReport.management_rating.categories ||
+    hasSchemaB;
 
   let step2: Step2Output;
   let step3: Step3Output;
@@ -1003,7 +1037,7 @@ export async function runUpdatePipeline(
 
   if (needsManagementRating) {
     console.log(
-      `[${ticker}] management_rating missing — forcing Step 2 re-run`,
+      `[${ticker}] management_rating missing or Schema B — forcing Step 2 re-run`,
     );
     // Clear any stale Step 2 checkpoint (housekeeping — update always uses fresh runId)
     await adminClient
