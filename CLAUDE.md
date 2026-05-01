@@ -235,6 +235,12 @@ The AI research pipeline was upgraded based on real backtest results from resear
 
 ## Changelog
 
+### v0.6.6
+
+- **Single-key envelope unwrapping** (`llm.ts`): Added `STEP_FIELDS` set (all known field names from every pipeline step) and `unwrapEnvelope()` function. `extractJSON` now calls `unwrapEnvelope` on both the direct parse result and the repaired parse result. If Claude returns `{"report": {"thesis":"..."}}` instead of the expected flat object, the single-key wrapper is silently stripped and the inner object returned. Only unwraps when the inner object contains at least one known step field — prevents false positives on legitimate single-key responses.
+- **Flat synthesis prompt** (`pipeline.ts` Step 7): Added CRITICAL FORMATTING RULE block at the very start of the synthesis prompt with a WRONG/CORRECT example showing the envelope antipattern. Changed "exactly two keys: report and diagram" to flat format instruction. Schema section changed from `"report" must match...` + `"diagram" must match...` two-block structure to a single flat schema with `diagram` as a sibling field at top level. Closing line changed from "Return only the JSON object with 'report' and 'diagram' keys" to the flat format reminder.
+- **Flat synthesis parsing** (`pipeline.ts` Step 7): Changed `let parsed: { report: ReportJson; diagram: DiagramJson }` to `let report: ReportJson; let diagram: DiagramJson`. `extractJSON` result cast to `Record<string, unknown>`; `reportSource` determined by checking if `flat.thesis` or `flat.score` exists (new flat format) vs falling back to `flat.report` as an object (legacy two-key format). `diagram` extracted from `flat.diagram ?? reportSource.diagram`, defaulting to `{nodes:[], edges:[]}`. All `parsed.report.X` references changed to `report.X`; `parsed.diagram` to `diagram`. Backward-compatible: handles legacy `{"report":{...},"diagram":{...}}` responses automatically.
+
 ### v0.6.5
 
 - **Bulletproof `extractJSON`** (`llm.ts`): Replaced with depth-tracking implementation that handles BOM, `{variable}` prose before JSON, multiple text blocks concatenated, and trailing prose after JSON. Valid-object regex `/\{[\t\n\r ]*["}\[]/g` skips `{TICKER}` patterns. Closing brace found by bracket-depth tracking; falls back to `lastIndexOf` only on truncated responses. Accepts optional `provider` arg for richer error context.

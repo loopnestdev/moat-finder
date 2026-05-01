@@ -220,6 +220,64 @@ function repairJSON(text: string): string {
   return repaired;
 }
 
+/** Known field names from any pipeline step — used to detect single-key envelope wrapping. */
+const STEP_FIELDS = new Set([
+  // Synthesis / top-level report
+  "thesis",
+  "moat",
+  "score",
+  "bear_case",
+  "catalysts",
+  "business_model",
+  // Step 2 (Deep Dive)
+  "management_rating",
+  "competitive_moat",
+  "technology_assessment",
+  // Step 3 (Valuation)
+  "napkin_math",
+  "valuation_table",
+  "quarterly_results",
+  "financial_summary",
+  // Step 4 (Risk Red Team)
+  "risk_factors",
+  "short_thesis",
+  // Step 5 (Macro)
+  "macro_summary",
+  "sector_heat",
+  "policy_risk",
+  // Step 6 (Sentiment)
+  "sentiment_summary",
+  "technical_signals",
+  "short_interest",
+]);
+
+/**
+ * Strip a single-key envelope wrapper that Claude/Gemini occasionally adds
+ * despite being instructed not to:
+ *   {"report": {"thesis": "..."}} → {"thesis": "..."}
+ *   {"deep_dive": {"moat": "..."}} → {"moat": "..."}
+ * Only unwraps when the inner object contains at least one known step field.
+ */
+function unwrapEnvelope(value: unknown): unknown {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return value;
+  }
+  const keys = Object.keys(value);
+  if (keys.length !== 1) return value;
+
+  const inner = (value as Record<string, unknown>)[keys[0]];
+  if (inner === null || typeof inner !== "object" || Array.isArray(inner)) {
+    return value;
+  }
+
+  const innerKeys = Object.keys(inner);
+  if (innerKeys.some((k) => STEP_FIELDS.has(k))) {
+    console.warn(`[extractJSON] Unwrapping single-key envelope: "${keys[0]}"`);
+    return inner;
+  }
+  return value;
+}
+
 /**
  * Robust JSON extractor — handles BOM, {variable} prose, multiple text blocks,
  * truncated JSON, and trailing prose. Accepts an optional provider string for
@@ -299,7 +357,7 @@ export function extractJSON(text: string, provider?: string): unknown {
   const jsonStr = cleaned.substring(start, end + 1);
 
   try {
-    return JSON.parse(jsonStr);
+    return unwrapEnvelope(JSON.parse(jsonStr));
   } catch (firstError) {
     try {
       const repaired = repairJSON(jsonStr);
@@ -307,7 +365,7 @@ export function extractJSON(text: string, provider?: string): unknown {
         `[extractJSON] Repair applied. Provider: ${provider ?? "unknown"}. ` +
           `Original error: ${(firstError as Error).message}`,
       );
-      return JSON.parse(repaired);
+      return unwrapEnvelope(JSON.parse(repaired));
     } catch (repairError) {
       throw new Error(
         `JSON parse failed. Provider: ${provider ?? "unknown"}. ` +

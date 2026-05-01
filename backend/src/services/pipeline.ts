@@ -592,7 +592,15 @@ RS vs SPY: ${step6.rs_vs_spy ?? ""}`;
   const startTime = Date.now();
 
   const { text, model } = await callLLM(
-    `You must respond with ONLY a valid JSON object.
+    `CRITICAL FORMATTING RULE: Return a single flat JSON object.
+Do NOT wrap it in any key like "report", "data", "result", or "output".
+
+WRONG:  { "report": { "thesis": "...", ... } }
+CORRECT: { "thesis": "...", "moat": "...", ... }
+
+Start your response with { and the first key must be a report field like "thesis" or "score", never a wrapper key.
+
+You must respond with ONLY a valid JSON object.
 No preamble, no explanation, no markdown code blocks,
 no text before or after the JSON.
 Start your response with { and end with }
@@ -601,7 +609,8 @@ Any other format will cause a system failure.
 Be concise in all text fields. Keep each string field under 200 characters. Use arrays efficiently — max 5 items per array. The JSON must be complete and valid — do not truncate.
 
 You are a senior investment analyst synthesising a complete research report.
-Respond ONLY with a valid JSON object with exactly two keys: "report" and "diagram".
+Respond ONLY with a single flat JSON object containing all report fields at the top level.
+"diagram" is a sibling field alongside "thesis", "score", etc. — never nested inside "report".
 No markdown, no explanation, raw JSON only.
 
 SCORING RUBRIC — use this exact weighting to calculate the score (1.0–10.0):
@@ -624,7 +633,7 @@ NAPKIN MATH RULE: Use the Base scenario comp for the primary napkin_math target_
 
 MANAGEMENT RATING NOTE: Do NOT include management_rating in your synthesis report JSON — it is computed separately in Step 2 (Deep Dive) and merged automatically after synthesis completes. Your "report" JSON must not have a management_rating key.
 
-"report" must match this exact structure:
+The JSON must match this exact flat structure (all fields at top level — do NOT nest inside a "report" key):
 {
   "thesis": "One-liner investment thesis",
   "business_model": "string",
@@ -658,33 +667,48 @@ MANAGEMENT RATING NOTE: Do NOT include management_rating in your synthesis repor
     "who_relieves": "string",
     "window": "string"
   },
-  "pipeline_steps_raw": {}
+  "pipeline_steps_raw": {},
+  "diagram": {
+    "nodes": [{ "id": "string", "type": "revenue|customer|moat|business_unit|risk", "data": { "label": "string", "detail": "string" }, "position": { "x": number, "y": number } }],
+    "edges": [{ "id": "string", "source": "string", "target": "string", "label": "string" }]
+  }
 }
-
-"diagram" must match this React Flow spec:
-{
-  "nodes": [{ "id": "string", "type": "revenue|customer|moat|business_unit|risk", "data": { "label": "string", "detail": "string" }, "position": { "x": number, "y": number } }],
-  "edges": [{ "id": "string", "source": "string", "target": "string", "label": "string" }]
-}
-Layout: revenue streams on left (x≈0), business_unit in centre (x≈300), customers on right (x≈600), moat above (y≈0), risks below (y≈400). Space nodes 120px apart vertically.
+Layout for diagram nodes: revenue streams on left (x≈0), business_unit in centre (x≈300), customers on right (x≈600), moat above (y≈0), risks below (y≈400). Space nodes 120px apart vertically.
 
 Synthesise a complete moat-finder report for ${ticker}.
 
 ${contextSummary}
 
-Return only the JSON object with "report" and "diagram" keys.`,
+Remember: respond with a flat JSON object. The first property must be "thesis" or "score", not "report".`,
     provider,
     false,
   );
 
   const duration = Date.now() - startTime;
 
-  let parsed: { report: ReportJson; diagram: DiagramJson };
+  let report: ReportJson;
+  let diagram: DiagramJson;
   try {
-    parsed = extractJSON(text, provider) as {
-      report: ReportJson;
-      diagram: DiagramJson;
-    };
+    const flat = extractJSON(text, provider) as Record<string, unknown>;
+    // Handle legacy two-key format {"report":{...},"diagram":{...}} alongside new
+    // flat format {"thesis":...,"diagram":{...}}. Presence of top-level thesis/score
+    // indicates the flat format; otherwise fall back to extracting from flat.report.
+    const reportSource: Record<string, unknown> =
+      flat.thesis !== undefined || flat.score !== undefined
+        ? flat
+        : flat.report !== null &&
+            typeof flat.report === "object" &&
+            !Array.isArray(flat.report)
+          ? (flat.report as Record<string, unknown>)
+          : flat;
+    const diagramRaw: unknown = flat.diagram ?? reportSource.diagram;
+    diagram =
+      diagramRaw !== null &&
+      typeof diagramRaw === "object" &&
+      !Array.isArray(diagramRaw)
+        ? (diagramRaw as DiagramJson)
+        : { nodes: [], edges: [] };
+    report = reportSource as unknown as ReportJson;
   } catch (parseError) {
     const message =
       parseError instanceof Error ? parseError.message : "JSON parse failed";
@@ -720,7 +744,7 @@ Return only the JSON object with "report" and "diagram" keys.`,
         }
       : undefined,
   };
-  parsed.report.pipeline_steps_raw = {
+  report.pipeline_steps_raw = {
     step1,
     step2: step2ForRaw,
     step3,
@@ -730,26 +754,26 @@ Return only the JSON object with "report" and "diagram" keys.`,
   };
 
   // Record which LLM generated this report
-  parsed.report.llm_provider = provider;
-  parsed.report.llm_model = model;
+  report.llm_provider = provider;
+  report.llm_model = model;
 
   // Carry quarterly results from Step 3 into the final report
   if (step3.quarterly_results && step3.quarterly_results.length > 0) {
-    parsed.report.quarterly_results = step3.quarterly_results;
+    report.quarterly_results = step3.quarterly_results;
   }
 
   // Carry management_rating from Step 2 — injected after LLM synthesis so it
   // cannot influence the investment score calculation.
   if (step2.management_rating) {
-    parsed.report.management_rating = step2.management_rating;
+    report.management_rating = step2.management_rating;
   }
 
   await saveCheckpoint(ticker, runId, {
     step_number: 7,
     step_label: "Synthesis & Diagram",
     output_json: {
-      report: parsed.report as unknown as Record<string, unknown>,
-      diagram: parsed.diagram as unknown as Record<string, unknown>,
+      report: report as unknown as Record<string, unknown>,
+      diagram: diagram as unknown as Record<string, unknown>,
     },
     duration_ms: duration,
   });
@@ -761,9 +785,9 @@ Return only the JSON object with "report" and "diagram" keys.`,
     duration,
   });
   console.log(
-    `[Step 7] complete — thesis: ${parsed.report.thesis.substring(0, 80)}, diagram nodes: ${(parsed.diagram?.nodes ?? []).length}, edges: ${(parsed.diagram?.edges ?? []).length}, provider: ${provider} (${duration}ms)`,
+    `[Step 7] complete — thesis: ${(report.thesis ?? "").substring(0, 80)}, diagram nodes: ${(diagram?.nodes ?? []).length}, edges: ${(diagram?.edges ?? []).length}, provider: ${provider} (${duration}ms)`,
   );
-  return { report: parsed.report, diagram: parsed.diagram, runId };
+  return { report, diagram, runId };
 }
 
 // ─── Step execution with fallback ─────────────────────────────────────────────
