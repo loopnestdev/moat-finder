@@ -4,7 +4,7 @@ interface ManagementRatingProps {
   data: ManagementRatingType;
 }
 
-function gradeClasses(grade: string): {
+function gradeClasses(grade: string | null | undefined): {
   text: string;
   border: string;
   bg: string;
@@ -72,7 +72,7 @@ export default function ManagementRating({ data }: ManagementRatingProps) {
           <span
             className={`font-mono text-3xl font-bold leading-none ${g.text}`}
           >
-            {data.grade}
+            {data.grade?.toUpperCase() ?? "N/A"}
           </span>
         </div>
         <div>

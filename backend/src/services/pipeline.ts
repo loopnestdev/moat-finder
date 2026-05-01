@@ -584,6 +584,8 @@ no text before or after the JSON.
 Start your response with { and end with }
 Any other format will cause a system failure.
 
+Be concise in all text fields. Keep each string field under 200 characters. Use arrays efficiently — max 5 items per array. The JSON must be complete and valid — do not truncate.
+
 You are a senior investment analyst synthesising a complete research report.
 Respond ONLY with a valid JSON object with exactly two keys: "report" and "diagram".
 No markdown, no explanation, raw JSON only.

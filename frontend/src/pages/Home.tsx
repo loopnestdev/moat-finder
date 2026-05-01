@@ -73,8 +73,8 @@ export default function Home() {
     .filter(
       (r) =>
         !sectorFilter ||
-        r.hot_sector_match.some((s) =>
-          s.toLowerCase().includes(sectorFilter.toLowerCase()),
+        r.hot_sector_match?.some((s) =>
+          s?.toLowerCase()?.includes(sectorFilter.toLowerCase()),
         ),
     )
     .sort((a, b) => {
@@ -375,9 +375,9 @@ export default function Home() {
                       {report.sector}
                     </span>
                   )}
-                  {report.hot_sector_match.length > 0 && (
+                  {(report.hot_sector_match ?? []).length > 0 && (
                     <span className="text-xs border border-navy-700 text-cream-subtle px-2 py-0.5 rounded font-mono bg-navy-950">
-                      {report.hot_sector_match[0]}
+                      {(report.hot_sector_match ?? [])[0]}
                     </span>
                   )}
                 </div>

@@ -216,6 +216,8 @@ The AI research pipeline was upgraded based on real backtest results from resear
 - **LLM abstraction layer**: all pipeline steps call `callLLM(prompt, provider)` in `backend/src/services/llm.ts`. Add new providers there; pipeline.ts stays provider-agnostic.
 - **management_rating in old reports**: absent in reports generated before v0.5.2. Always guard with optional chaining (`rj.management_rating && <ManagementRating ...>`). Do NOT add a fallback render — just don't show it. The update pipeline will regenerate it on next update.
 - **`ResearchListItem` vs `ResearchReport`**: the list API (`GET /api/v1/research`) returns `ResearchListItem[]` (flat, enriched). Individual report fetches (`GET /api/v1/research/:ticker`) still return `ResearchReport` (full). Do not use `ResearchReport` in the home page cards — it does not have `upside_percent`, `target_price`, etc.
+- **`hot_sector_match` null entries**: the LLM may return null inside the `hot_sector_match` array even though the type says `string[]`. Always use `s?.toLowerCase()` (not `s.toLowerCase()`) when iterating, and `(report.hot_sector_match ?? [])` before `.length` or index access.
+- **Claude `max_tokens`**: synthesis (Step 7) produces large JSON. `max_tokens` in `llm.ts` is set to `16000` — do not lower it or synthesis will truncate mid-JSON for complex reports.
 - **Stripe color token remapping**: navy scale was remapped in-place (same token names, new values). `navy-800` is now `#1c1e54` (Stripe brand dark), `navy-900` is `#0d1b38`. Components did not need class name changes — only the token values changed.
 - **Gold vs purple rule**: gold (`#d4a853`) is for financial data only (ticker symbols, target price, valuation labels, timing data). Purple (`#533afd`) is for all UI chrome (buttons, focus rings, borders, accents, spinners). Never use gold for navigation, buttons, or interactive elements.
 
@@ -232,6 +234,13 @@ The AI research pipeline was upgraded based on real backtest results from resear
 ---
 
 ## Changelog
+
+### v0.6.1
+
+- **Null safety in sort/filter** (`Home.tsx`): sector filter comparator now uses `r.hot_sector_match?.some(s => s?.toLowerCase()?.includes(...))` — prevents crash when any `hot_sector_match` entry is null. Card rendering uses `(report.hot_sector_match ?? [])` guards before `.length` and index access.
+- **ManagementRating null safety** (`ManagementRating.tsx`): `gradeClasses()` parameter widened to `string | null | undefined`; grade display changed to `data.grade?.toUpperCase() ?? 'N/A'` — prevents crash if LLM returns null for grade.
+- **Increase Claude `max_tokens`** (`llm.ts`): raised from `8192` to `16000` — prevents synthesis JSON truncation at ~13710 chars for large reports (LEU and similar).
+- **Synthesis conciseness instruction** (`pipeline.ts` Step 7 prompt): added instruction to keep all string fields under 200 characters and arrays to max 5 items, so synthesis JSON fits within token limits while remaining complete and valid.
 
 ### v0.6.0
 

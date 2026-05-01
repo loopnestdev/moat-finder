@@ -53,7 +53,7 @@ async function runClaude(prompt: string): Promise<string> {
   for (;;) {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 8192,
+      max_tokens: 16000,
       system: BASE_SYSTEM,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
       messages,
