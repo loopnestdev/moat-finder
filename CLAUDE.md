@@ -235,6 +235,11 @@ The AI research pipeline was upgraded based on real backtest results from resear
 
 ## Changelog
 
+### v0.7.0
+
+- **Moat consistent numbered rendering** (`Report.tsx`): Replaced `MoatPillars` (dark card renderer that split on " — " and bolded partial text) with a new `parseMoatPoints()` parser and inline Catalysts-style rendering. Parser tries three patterns in order: `(1) text; (2) text` parenthetical, `1.\ntext\n2.\ntext` newline-dot, and `; `-separated sentences starting with capital or open-paren. Multi-item results render as a plain `<ol>` with 2-digit number badge and full text at uniform weight — no bold, no heading treatment, no card borders. Single-item fallback renders as a plain paragraph. NEVER bolds partial text within a moat point.
+- **Version history target price change** (`diff.ts`, both `report.types.ts`, `Changelog.tsx`): `generateDiff` now computes a `target_price` diff when `napkin_math.target_price` changes between versions. Stored as `{from, to, upside_from, upside_to}` (all `number | null`). Added to human-readable summary: "target price changed to $X". `DiffJson` type in both type files updated to include the optional `target_price` field. `Changelog.tsx` renders the change as: `Target: $282.45 → $312.80 (+10.7%)` — only visible when target price actually changed, shown in expanded version card after the score change line.
+
 ### v0.6.6
 
 - **Single-key envelope unwrapping** (`llm.ts`): Added `STEP_FIELDS` set (all known field names from every pipeline step) and `unwrapEnvelope()` function. `extractJSON` now calls `unwrapEnvelope` on both the direct parse result and the repaired parse result. If Claude returns `{"report": {"thesis":"..."}}` instead of the expected flat object, the single-key wrapper is silently stripped and the inner object returned. Only unwraps when the inner object contains at least one known step field — prevents false positives on legitimate single-key responses.

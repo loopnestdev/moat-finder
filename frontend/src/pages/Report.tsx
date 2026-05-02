@@ -45,6 +45,42 @@ function parseNumberedList(text: string): string[] {
 }
 
 /**
+ * Parse a moat string into clean numbered points for consistent rendering.
+ * Returns a single-element array for plain prose (no numbering applied).
+ */
+function parseMoatPoints(moat: string): string[] {
+  if (!moat) return [];
+
+  // Try pattern: (1) text; (2) text; (3) text
+  const parenPattern = moat.match(/\(\d+\)\s+[^(]+/g);
+  if (parenPattern && parenPattern.length >= 2) {
+    return parenPattern
+      .map((p) =>
+        p
+          .replace(/^\(\d+\)\s+/, "")
+          .replace(/;\s*$/, "")
+          .trim(),
+      )
+      .filter(Boolean);
+  }
+
+  // Try pattern: 1. text\n2. text
+  const dotPattern = moat.split(/\n\d+\.\s+/).filter(Boolean);
+  if (dotPattern.length >= 2) {
+    return dotPattern.map((p) => p.trim());
+  }
+
+  // Try semicolon separation (must start with capital or open-paren)
+  const semiPattern = moat.split(/;\s+(?=[A-Z(])/);
+  if (semiPattern.length >= 2) {
+    return semiPattern.map((p) => p.trim()).filter((p) => p.length > 20);
+  }
+
+  // Fallback: return as single paragraph
+  return [moat];
+}
+
+/**
  * Parse a paragraph into labelled bullets.
  * Sentences containing a colon get the pre-colon text treated as a bold label.
  * Otherwise the text is split by ". " into plain bullets.
@@ -159,56 +195,6 @@ function BulletList({
   );
 }
 
-/** Renders moat pillars as dark cards */
-function MoatPillars({
-  items,
-  fallback,
-}: {
-  items: string[];
-  fallback: string;
-}) {
-  if (items.length <= 1) {
-    return (
-      <p className="font-body text-cream-muted leading-relaxed">{fallback}</p>
-    );
-  }
-  return (
-    <div className="space-y-3">
-      {items.map((item, i) => {
-        const dashMatch = item.match(/^([^—\-]{3,60})\s*[—\-]\s*(.+)$/s);
-        return (
-          <div
-            key={i}
-            className="rounded bg-navy-800 border border-navy-700 p-4"
-          >
-            <div className="flex gap-3">
-              <span className="font-mono text-sm font-bold text-cream-subtle flex-shrink-0 w-6 leading-tight">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <div>
-                {dashMatch ? (
-                  <>
-                    <p className="font-body font-semibold text-cream mb-1">
-                      {dashMatch[1].trim()}
-                    </p>
-                    <p className="font-body text-cream-muted text-sm leading-relaxed">
-                      {dashMatch[2].trim()}
-                    </p>
-                  </>
-                ) : (
-                  <p className="font-body text-cream-muted leading-relaxed">
-                    {item}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Report() {
@@ -278,7 +264,7 @@ export default function Report() {
 
   // Pre-parse text fields — guard against missing fields in old reports
   const businessModelSegments = parseNumberedList(rj.business_model ?? "");
-  const moatPillars = parseNumberedList(rj.moat ?? "");
+  const moatPoints = parseMoatPoints(rj.moat ?? "");
   const macroBullets = parseBullets(rj.macro_summary ?? "");
   const sentimentBullets = parseBullets(rj.sentiment_summary ?? "");
 
@@ -435,11 +421,28 @@ export default function Report() {
             </ol>
           </section>
 
-          {/* Moat — parsed pillars */}
+          {/* Moat — consistent numbered or plain paragraph */}
           <section>
             <SectionHeading>Moat &amp; Competitors</SectionHeading>
             <div className="mb-5">
-              <MoatPillars items={moatPillars} fallback={rj.moat} />
+              {moatPoints.length > 1 ? (
+                <ol className="space-y-5">
+                  {moatPoints.map((point, i) => (
+                    <li key={i} className="flex gap-4">
+                      <span className="font-mono text-2xl font-bold text-cream-subtle flex-shrink-0 leading-tight w-8">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <p className="font-body text-cream-muted leading-relaxed">
+                        {point}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="font-body text-cream-muted leading-relaxed">
+                  {moatPoints[0] ?? rj.moat}
+                </p>
+              )}
             </div>
             {(rj.competitors ?? []).length > 0 && (
               <div className="flex flex-wrap gap-2">

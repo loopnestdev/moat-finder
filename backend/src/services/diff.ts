@@ -1,4 +1,4 @@
-import type { ReportJson, DiffJson } from '../types/report.types';
+import type { ReportJson, DiffJson } from "../types/report.types";
 
 /**
  * Compare two ReportJson objects and produce a structured diff.
@@ -15,12 +15,12 @@ export function generateDiff(
 
   // Compare scalar text fields
   const textFields = [
-    'thesis',
-    'business_model',
-    'moat',
-    'bear_case',
-    'macro_summary',
-    'sentiment_summary',
+    "thesis",
+    "business_model",
+    "moat",
+    "bear_case",
+    "macro_summary",
+    "sentiment_summary",
   ] as const;
 
   for (const field of textFields) {
@@ -31,7 +31,7 @@ export function generateDiff(
 
   // Compare napkin_math as a whole (deep equality via JSON)
   if (JSON.stringify(prev.napkin_math) !== JSON.stringify(next.napkin_math)) {
-    changedFields.push('napkin_math');
+    changedFields.push("napkin_math");
   }
 
   // Catalyst diff
@@ -42,20 +42,42 @@ export function generateDiff(
 
   // Score diff
   const scoreDiff =
-    prevScore !== nextScore ? { from: prevScore ?? 0, to: nextScore ?? 0 } : null;
+    prevScore !== nextScore
+      ? { from: prevScore ?? 0, to: nextScore ?? 0 }
+      : null;
+
+  // Target price diff
+  const prevTarget = prev.napkin_math?.target_price ?? null;
+  const nextTarget = next.napkin_math?.target_price ?? null;
+  const targetPriceDiff =
+    prevTarget !== nextTarget
+      ? {
+          from: prevTarget,
+          to: nextTarget,
+          upside_from: prev.napkin_math?.upside_percent ?? null,
+          upside_to: next.napkin_math?.upside_percent ?? null,
+        }
+      : null;
 
   // Human-readable summary
   const parts: string[] = [];
-  if (changedFields.length > 0) parts.push(`${changedFields.join(', ')} updated`);
-  if (addedCatalysts.length > 0) parts.push(`${addedCatalysts.length} catalyst(s) added`);
-  if (removedCatalysts.length > 0) parts.push(`${removedCatalysts.length} catalyst(s) removed`);
-  if (scoreDiff) parts.push(`score changed from ${scoreDiff.from} to ${scoreDiff.to}`);
+  if (changedFields.length > 0)
+    parts.push(`${changedFields.join(", ")} updated`);
+  if (addedCatalysts.length > 0)
+    parts.push(`${addedCatalysts.length} catalyst(s) added`);
+  if (removedCatalysts.length > 0)
+    parts.push(`${removedCatalysts.length} catalyst(s) removed`);
+  if (scoreDiff)
+    parts.push(`score changed from ${scoreDiff.from} to ${scoreDiff.to}`);
+  if (targetPriceDiff?.to != null)
+    parts.push(`target price changed to $${targetPriceDiff.to.toFixed(2)}`);
 
   return {
     score: scoreDiff,
+    target_price: targetPriceDiff,
     changed_fields: changedFields,
     added_catalysts: addedCatalysts,
     removed_catalysts: removedCatalysts,
-    summary: parts.length > 0 ? parts.join('; ') : 'No changes',
+    summary: parts.length > 0 ? parts.join("; ") : "No changes",
   };
 }

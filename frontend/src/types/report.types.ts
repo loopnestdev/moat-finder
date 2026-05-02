@@ -129,6 +129,12 @@ export interface DiagramJson {
 
 export interface DiffJson {
   score: { from: number | null; to: number | null } | null;
+  target_price: {
+    from: number | null;
+    to: number | null;
+    upside_from: number | null;
+    upside_to: number | null;
+  } | null;
   changed_fields: string[];
   added_catalysts: string[];
   removed_catalysts: string[];
