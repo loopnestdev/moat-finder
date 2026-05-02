@@ -20,6 +20,7 @@ import {
   deleteStepCheckpoint,
 } from "./checkpoint";
 import { adminClient } from "./supabase";
+import { registerConfirmation } from "./confirmation";
 
 const HOT_SECTORS = [
   "Energy",
@@ -92,6 +93,7 @@ async function runStep1(
   ticker: string,
   emit: EmitFn,
   provider: LLMProvider,
+  correctionHint?: string,
 ): Promise<Step1Output> {
   emit({ step: 1, label: "Discovery", status: "started" });
   const startTime = Date.now();
@@ -108,7 +110,17 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "primary_region": "string"
 }
 
-Research the company with ticker symbol ${ticker}.
+Research the stock ticker: ${ticker}
+${
+  correctionHint
+    ? `\nCORRECTION: A previous attempt identified the wrong company. The user specified: "${correctionHint}". Use this to find the correct company for ticker ${ticker}.\n`
+    : ""
+}
+IMPORTANT: Search for this EXACT ticker symbol as listed on its primary exchange. If multiple companies share this ticker across different exchanges, identify the one currently trading under this exact symbol on its primary exchange.
+
+Search: '${ticker} stock ticker company name exchange 2025'
+Verify the company name before proceeding.
+
 Identify: company name, industry, top 3 competitors (with their tickers), top 3 known customers,
 primary product/service, and primary operating region.
 Use web search for current information. Return only the JSON object.`;
@@ -1039,6 +1051,45 @@ export async function runPipeline(
       step_label: "Discovery",
       output_json: step1 as unknown as Record<string, unknown>,
     });
+
+    // Pause and ask the user to confirm the discovered company before
+    // kicking off the expensive parallel steps. Auto-proceeds after 60s.
+    const firstConfirm = registerConfirmation(runId);
+    emit({
+      step: 1,
+      label: "Discovery",
+      status: "confirm_required",
+      data: {
+        runId,
+        company_name: step1.company_name,
+        ticker,
+        message: `Found: ${step1.company_name} (${ticker}). Is this correct?`,
+      },
+    });
+    const firstResult = await firstConfirm;
+
+    if (!firstResult.confirmed && firstResult.correction) {
+      // Re-run Step 1 with the user's correction hint, then one more confirmation.
+      step1 = await runStep1(ticker, emit, provider, firstResult.correction);
+      await saveCheckpoint(ticker, runId, {
+        step_number: 1,
+        step_label: "Discovery",
+        output_json: step1 as unknown as Record<string, unknown>,
+      });
+      const secondConfirm = registerConfirmation(runId);
+      emit({
+        step: 1,
+        label: "Discovery",
+        status: "confirm_required",
+        data: {
+          runId,
+          company_name: step1.company_name,
+          ticker,
+          message: `Found: ${step1.company_name} (${ticker}). Is this correct?`,
+        },
+      });
+      await secondConfirm; // proceed regardless of answer on retry
+    }
   }
 
   const [step2, step3, step4, step5, step6] = await runParallelSteps(

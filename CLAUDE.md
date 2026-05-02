@@ -235,6 +235,11 @@ The AI research pipeline was upgraded based on real backtest results from resear
 
 ## Changelog
 
+### v0.7.1
+
+- **Company confirmation after Discovery** (`pipeline.ts`, `confirmation.ts`, `research.ts`, `usePipeline.ts`, `PipelineProgress.tsx`): After Step 1 (Discovery) completes and before Steps 2–6 start, the pipeline pauses and emits a `confirm_required` SSE event containing the discovered `company_name`, `ticker`, and `runId`. The frontend shows a confirmation card: "Yes, this is correct" proceeds immediately; "Wrong company" reveals a text input for a correction hint. The correction is POSTed to `POST /api/v1/research/:ticker/confirm` which resolves a `registerConfirmation()` Promise in the backend. If a correction is provided, Step 1 re-runs with the hint injected into the prompt, then asks once more. Auto-proceeds after 60 s if no response. New module: `backend/src/services/confirmation.ts` (promise-based Map registry). New route: `POST /api/v1/research/:ticker/confirm` (authenticated). `usePipeline` exposes `pendingConfirm` and `sendConfirmation`; `PipelineProgress` renders the confirmation card with emerald/red styled buttons and inline correction input.
+- **Ticker disambiguation prompt** (`pipeline.ts` Step 1): Discovery prompt now instructs the AI to "Search for this EXACT ticker symbol as listed on its primary exchange" and suggests the search query `'{ticker} stock ticker company name exchange 2025'` — prevents wrong-company resolution for tickers shared across exchanges.
+
 ### v0.7.0
 
 - **Moat consistent numbered rendering** (`Report.tsx`): Replaced `MoatPillars` (dark card renderer that split on " — " and bolded partial text) with a new `parseMoatPoints()` parser and inline Catalysts-style rendering. Parser tries three patterns in order: `(1) text; (2) text` parenthetical, `1.\ntext\n2.\ntext` newline-dot, and `; `-separated sentences starting with capital or open-paren. Multi-item results render as a plain `<ol>` with 2-digit number badge and full text at uniform weight — no bold, no heading treatment, no card borders. Single-item fallback renders as a plain paragraph. NEVER bolds partial text within a moat point.

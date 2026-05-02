@@ -144,7 +144,13 @@ export interface DiffJson {
 export interface SSEEvent {
   step: number;
   label: string;
-  status: "started" | "complete" | "error" | "cached" | "saving";
+  status:
+    | "started"
+    | "complete"
+    | "error"
+    | "cached"
+    | "saving"
+    | "confirm_required";
   duration?: number;
   resumed?: boolean;
   data?: Record<string, unknown>;

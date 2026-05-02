@@ -1,6 +1,6 @@
 {
   "name": "moat-finder-backend",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",

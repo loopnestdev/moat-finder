@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import type { SSEEvent } from "../../types/report.types";
+import type { PendingConfirm } from "../../hooks/usePipeline";
 
 interface PipelineProgressProps {
   steps: SSEEvent[];
   isRunning: boolean;
   error: string | null;
   isAdmin?: boolean;
+  pendingConfirm?: PendingConfirm | null;
+  onConfirm?: (confirmed: boolean, correction?: string) => void;
 }
 
 const STEP_LABELS: Record<number, string> = {
@@ -28,6 +31,8 @@ export default function PipelineProgress({
   isRunning,
   error,
   isAdmin = false,
+  pendingConfirm = null,
+  onConfirm,
 }: PipelineProgressProps) {
   const completedSteps = new Set(
     steps
@@ -60,6 +65,18 @@ export default function PipelineProgress({
       (n) => !completedSteps.has(n) && errorStep !== n,
     ),
   );
+
+  // Confirmation UI state
+  const [showCorrection, setShowCorrection] = useState(false);
+  const [correctionText, setCorrectionText] = useState("");
+
+  // Reset correction form whenever a new confirm_required arrives
+  useEffect(() => {
+    if (pendingConfirm) {
+      setShowCorrection(false);
+      setCorrectionText("");
+    }
+  }, [pendingConfirm]);
 
   // Admin-only: which step's detail panel is open
   const [selectedStep, setSelectedStep] = useState<number | null>(null);
@@ -435,6 +452,102 @@ export default function PipelineProgress({
           </div>
         )}
       </div>
+
+      {/* Confirmation card — shown after Step 1 completes, before Steps 2-6 start */}
+      {pendingConfirm && onConfirm && (
+        <div className="mt-4 rounded-lg border border-amber-400/30 bg-navy-800 px-4 py-4 space-y-3">
+          <p className="font-body text-sm font-medium text-cream">
+            Confirm company
+          </p>
+          <p className="font-body text-sm text-cream-muted">
+            Found:{" "}
+            <span className="text-cream font-medium">
+              {pendingConfirm.company_name}
+            </span>{" "}
+            <span className="font-mono text-gold">
+              ({pendingConfirm.ticker})
+            </span>
+          </p>
+
+          {!showCorrection ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => onConfirm(true)}
+                className="flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-body font-medium bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-600/30 transition-colors"
+              >
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                Yes, this is correct
+              </button>
+              <button
+                onClick={() => setShowCorrection(true)}
+                className="flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-body font-medium bg-red-600/10 border border-red-500/30 text-red-400 hover:bg-red-600/20 transition-colors"
+              >
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+                Wrong company
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={correctionText}
+                onChange={(e) => setCorrectionText(e.target.value)}
+                placeholder="Enter correct company name or ticker (e.g. T1 Energy, EOS.AX)"
+                className="w-full rounded border border-navy-600 bg-navy-900 px-3 py-2 font-body text-sm text-cream placeholder-cream/30 focus:border-purple/60 focus:outline-none"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && correctionText.trim()) {
+                    onConfirm(false, correctionText.trim());
+                  }
+                }}
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (correctionText.trim()) {
+                      onConfirm(false, correctionText.trim());
+                    }
+                  }}
+                  disabled={!correctionText.trim()}
+                  className="rounded px-3 py-1.5 text-sm font-body font-medium bg-purple/20 border border-purple/40 text-purple-light hover:bg-purple/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Submit correction
+                </button>
+                <button
+                  onClick={() => setShowCorrection(false)}
+                  className="rounded px-3 py-1.5 text-sm font-body text-cream-subtle hover:text-cream transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Saving indicator — shown while Step 8 'saving' event is active */}
       {steps.some((s) => s.step === 8 && s.status === "saving") &&

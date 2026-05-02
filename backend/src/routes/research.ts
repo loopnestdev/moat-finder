@@ -8,6 +8,7 @@ import { runPipeline, runUpdatePipeline } from "../services/pipeline";
 import type { LLMProvider } from "../services/llm";
 import { clearCheckpoints } from "../services/checkpoint";
 import { generateDiff } from "../services/diff";
+import { resolveConfirmation } from "../services/confirmation";
 import { validateTicker } from "../utils/ticker";
 import type {
   EmitFn,
@@ -669,6 +670,38 @@ router.put(
     }
   },
 );
+
+// ─── POST /api/v1/research/:ticker/confirm ───────────────────────────────────
+
+router.post("/:ticker/confirm", authenticate, async (req, res) => {
+  const { runId, confirmed, correction } = req.body as {
+    runId?: string;
+    confirmed?: boolean;
+    correction?: string;
+  };
+
+  if (typeof runId !== "string" || typeof confirmed !== "boolean") {
+    res
+      .status(400)
+      .json({ error: "runId and confirmed are required", code: "BAD_REQUEST" });
+    return;
+  }
+
+  const resolved = resolveConfirmation(runId, {
+    confirmed,
+    correction: typeof correction === "string" ? correction : undefined,
+  });
+
+  if (!resolved) {
+    res.status(404).json({
+      error: "No pipeline waiting for this runId",
+      code: "NOT_FOUND",
+    });
+    return;
+  }
+
+  res.json({ ok: true });
+});
 
 // ─── DELETE /api/v1/research/:ticker ─────────────────────────────────────────
 

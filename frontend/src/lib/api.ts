@@ -45,6 +45,18 @@ export async function apiFetch(
   return res;
 }
 
+export async function confirmResearch(
+  ticker: string,
+  runId: string,
+  confirmed: boolean,
+  correction?: string,
+): Promise<void> {
+  await apiFetch(`/api/v1/research/${ticker}/confirm`, {
+    method: "POST",
+    body: JSON.stringify({ runId, confirmed, correction }),
+  });
+}
+
 export async function* streamResearch(
   ticker: string,
   method: "POST" | "PUT",

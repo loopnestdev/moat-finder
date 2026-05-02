@@ -141,6 +141,8 @@ export default function Home() {
           isRunning={pipeline.isRunning}
           error={pipeline.error}
           isAdmin={isAdmin}
+          pendingConfirm={pipeline.pendingConfirm}
+          onConfirm={pipeline.sendConfirmation}
         />
       </div>
     );

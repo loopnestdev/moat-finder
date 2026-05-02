@@ -1,13 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { streamResearch } from "../lib/api";
+import { streamResearch, confirmResearch } from "../lib/api";
 import type { SSEEvent } from "../types/report.types";
+
+export interface PendingConfirm {
+  runId: string;
+  company_name: string;
+  ticker: string;
+  message: string;
+}
 
 export function usePipeline() {
   const [steps, setSteps] = useState<SSEEvent[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
+    null,
+  );
   const abortRef = useRef<AbortController | null>(null);
+  const currentTickerRef = useRef<string>("");
 
   const start = useCallback(
     async (
@@ -19,10 +30,12 @@ export function usePipeline() {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
 
+      currentTickerRef.current = ticker;
       setSteps([]);
       setError(null);
       setIsComplete(false);
       setIsRunning(true);
+      setPendingConfirm(null);
 
       const collected: SSEEvent[] = [];
 
@@ -33,8 +46,36 @@ export function usePipeline() {
           ctrl.signal,
           provider,
         )) {
+          if (event.status === "confirm_required") {
+            const d = event.data as
+              | {
+                  runId?: string;
+                  company_name?: string;
+                  ticker?: string;
+                  message?: string;
+                }
+              | undefined;
+            if (d?.runId && d.company_name) {
+              setPendingConfirm({
+                runId: d.runId,
+                company_name: d.company_name,
+                ticker: d.ticker ?? ticker,
+                message:
+                  d.message ??
+                  `Found: ${d.company_name} (${ticker}). Is this correct?`,
+              });
+            }
+            continue; // not a pipeline step — don't add to steps list
+          }
+
           collected.push(event);
           setSteps((prev) => [...prev, event]);
+
+          // Clear pendingConfirm once the pipeline resumes (Steps 2+ start)
+          if (event.status === "started" && event.step >= 2) {
+            setPendingConfirm(null);
+          }
+
           if (event.step === 8) {
             setIsComplete(true);
           }
@@ -50,8 +91,6 @@ export function usePipeline() {
           setError(err instanceof Error ? err.message : "Unknown error");
         }
       } finally {
-        // Always clear running state when the stream closes — covers normal
-        // completion, errors, abrupt server close, and abort.
         setIsRunning(false);
       }
 
@@ -78,5 +117,33 @@ export function usePipeline() {
     [start],
   );
 
-  return { steps, isRunning, error, isComplete, startResearch, updateResearch };
+  const sendConfirmation = useCallback(
+    async (confirmed: boolean, correction?: string) => {
+      if (!pendingConfirm) return;
+      // Optimistically clear — backend will re-emit confirm_required if retry needed
+      setPendingConfirm(null);
+      try {
+        await confirmResearch(
+          currentTickerRef.current,
+          pendingConfirm.runId,
+          confirmed,
+          correction,
+        );
+      } catch {
+        // Non-fatal: backend auto-proceeds after 60s timeout anyway
+      }
+    },
+    [pendingConfirm],
+  );
+
+  return {
+    steps,
+    isRunning,
+    error,
+    isComplete,
+    startResearch,
+    updateResearch,
+    pendingConfirm,
+    sendConfirmation,
+  };
 }

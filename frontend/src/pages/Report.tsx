@@ -371,6 +371,8 @@ export default function Report() {
             isRunning={pipeline.isRunning}
             error={pipeline.error}
             isAdmin={isAdmin}
+            pendingConfirm={pipeline.pendingConfirm}
+            onConfirm={pipeline.sendConfirmation}
           />
           {/* Dismiss button — only visible after pipeline stops with an error */}
           {!pipeline.isRunning && pipeline.error && (
