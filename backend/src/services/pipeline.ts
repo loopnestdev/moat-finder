@@ -33,6 +33,188 @@ const HOT_SECTORS = [
   "Solar",
 ];
 
+// ─── Exchange infrastructure ──────────────────────────────────────────────────
+
+interface ExchangeInfo {
+  exchange: string;
+  country: string;
+  currency: string;
+  currencySymbol: string;
+  googleFinanceSuffix: string;
+}
+
+const EXCHANGE_MAP: Record<string, ExchangeInfo> = {
+  // Asia-Pacific
+  AX: {
+    exchange: "ASX (Australian Securities Exchange)",
+    country: "Australia",
+    currency: "AUD",
+    currencySymbol: "A$",
+    googleFinanceSuffix: "ASX",
+  },
+  T: {
+    exchange: "TSE (Tokyo Stock Exchange)",
+    country: "Japan",
+    currency: "JPY",
+    currencySymbol: "¥",
+    googleFinanceSuffix: "TYO",
+  },
+  KS: {
+    exchange: "KRX (Korea Stock Exchange)",
+    country: "South Korea",
+    currency: "KRW",
+    currencySymbol: "₩",
+    googleFinanceSuffix: "KRX",
+  },
+  KQ: {
+    exchange: "KOSDAQ (Korea)",
+    country: "South Korea",
+    currency: "KRW",
+    currencySymbol: "₩",
+    googleFinanceSuffix: "KOSDAQ",
+  },
+  HK: {
+    exchange: "HKEX (Hong Kong Stock Exchange)",
+    country: "Hong Kong",
+    currency: "HKD",
+    currencySymbol: "HK$",
+    googleFinanceSuffix: "HKG",
+  },
+  SI: {
+    exchange: "SGX (Singapore Exchange)",
+    country: "Singapore",
+    currency: "SGD",
+    currencySymbol: "S$",
+    googleFinanceSuffix: "SGX",
+  },
+  NZ: {
+    exchange: "NZX (New Zealand Exchange)",
+    country: "New Zealand",
+    currency: "NZD",
+    currencySymbol: "NZ$",
+    googleFinanceSuffix: "NZE",
+  },
+  // Europe
+  L: {
+    exchange: "LSE (London Stock Exchange)",
+    country: "United Kingdom",
+    currency: "GBP",
+    currencySymbol: "£",
+    googleFinanceSuffix: "LON",
+  },
+  DE: {
+    exchange: "XETRA (Frankfurt Stock Exchange)",
+    country: "Germany",
+    currency: "EUR",
+    currencySymbol: "€",
+    googleFinanceSuffix: "FRA",
+  },
+  PA: {
+    exchange: "Euronext Paris",
+    country: "France",
+    currency: "EUR",
+    currencySymbol: "€",
+    googleFinanceSuffix: "EPA",
+  },
+  AS: {
+    exchange: "Euronext Amsterdam",
+    country: "Netherlands",
+    currency: "EUR",
+    currencySymbol: "€",
+    googleFinanceSuffix: "AMS",
+  },
+  BR: {
+    exchange: "Euronext Brussels",
+    country: "Belgium",
+    currency: "EUR",
+    currencySymbol: "€",
+    googleFinanceSuffix: "EBR",
+  },
+  SW: {
+    exchange: "SIX Swiss Exchange",
+    country: "Switzerland",
+    currency: "CHF",
+    currencySymbol: "CHF",
+    googleFinanceSuffix: "SWX",
+  },
+  ST: {
+    exchange: "Nasdaq Stockholm",
+    country: "Sweden",
+    currency: "SEK",
+    currencySymbol: "kr",
+    googleFinanceSuffix: "STO",
+  },
+  // Americas
+  TO: {
+    exchange: "TSX (Toronto Stock Exchange)",
+    country: "Canada",
+    currency: "CAD",
+    currencySymbol: "C$",
+    googleFinanceSuffix: "TSE",
+  },
+  V: {
+    exchange: "TSXV (TSX Venture Exchange)",
+    country: "Canada",
+    currency: "CAD",
+    currencySymbol: "C$",
+    googleFinanceSuffix: "CVE",
+  },
+  SA: {
+    exchange: "B3 (São Paulo Stock Exchange)",
+    country: "Brazil",
+    currency: "BRL",
+    currencySymbol: "R$",
+    googleFinanceSuffix: "BVMF",
+  },
+};
+
+const US_DEFAULT: ExchangeInfo = {
+  exchange: "NYSE/NASDAQ (US)",
+  country: "United States",
+  currency: "USD",
+  currencySymbol: "$",
+  googleFinanceSuffix: "NASDAQ",
+};
+
+function parseTickerExchange(ticker: string): ExchangeInfo & {
+  symbol: string;
+  fullTicker: string;
+} {
+  const parts = ticker.split(".");
+  const suffix =
+    parts.length > 1 ? parts[parts.length - 1].toUpperCase() : null;
+  const info = suffix
+    ? (EXCHANGE_MAP[suffix] ?? {
+        exchange: `${suffix} Exchange`,
+        country: "Unknown",
+        currency: "USD",
+        currencySymbol: "$",
+        googleFinanceSuffix: suffix,
+      })
+    : US_DEFAULT;
+  return { ...info, symbol: parts[0], fullTicker: ticker };
+}
+
+function buildExchangeContext(
+  ticker: string,
+  info: ExchangeInfo & { symbol: string },
+): string {
+  const currencyNote =
+    info.currency === "JPY"
+      ? " Figures may be in millions of JPY — note this clearly."
+      : info.currency === "KRW"
+        ? " Figures may be in billions of KRW — note this clearly."
+        : "";
+  return `STOCK CONTEXT:
+- Ticker: ${ticker}
+- Exchange: ${info.exchange}
+- Country: ${info.country}
+- Currency: ${info.currency} (${info.currencySymbol})
+- When searching, use: "${ticker}" OR "${info.symbol} stock ${info.country}"
+- ALL financial figures MUST be in ${info.currency} (${info.currencySymbol})${currencyNote}
+`;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Format Step 1 output as a context string passed to steps 2-6. */
@@ -93,6 +275,7 @@ async function runStep1(
   ticker: string,
   emit: EmitFn,
   provider: LLMProvider,
+  exchangeContext: string,
   correctionHint?: string,
 ): Promise<Step1Output> {
   emit({ step: 1, label: "Discovery", status: "started" });
@@ -110,16 +293,14 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "primary_region": "string"
 }
 
+${exchangeContext}
 Research the stock ticker: ${ticker}
 ${
   correctionHint
     ? `\nCORRECTION: A previous attempt identified the wrong company. The user specified: "${correctionHint}". Use this to find the correct company for ticker ${ticker}.\n`
     : ""
 }
-IMPORTANT: Search for this EXACT ticker symbol as listed on its primary exchange. If multiple companies share this ticker across different exchanges, identify the one currently trading under this exact symbol on its primary exchange.
-
-Search: '${ticker} stock ticker company name exchange 2025'
-Verify the company name before proceeding.
+IMPORTANT: Search specifically for the company trading under ticker '${ticker}' on the exchange listed in STOCK CONTEXT above. Verify the company name matches this exact exchange listing. Do NOT research a company with a similar ticker on a different exchange.
 
 Identify: company name, industry, top 3 competitors (with their tickers), top 3 known customers,
 primary product/service, and primary operating region.
@@ -152,6 +333,7 @@ async function runStep2(
   step1: Step1Output,
   emit: EmitFn,
   provider: LLMProvider,
+  exchangeContext: string,
 ): Promise<Step2Output> {
   const ctx = formatStep1Context(step1);
   emit({ step: 2, label: "Deep Dive", status: "started" });
@@ -205,6 +387,7 @@ constraint_analysis.investable: true only if the bottleneck is (1) durable or sl
 constraint_analysis.who_relieves: who has the power, incentive, and strategic ability to relieve this bottleneck — and what sits outside their control?
 constraint_analysis.window: estimated time before consensus fully prices in this constraint advantage (e.g. "18–24 months — next-gen tooling announcements will expand capacity in 2026").
 
+${exchangeContext}
 ${ctx}
 
 Perform a deep dive analysis on the company above:
@@ -294,6 +477,7 @@ async function runStep3(
   step1: Step1Output,
   emit: EmitFn,
   provider: LLMProvider,
+  exchangeContext: string,
 ): Promise<Step3Output> {
   const ctx = formatStep1Context(step1);
   emit({ step: 3, label: "Valuation & Financials", status: "started" });
@@ -325,6 +509,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 Use null (not "null") for unknown numeric values. Revenue values in millions (e.g. 340 = $340M). revenue_growth as a percentage (e.g. 18.2 = 18.2% YoY). quarterly_results must contain the last 4 reported quarters, most recent first.
 napkin_math must reflect the Base scenario. scenarios must always contain exactly 3 objects with labels "Bear", "Base", "Bull".
 
+${exchangeContext}
 ${ctx}
 
 Provide valuation and financial analysis for the company above:
@@ -374,6 +559,7 @@ async function runStep4(
   step1: Step1Output,
   emit: EmitFn,
   provider: LLMProvider,
+  exchangeContext: string,
 ): Promise<Step4Output> {
   const ctx = formatStep1Context(step1);
   emit({ step: 4, label: "Risk Red Team", status: "started" });
@@ -389,6 +575,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 }
 bear_case_rebuttal: 2–3 sentences arguing what the bears consistently miss or underweight — write this from the bull's perspective as a genuine counter-argument.
 
+${exchangeContext}
 ${ctx}
 
 Perform a bear case analysis on the company above.
@@ -437,6 +624,7 @@ async function runStep5(
   step1: Step1Output,
   emit: EmitFn,
   provider: LLMProvider,
+  exchangeContext: string,
 ): Promise<Step5Output> {
   const ctx = formatStep1Context(step1);
   emit({ step: 5, label: "Macro & Sector", status: "started" });
@@ -452,6 +640,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
 }
 sector_heat must be an integer 1–5 (1=cold, 5=very hot). hot_sector_match must be a subset of the provided hot sectors list.
 
+${exchangeContext}
 ${ctx}
 
 Analyse macro conditions and sector positioning for the company above.
@@ -491,6 +680,7 @@ async function runStep6(
   step1: Step1Output,
   emit: EmitFn,
   provider: LLMProvider,
+  exchangeContext: string,
 ): Promise<Step6Output> {
   const ctx = formatStep1Context(step1);
   emit({ step: 6, label: "Sentiment & Technicals", status: "started" });
@@ -505,6 +695,7 @@ Respond ONLY with a valid JSON object matching exactly this structure. No markdo
   "rs_vs_spy": "string"
 }
 
+${exchangeContext}
 ${ctx}
 
 Analyse current market sentiment and technicals for the company above:
@@ -548,6 +739,7 @@ async function runStep7(
   runId: string,
   emit: EmitFn,
   provider: LLMProvider,
+  exchangeContext: string,
 ): Promise<PipelineResult> {
   const { step1, step2, step3, step4, step5, step6 } = ctx;
 
@@ -558,7 +750,8 @@ async function runStep7(
     )
     .join(" | ");
 
-  const contextSummary = `TICKER: ${ticker}
+  const contextSummary = `${exchangeContext}
+TICKER: ${ticker}
 COMPANY: ${step1.company_name}
 INDUSTRY: ${step1.industry} | SECTOR: ${step1.sector}
 PRODUCT: ${step1.primary_product} | REGION: ${step1.primary_region}
@@ -641,7 +834,7 @@ IMPORTANT SCORING CONSTRAINTS:
 - CONSTRAINT PREMIUM: If constraint_analysis.investable is true AND controls_constraint is true AND durability is "durable", add +0.5 to the moat quality score (effectively boosting the final score). This reflects that controlling a durable bottleneck is a rare and underappreciated source of asymmetric upside.
 - CONSTRAINT PENALTY: If the company is positioned NEAR a bottleneck but does NOT control it (controls_constraint is false) and rent_capture indicates value accrues elsewhere, do NOT credit it as a moat. Being adjacent to a constraint is not a moat — it is an opportunity that can be disrupted.
 
-NAPKIN MATH RULE: Use the Base scenario comp for the primary napkin_math target_price. NEVER use the Bear scenario comp as the primary target for a company growing >50% YoY — that produces a misleadingly pessimistic anchor. The Bear scenario belongs in the scenarios array, not as the headline number.
+NAPKIN MATH RULE: Use the Base scenario comp for the primary napkin_math target_price. NEVER use the Bear scenario comp as the primary target for a company growing >50% YoY — that produces a misleadingly pessimistic anchor. The Bear scenario belongs in the scenarios array, not as the headline number. target_price must be in the stock's local currency as specified in STOCK CONTEXT above. upside_percent is always a percentage regardless of currency.
 
 MANAGEMENT RATING NOTE: Do NOT include management_rating in your synthesis report JSON — it is computed separately in Step 2 (Deep Dive) and merged automatically after synthesis completes. Your "report" JSON must not have a management_rating key.
 
@@ -918,6 +1111,7 @@ async function runParallelSteps(
   cachedSteps: Map<number, Record<string, unknown>>,
   emit: EmitFn,
   provider: LLMProvider,
+  exchangeContext: string,
 ): Promise<[Step2Output, Step3Output, Step4Output, Step5Output, Step6Output]> {
   async function runOrResume<T>(
     stepNum: number,
@@ -952,31 +1146,31 @@ async function runParallelSteps(
     runOrResume(
       2,
       "Deep Dive",
-      () => runStep2(step1, emit, provider),
+      () => runStep2(step1, emit, provider, exchangeContext),
       DEFAULT_STEP2,
     ),
     runOrResume(
       3,
       "Valuation & Financials",
-      () => runStep3(step1, emit, provider),
+      () => runStep3(step1, emit, provider, exchangeContext),
       DEFAULT_STEP3,
     ),
     runOrResume(
       4,
       "Risk Red Team",
-      () => runStep4(step1, emit, provider),
+      () => runStep4(step1, emit, provider, exchangeContext),
       DEFAULT_STEP4,
     ),
     runOrResume(
       5,
       "Macro & Sector",
-      () => runStep5(step1, emit, provider),
+      () => runStep5(step1, emit, provider, exchangeContext),
       DEFAULT_STEP5,
     ),
     runOrResume(
       6,
       "Sentiment & Technicals",
-      () => runStep6(step1, emit, provider),
+      () => runStep6(step1, emit, provider, exchangeContext),
       DEFAULT_STEP6,
     ),
   ]);
@@ -997,6 +1191,9 @@ export async function runPipeline(
   emit: EmitFn,
   provider: LLMProvider = "claude",
 ): Promise<PipelineResult> {
+  const exchangeInfo = parseTickerExchange(ticker);
+  const exchangeContext = buildExchangeContext(ticker, exchangeInfo);
+
   // Load existing checkpoints — resume in-progress run if present
   const existing = await loadCheckpoints(ticker);
   const runId = existing?.runId ?? randomUUID();
@@ -1045,7 +1242,7 @@ export async function runPipeline(
     });
     console.log("[Step 1] resumed from checkpoint");
   } else {
-    step1 = await runStep1(ticker, emit, provider);
+    step1 = await runStep1(ticker, emit, provider, exchangeContext);
     await saveCheckpoint(ticker, runId, {
       step_number: 1,
       step_label: "Discovery",
@@ -1070,7 +1267,13 @@ export async function runPipeline(
 
     if (!firstResult.confirmed && firstResult.correction) {
       // Re-run Step 1 with the user's correction hint, then one more confirmation.
-      step1 = await runStep1(ticker, emit, provider, firstResult.correction);
+      step1 = await runStep1(
+        ticker,
+        emit,
+        provider,
+        exchangeContext,
+        firstResult.correction,
+      );
       await saveCheckpoint(ticker, runId, {
         step_number: 1,
         step_label: "Discovery",
@@ -1099,10 +1302,11 @@ export async function runPipeline(
     cachedSteps,
     emit,
     provider,
+    exchangeContext,
   );
 
   const ctx: PipelineContext = { step1, step2, step3, step4, step5, step6 };
-  return runStep7(ctx, ticker, runId, emit, provider);
+  return runStep7(ctx, ticker, runId, emit, provider, exchangeContext);
 }
 
 /**
@@ -1116,9 +1320,11 @@ export async function runUpdatePipeline(
   emit: EmitFn,
   provider: LLMProvider = "claude",
 ): Promise<PipelineResult> {
+  const exchangeInfo = parseTickerExchange(ticker);
+  const exchangeContext = buildExchangeContext(ticker, exchangeInfo);
   const runId = randomUUID();
 
-  const step1 = await runStep1(ticker, emit, provider);
+  const step1 = await runStep1(ticker, emit, provider, exchangeContext);
   await saveCheckpoint(ticker, runId, {
     step_number: 1,
     step_label: "Discovery",
@@ -1174,7 +1380,7 @@ export async function runUpdatePipeline(
       runStepWithFallback(
         2,
         "Deep Dive",
-        () => runStep2(step1, emit, provider),
+        () => runStep2(step1, emit, provider, exchangeContext),
         DEFAULT_STEP2,
         ticker,
         runId,
@@ -1184,7 +1390,7 @@ export async function runUpdatePipeline(
       runStepWithFallback(
         3,
         "Valuation & Financials",
-        () => runStep3(step1, emit, provider),
+        () => runStep3(step1, emit, provider, exchangeContext),
         DEFAULT_STEP3,
         ticker,
         runId,
@@ -1194,7 +1400,7 @@ export async function runUpdatePipeline(
       runStepWithFallback(
         5,
         "Macro & Sector",
-        () => runStep5(step1, emit, provider),
+        () => runStep5(step1, emit, provider, exchangeContext),
         DEFAULT_STEP5,
         ticker,
         runId,
@@ -1204,7 +1410,7 @@ export async function runUpdatePipeline(
       runStepWithFallback(
         6,
         "Sentiment & Technicals",
-        () => runStep6(step1, emit, provider),
+        () => runStep6(step1, emit, provider, exchangeContext),
         DEFAULT_STEP6,
         ticker,
         runId,
@@ -1247,7 +1453,7 @@ export async function runUpdatePipeline(
       runStepWithFallback(
         3,
         "Valuation & Financials",
-        () => runStep3(step1, emit, provider),
+        () => runStep3(step1, emit, provider, exchangeContext),
         DEFAULT_STEP3,
         ticker,
         runId,
@@ -1257,7 +1463,7 @@ export async function runUpdatePipeline(
       runStepWithFallback(
         5,
         "Macro & Sector",
-        () => runStep5(step1, emit, provider),
+        () => runStep5(step1, emit, provider, exchangeContext),
         DEFAULT_STEP5,
         ticker,
         runId,
@@ -1267,7 +1473,7 @@ export async function runUpdatePipeline(
       runStepWithFallback(
         6,
         "Sentiment & Technicals",
-        () => runStep6(step1, emit, provider),
+        () => runStep6(step1, emit, provider, exchangeContext),
         DEFAULT_STEP6,
         ticker,
         runId,
@@ -1288,5 +1494,5 @@ export async function runUpdatePipeline(
     step5,
     step6,
   };
-  return runStep7(ctx, ticker, runId, emit, provider);
+  return runStep7(ctx, ticker, runId, emit, provider, exchangeContext);
 }

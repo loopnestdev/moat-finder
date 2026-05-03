@@ -195,6 +195,33 @@ function BulletList({
   );
 }
 
+const EXCHANGE_BADGE_LABELS: Record<string, string> = {
+  AX: "ASX",
+  T: "TSE",
+  KS: "KRX",
+  KQ: "KOSDAQ",
+  HK: "HKEX",
+  SI: "SGX",
+  NZ: "NZX",
+  L: "LSE",
+  DE: "XETRA",
+  PA: "EPA",
+  AS: "AMS",
+  BR: "EBR",
+  SW: "SIX",
+  ST: "STO",
+  TO: "TSX",
+  V: "TSXV",
+  SA: "B3",
+};
+
+function getExchangeBadge(ticker: string): string | null {
+  const dot = ticker.indexOf(".");
+  if (dot === -1) return null;
+  const suffix = ticker.substring(dot + 1).toUpperCase();
+  return EXCHANGE_BADGE_LABELS[suffix] ?? suffix;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Report() {
@@ -279,6 +306,14 @@ export default function Report() {
               <h1 className="font-mono text-4xl font-bold text-gold tracking-tight leading-none">
                 {report.ticker_symbol}
               </h1>
+              {(() => {
+                const badge = getExchangeBadge(report.ticker_symbol);
+                return badge ? (
+                  <span className="font-mono text-xs border border-amber-400/30 bg-amber-400/10 text-amber-400 rounded px-2 py-0.5">
+                    {badge}
+                  </span>
+                ) : null;
+              })()}
               {report.tickers?.company_name && (
                 <span className="font-display text-lg text-cream-muted leading-tight">
                   {report.tickers.company_name}

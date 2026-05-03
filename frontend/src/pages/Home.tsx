@@ -178,8 +178,8 @@ export default function Home() {
                 setInputError("");
                 setShowMessage("");
               }}
-              placeholder="Enter ticker (e.g. SKYT)"
-              maxLength={10}
+              placeholder="Ticker (e.g. NVDA, EOS.AX, 7203.T, 005930.KS)"
+              maxLength={14}
               aria-label="Stock ticker"
               className={[
                 "w-full rounded border px-4 py-3 text-lg font-mono tracking-wider",
