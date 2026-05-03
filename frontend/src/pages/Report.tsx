@@ -404,6 +404,7 @@ export default function Report() {
           <PipelineProgress
             steps={pipeline.steps}
             isRunning={pipeline.isRunning}
+            isStarting={pipeline.isStarting}
             error={pipeline.error}
             isAdmin={isAdmin}
             pendingConfirm={pipeline.pendingConfirm}

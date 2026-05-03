@@ -12,6 +12,7 @@ export interface PendingConfirm {
 export function usePipeline() {
   const [steps, setSteps] = useState<SSEEvent[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
@@ -35,6 +36,7 @@ export function usePipeline() {
       setError(null);
       setIsComplete(false);
       setIsRunning(true);
+      setIsStarting(false);
       setPendingConfirm(null);
 
       const collected: SSEEvent[] = [];
@@ -71,9 +73,10 @@ export function usePipeline() {
           collected.push(event);
           setSteps((prev) => [...prev, event]);
 
-          // Clear pendingConfirm once the pipeline resumes (Steps 2+ start)
+          // Clear pendingConfirm and isStarting once the pipeline resumes (Steps 2+ start)
           if (event.status === "started" && event.step >= 2) {
             setPendingConfirm(null);
+            setIsStarting(false);
           }
 
           if (event.step === 8) {
@@ -92,6 +95,7 @@ export function usePipeline() {
         }
       } finally {
         setIsRunning(false);
+        setIsStarting(false);
       }
 
       return collected;
@@ -118,20 +122,21 @@ export function usePipeline() {
   );
 
   const sendConfirmation = useCallback(
-    async (confirmed: boolean, correction?: string) => {
+    (confirmed: boolean, correction?: string) => {
       if (!pendingConfirm) return;
       // Optimistically clear — backend will re-emit confirm_required if retry needed
       setPendingConfirm(null);
-      try {
-        await confirmResearch(
-          currentTickerRef.current,
-          pendingConfirm.runId,
-          confirmed,
-          correction,
-        );
-      } catch {
-        // Non-fatal: backend auto-proceeds after 60s timeout anyway
-      }
+      setIsStarting(true);
+      // Fire-and-forget: SSE stream is already open and delivers events independently
+      confirmResearch(
+        currentTickerRef.current,
+        pendingConfirm.runId,
+        confirmed,
+        correction,
+      ).catch((err: unknown) => {
+        console.error("Confirm failed:", err);
+        setError("Failed to confirm — please try again");
+      });
     },
     [pendingConfirm],
   );
@@ -139,6 +144,7 @@ export function usePipeline() {
   return {
     steps,
     isRunning,
+    isStarting,
     error,
     isComplete,
     startResearch,

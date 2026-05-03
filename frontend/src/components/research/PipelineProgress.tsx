@@ -7,6 +7,7 @@ interface PipelineProgressProps {
   isRunning: boolean;
   error: string | null;
   isAdmin?: boolean;
+  isStarting?: boolean;
   pendingConfirm?: PendingConfirm | null;
   onConfirm?: (confirmed: boolean, correction?: string) => void;
 }
@@ -31,6 +32,7 @@ export default function PipelineProgress({
   isRunning,
   error,
   isAdmin = false,
+  isStarting = false,
   pendingConfirm = null,
   onConfirm,
 }: PipelineProgressProps) {
@@ -546,6 +548,16 @@ export default function PipelineProgress({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Starting indicator — shown immediately after confirmation, before first 'started' SSE event */}
+      {isStarting && !pendingConfirm && (
+        <div className="mt-4 flex items-center gap-3 py-2">
+          <div className="w-5 h-5 rounded-full border-2 border-purple/30 border-t-purple animate-spin flex-shrink-0" />
+          <span className="font-body text-sm text-cream-muted">
+            Starting research pipeline...
+          </span>
         </div>
       )}
 

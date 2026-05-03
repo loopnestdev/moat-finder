@@ -235,6 +235,10 @@ The AI research pipeline was upgraded based on real backtest results from resear
 
 ## Changelog
 
+### v0.8.1
+
+- **Immediate UI feedback after company confirmation** (`usePipeline.ts`, `PipelineProgress.tsx`, `Report.tsx`, `Home.tsx`): Eliminated the 40–50 second blank screen between confirming a company name and seeing pipeline activity. `sendConfirmation` is now fire-and-forget — it sets `isStarting: true` and clears the confirm card synchronously on click, without waiting for the POST response. `usePipeline` exposes a new `isStarting` boolean that turns false when the first `started` SSE event arrives for step ≥ 2 (or on pipeline end). `PipelineProgress` accepts an `isStarting` prop and renders a purple spinner with "Starting research pipeline..." in the gap between confirmation and the first running step.
+
 ### v0.8.0
 
 - **International stock support** (`backend/src/utils/ticker.ts`, `frontend/src/lib/validation.ts`): Ticker validation regex updated to `/^[A-Z0-9]{1,10}(\.[A-Z]{1,3})?$/` — accepts international exchange suffixes (e.g. `EOS.AX`, `7203.T`, `005930.KS`, `SAP.DE`). `maxLength` on the Home.tsx ticker input raised to 14. Placeholder updated to show `EOS.AX`, `7203.T`, `005930.KS` examples.
@@ -250,7 +254,7 @@ The AI research pipeline was upgraded based on real backtest results from resear
 
 ### v0.7.0
 
-- **Moat consistent numbered rendering** (`Report.tsx`): Replaced `MoatPillars` (dark card renderer that split on " — " and bolded partial text) with a new `parseMoatPoints()` parser and inline Catalysts-style rendering. Parser tries three patterns in order: `(1) text; (2) text` parenthetical, `1.\ntext\n2.\ntext` newline-dot, and `; `-separated sentences starting with capital or open-paren. Multi-item results render as a plain `<ol>` with 2-digit number badge and full text at uniform weight — no bold, no heading treatment, no card borders. Single-item fallback renders as a plain paragraph. NEVER bolds partial text within a moat point.
+- **Moat consistent numbered rendering** (`Report.tsx`): Replaced `MoatPillars` (dark card renderer that split on " — " and bolded partial text) with a new `parseMoatPoints()` parser and inline Catalysts-style rendering. Parser tries three patterns in order: `(1) text; (2) text` parenthetical, `1.\ntext\n2.\ntext` newline-dot, and `";"`-separated sentences starting with capital or open-paren. Multi-item results render as a plain `<ol>` with 2-digit number badge and full text at uniform weight — no bold, no heading treatment, no card borders. Single-item fallback renders as a plain paragraph. NEVER bolds partial text within a moat point.
 - **Version history target price change** (`diff.ts`, both `report.types.ts`, `Changelog.tsx`): `generateDiff` now computes a `target_price` diff when `napkin_math.target_price` changes between versions. Stored as `{from, to, upside_from, upside_to}` (all `number | null`). Added to human-readable summary: "target price changed to $X". `DiffJson` type in both type files updated to include the optional `target_price` field. `Changelog.tsx` renders the change as: `Target: $282.45 → $312.80 (+10.7%)` — only visible when target price actually changed, shown in expanded version card after the score change line.
 
 ### v0.6.6
