@@ -235,6 +235,10 @@ The AI research pipeline was upgraded based on real backtest results from resear
 
 ## Changelog
 
+### v0.8.2
+
+- **Two-phase discover+run pipeline** (`pipeline.ts`, `research.ts`, `api.ts`, `usePipeline.ts`): Replaced the broken in-memory `pipelineConfirmations` Map pattern with a stateless two-phase HTTP design that works correctly across multiple Railway instances. New `POST /:ticker/discover` endpoint runs Step 1 only via SSE, saves a checkpoint, and emits `confirm_required` with `runId`. New `POST /:ticker/run` endpoint accepts `{ provider, runId }`, loads the Step 1 checkpoint via `loadCheckpointsByRunId`, and runs Steps 2–7 via SSE then saves the report. The old `POST /:ticker/confirm` endpoint is deleted. New `runDiscoveryOnly` and `runFromCheckpoint` pipeline functions added. `usePipeline` is rewritten with a `confirmResolverRef` Promise pattern — `sendConfirmation` resolves the Promise to bridge async user input between the two SSE streams. `api.ts` replaces `streamResearch`/`confirmResearch` with a single generic `streamSSE(path, body, signal, method?)` function.
+
 ### v0.8.1
 
 - **Immediate UI feedback after company confirmation** (`usePipeline.ts`, `PipelineProgress.tsx`, `Report.tsx`, `Home.tsx`): Eliminated the 40–50 second blank screen between confirming a company name and seeing pipeline activity. `sendConfirmation` is now fire-and-forget — it sets `isStarting: true` and clears the confirm card synchronously on click, without waiting for the POST response. `usePipeline` exposes a new `isStarting` boolean that turns false when the first `started` SSE event arrives for step ≥ 2 (or on pipeline end). `PipelineProgress` accepts an `isStarting` prop and renders a purple spinner with "Starting research pipeline..." in the gap between confirmation and the first running step.

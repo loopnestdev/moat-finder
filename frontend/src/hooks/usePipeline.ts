@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { streamResearch, confirmResearch } from "../lib/api";
+import { streamSSE } from "../lib/api";
 import type { SSEEvent } from "../types/report.types";
 
 export interface PendingConfirm {
@@ -8,6 +8,8 @@ export interface PendingConfirm {
   ticker: string;
   message: string;
 }
+
+type ConfirmResult = { confirmed: boolean; correction?: string };
 
 export function usePipeline() {
   const [steps, setSteps] = useState<SSEEvent[]>([]);
@@ -18,20 +20,16 @@ export function usePipeline() {
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
     null,
   );
-  const abortRef = useRef<AbortController | null>(null);
-  const currentTickerRef = useRef<string>("");
 
-  const start = useCallback(
-    async (
-      ticker: string,
-      method: "POST" | "PUT",
-      provider?: string,
-    ): Promise<SSEEvent[]> => {
+  const abortRef = useRef<AbortController | null>(null);
+  const confirmResolverRef = useRef<((r: ConfirmResult) => void) | null>(null);
+
+  const startResearch = useCallback(
+    async (ticker: string, provider?: string): Promise<SSEEvent[]> => {
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
 
-      currentTickerRef.current = ticker;
       setSteps([]);
       setError(null);
       setIsComplete(false);
@@ -39,54 +37,111 @@ export function usePipeline() {
       setIsStarting(false);
       setPendingConfirm(null);
 
-      const collected: SSEEvent[] = [];
+      let collected: SSEEvent[] = [];
+      let correction: string | undefined = undefined;
+      let runId: string | null = null;
 
       try {
-        for await (const event of streamResearch(
-          ticker,
-          method,
-          ctrl.signal,
-          provider,
-        )) {
-          if (event.status === "confirm_required") {
-            const d = event.data as
-              | {
-                  runId?: string;
-                  company_name?: string;
-                  ticker?: string;
-                  message?: string;
-                }
-              | undefined;
-            if (d?.runId && d.company_name) {
-              setPendingConfirm({
-                runId: d.runId,
-                company_name: d.company_name,
-                ticker: d.ticker ?? ticker,
-                message:
-                  d.message ??
-                  `Found: ${d.company_name} (${ticker}). Is this correct?`,
-              });
+        // Phase 1: discover — loops if user provides a correction
+        while (true) {
+          let confirmReceived = false;
+          let pendingRunId: string | null = null;
+          let pendingCompanyName: string | null = null;
+
+          for await (const event of streamSSE(
+            `/api/v1/research/${ticker}/discover`,
+            {
+              provider: provider ?? "claude",
+              ...(correction !== undefined ? { correction } : {}),
+            },
+            ctrl.signal,
+          )) {
+            if (event.status === "confirm_required") {
+              confirmReceived = true;
+              const d = event.data as
+                | { runId?: string; company_name?: string; ticker?: string }
+                | undefined;
+              pendingRunId = d?.runId ?? null;
+              pendingCompanyName = d?.company_name ?? null;
+              if (pendingRunId && pendingCompanyName) {
+                setPendingConfirm({
+                  runId: pendingRunId,
+                  company_name: pendingCompanyName,
+                  ticker: d?.ticker ?? ticker,
+                  message: `Found: ${pendingCompanyName} (${d?.ticker ?? ticker}). Is this correct?`,
+                });
+              }
+              continue;
             }
-            continue; // not a pipeline step — don't add to steps list
+            if (event.status === "error") {
+              setError(
+                (event.data?.message as string | undefined) ??
+                  "Discovery failed",
+              );
+              setIsRunning(false);
+              return collected;
+            }
+            collected.push(event);
+            setSteps((prev) => [...prev, event]);
           }
 
-          collected.push(event);
-          setSteps((prev) => [...prev, event]);
+          if (!confirmReceived) break;
 
-          // Clear pendingConfirm and isStarting once the pipeline resumes (Steps 2+ start)
+          // Wait for the user to confirm or provide a correction
+          const confirmResult = await new Promise<ConfirmResult>(
+            (resolve, reject) => {
+              confirmResolverRef.current = resolve;
+              ctrl.signal.addEventListener(
+                "abort",
+                () => reject(new DOMException("Aborted", "AbortError")),
+                { once: true },
+              );
+            },
+          );
+
+          if (confirmResult.confirmed) {
+            runId = pendingRunId;
+            break;
+          } else if (confirmResult.correction) {
+            correction = confirmResult.correction;
+            // Clear old Step 1 events before re-running discover
+            setSteps((prev) => prev.filter((e) => e.step !== 1));
+            collected = collected.filter((e) => e.step !== 1);
+            // continue loop — re-runs /discover with correction
+          } else {
+            // User rejected without a correction — stop
+            setIsRunning(false);
+            return collected;
+          }
+        }
+
+        if (!runId) {
+          setIsRunning(false);
+          return collected;
+        }
+
+        // Phase 2: run Steps 2–7 from the checkpoint
+        setIsStarting(true);
+        setPendingConfirm(null);
+
+        for await (const event of streamSSE(
+          `/api/v1/research/${ticker}/run`,
+          { provider: provider ?? "claude", runId },
+          ctrl.signal,
+        )) {
           if (event.status === "started" && event.step >= 2) {
-            setPendingConfirm(null);
             setIsStarting(false);
-          }
-
-          if (event.step === 8) {
-            setIsComplete(true);
           }
           if (event.status === "error") {
             setError(
               (event.data?.message as string | undefined) ?? "Pipeline failed",
             );
             break;
+          }
+          collected.push(event);
+          setSteps((prev) => [...prev, event]);
+          if (event.step === 8) {
+            setIsComplete(true);
           }
         }
       } catch (err) {
@@ -103,43 +158,76 @@ export function usePipeline() {
     [],
   );
 
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
-
-  const startResearch = useCallback(
-    (ticker: string, provider?: string): Promise<SSEEvent[]> =>
-      start(ticker, "POST", provider),
-    [start],
-  );
-
   const updateResearch = useCallback(
-    (ticker: string, provider?: string): Promise<SSEEvent[]> =>
-      start(ticker, "PUT", provider),
-    [start],
+    async (ticker: string, provider?: string): Promise<SSEEvent[]> => {
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
+      setSteps([]);
+      setError(null);
+      setIsComplete(false);
+      setIsRunning(true);
+      setIsStarting(false);
+      setPendingConfirm(null);
+
+      const collected: SSEEvent[] = [];
+
+      try {
+        for await (const event of streamSSE(
+          `/api/v1/research/${ticker}`,
+          { provider: provider ?? "claude" },
+          ctrl.signal,
+          "PUT",
+        )) {
+          if (event.status === "error") {
+            setError(
+              (event.data?.message as string | undefined) ?? "Update failed",
+            );
+            break;
+          }
+          collected.push(event);
+          setSteps((prev) => [...prev, event]);
+          if (event.step === 8) {
+            setIsComplete(true);
+          }
+        }
+      } catch (err) {
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
+          setError(err instanceof Error ? err.message : "Unknown error");
+        }
+      } finally {
+        setIsRunning(false);
+        setIsStarting(false);
+      }
+
+      return collected;
+    },
+    [],
   );
 
   const sendConfirmation = useCallback(
     (confirmed: boolean, correction?: string) => {
       if (!pendingConfirm) return;
-      // Optimistically clear — backend will re-emit confirm_required if retry needed
       setPendingConfirm(null);
-      setIsStarting(true);
-      // Fire-and-forget: SSE stream is already open and delivers events independently
-      confirmResearch(
-        currentTickerRef.current,
-        pendingConfirm.runId,
-        confirmed,
-        correction,
-      ).catch((err: unknown) => {
-        console.error("Confirm failed:", err);
-        setError("Failed to confirm — please try again");
-      });
+      if (confirmed) setIsStarting(true);
+      if (confirmResolverRef.current) {
+        confirmResolverRef.current({ confirmed, correction });
+        confirmResolverRef.current = null;
+      }
     },
     [pendingConfirm],
   );
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (confirmResolverRef.current) {
+        confirmResolverRef.current({ confirmed: false });
+        confirmResolverRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     steps,

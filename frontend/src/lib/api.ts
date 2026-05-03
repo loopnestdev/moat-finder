@@ -45,23 +45,11 @@ export async function apiFetch(
   return res;
 }
 
-export async function confirmResearch(
-  ticker: string,
-  runId: string,
-  confirmed: boolean,
-  correction?: string,
-): Promise<void> {
-  await apiFetch(`/api/v1/research/${ticker}/confirm`, {
-    method: "POST",
-    body: JSON.stringify({ runId, confirmed, correction }),
-  });
-}
-
-export async function* streamResearch(
-  ticker: string,
-  method: "POST" | "PUT",
+export async function* streamSSE(
+  path: string,
+  body: Record<string, unknown>,
   signal: AbortSignal,
-  provider?: string,
+  method: "POST" | "PUT" = "POST",
 ): AsyncGenerator<SSEEvent> {
   const token = await getToken();
   const headers: Record<string, string> = {
@@ -69,12 +57,26 @@ export async function* streamResearch(
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${base()}/api/v1/research/${ticker}`, {
+  const res = await fetch(`${base()}${path}`, {
     method,
     headers,
-    body: JSON.stringify({ provider: provider ?? "claude" }),
+    body: JSON.stringify(body),
     signal,
   });
+
+  if (!res.ok) {
+    const err = (await res
+      .json()
+      .catch(() => ({ error: "Request failed", code: "UNKNOWN" }))) as {
+      error?: string;
+      code?: string;
+    };
+    throw new ApiError(
+      res.status,
+      err.code ?? "UNKNOWN",
+      err.error ?? "Request failed",
+    );
+  }
 
   if (!res.body) return;
 

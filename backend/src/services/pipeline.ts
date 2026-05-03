@@ -17,6 +17,7 @@ import type {
 import {
   saveCheckpoint,
   loadCheckpoints,
+  loadCheckpointsByRunId,
   deleteStepCheckpoint,
 } from "./checkpoint";
 import { adminClient } from "./supabase";
@@ -1494,5 +1495,72 @@ export async function runUpdatePipeline(
     step5,
     step6,
   };
+  return runStep7(ctx, ticker, runId, emit, provider, exchangeContext);
+}
+
+export async function runDiscoveryOnly(
+  ticker: string,
+  provider: LLMProvider,
+  emit: EmitFn,
+  correction?: string,
+): Promise<{ runId: string; step1Output: Step1Output }> {
+  const exchangeInfo = parseTickerExchange(ticker);
+  const exchangeContext = buildExchangeContext(ticker, exchangeInfo);
+  const runId = randomUUID();
+  const step1Output = await runStep1(
+    ticker,
+    emit,
+    provider,
+    exchangeContext,
+    correction,
+  );
+  await saveCheckpoint(ticker, runId, {
+    step_number: 1,
+    step_label: "Discovery",
+    output_json: step1Output as unknown as Record<string, unknown>,
+  });
+  return { runId, step1Output };
+}
+
+export async function runFromCheckpoint(
+  ticker: string,
+  runId: string,
+  provider: LLMProvider,
+  emit: EmitFn,
+): Promise<PipelineResult> {
+  const exchangeInfo = parseTickerExchange(ticker);
+  const exchangeContext = buildExchangeContext(ticker, exchangeInfo);
+  const cachedSteps = await loadCheckpointsByRunId(ticker, runId);
+  if (!cachedSteps || !cachedSteps.has(1)) {
+    throw new Error(
+      `Step 1 checkpoint not found for ${ticker} (runId: ${runId})`,
+    );
+  }
+  if (cachedSteps.has(2)) {
+    const step2Cached = cachedSteps.get(2);
+    const cachedMr = step2Cached?.management_rating as
+      | Record<string, unknown>
+      | undefined;
+    const step2NeedsRerun =
+      !cachedMr ||
+      !cachedMr.categories ||
+      cachedMr.ceo_assessment !== undefined ||
+      cachedMr.total_score === undefined;
+    if (step2NeedsRerun) {
+      cachedSteps.delete(2);
+      await deleteStepCheckpoint(ticker, runId, 2);
+    }
+  }
+  const step1 = cachedSteps.get(1)! as unknown as Step1Output;
+  const [step2, step3, step4, step5, step6] = await runParallelSteps(
+    step1,
+    ticker,
+    runId,
+    cachedSteps,
+    emit,
+    provider,
+    exchangeContext,
+  );
+  const ctx: PipelineContext = { step1, step2, step3, step4, step5, step6 };
   return runStep7(ctx, ticker, runId, emit, provider, exchangeContext);
 }

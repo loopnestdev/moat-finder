@@ -4,11 +4,15 @@ import { authenticate } from "../middleware/auth";
 import { requireRole } from "../middleware/requireRole";
 import { logAudit } from "../middleware/audit";
 import { anonClient, adminClient } from "../services/supabase";
-import { runPipeline, runUpdatePipeline } from "../services/pipeline";
+import {
+  runPipeline,
+  runUpdatePipeline,
+  runDiscoveryOnly,
+  runFromCheckpoint,
+} from "../services/pipeline";
 import type { LLMProvider } from "../services/llm";
 import { clearCheckpoints } from "../services/checkpoint";
 import { generateDiff } from "../services/diff";
-import { resolveConfirmation } from "../services/confirmation";
 import { validateTicker } from "../utils/ticker";
 import type {
   EmitFn,
@@ -169,6 +173,306 @@ router.get("/:ticker", async (req, res) => {
       .json({ error: "Internal server error", code: "INTERNAL_ERROR" });
   }
 });
+
+// ─── POST /api/v1/research/:ticker ───────────────────────────────────────────
+
+// ─── POST /api/v1/research/:ticker/discover ──────────────────────────────────
+
+router.post(
+  "/:ticker/discover",
+  researchLimiter,
+  authenticate,
+  requireRole("approved"),
+  async (req, res) => {
+    try {
+      const { valid, normalised } = validateTicker(
+        getTickerParam(req.params.ticker),
+      );
+      if (!valid) {
+        res
+          .status(400)
+          .json({ error: "Invalid ticker symbol", code: "INVALID_TICKER" });
+        return;
+      }
+
+      const { provider: rawProvider = "claude", correction } = req.body as {
+        provider?: string;
+        correction?: string;
+      };
+      if (!["claude", "gemini"].includes(rawProvider)) {
+        res.status(400).json({
+          error: "Invalid provider. Must be 'claude' or 'gemini'",
+          code: "INVALID_PROVIDER",
+        });
+        return;
+      }
+      if (rawProvider === "gemini" && !process.env.GEMINI_API_KEY) {
+        res.status(400).json({
+          error: "Gemini API key not configured on server",
+          code: "GEMINI_NOT_CONFIGURED",
+        });
+        return;
+      }
+      const provider = rawProvider as LLMProvider;
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
+
+      const keepAlive = setInterval(() => {
+        res.write(": ping\n\n");
+      }, 30000);
+
+      const emit: EmitFn = (event: SSEEvent) => {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      };
+
+      try {
+        const { runId, step1Output } = await runDiscoveryOnly(
+          normalised,
+          provider,
+          emit,
+          typeof correction === "string" ? correction : undefined,
+        );
+        emit({
+          step: 1,
+          label: "Confirm",
+          status: "confirm_required",
+          data: {
+            company_name: step1Output.company_name,
+            ticker: normalised,
+            runId,
+          },
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Discovery failed";
+        emit({ step: 0, label: "Error", status: "error", data: { message } });
+      }
+
+      clearInterval(keepAlive);
+      res.end();
+    } catch {
+      if (!res.headersSent) {
+        res
+          .status(500)
+          .json({ error: "Internal server error", code: "INTERNAL_ERROR" });
+      } else {
+        res.end();
+      }
+    }
+  },
+);
+
+// ─── POST /api/v1/research/:ticker/run ───────────────────────────────────────
+
+router.post(
+  "/:ticker/run",
+  researchLimiter,
+  authenticate,
+  requireRole("approved"),
+  async (req, res) => {
+    try {
+      const { valid, normalised } = validateTicker(
+        getTickerParam(req.params.ticker),
+      );
+      if (!valid) {
+        res
+          .status(400)
+          .json({ error: "Invalid ticker symbol", code: "INVALID_TICKER" });
+        return;
+      }
+
+      const { provider: rawProvider = "claude", runId } = req.body as {
+        provider?: string;
+        runId?: string;
+      };
+      if (!["claude", "gemini"].includes(rawProvider)) {
+        res.status(400).json({
+          error: "Invalid provider. Must be 'claude' or 'gemini'",
+          code: "INVALID_PROVIDER",
+        });
+        return;
+      }
+      if (rawProvider === "gemini" && !process.env.GEMINI_API_KEY) {
+        res.status(400).json({
+          error: "Gemini API key not configured on server",
+          code: "GEMINI_NOT_CONFIGURED",
+        });
+        return;
+      }
+      if (typeof runId !== "string" || !runId) {
+        res
+          .status(400)
+          .json({ error: "runId is required", code: "BAD_REQUEST" });
+        return;
+      }
+      const provider = rawProvider as LLMProvider;
+
+      // Race condition guard
+      const { data: existing } = await anonClient
+        .from("research_reports")
+        .select("id")
+        .eq("ticker_symbol", normalised)
+        .maybeSingle();
+
+      if (existing) {
+        res
+          .status(409)
+          .json({ error: "Report already exists", code: "ALREADY_EXISTS" });
+        return;
+      }
+
+      // Ensure ticker row exists
+      const { data: tickerData, error: tickerErr } = await adminClient
+        .from("tickers")
+        .upsert({ symbol: normalised }, { onConflict: "symbol" })
+        .select("id, research_count")
+        .single();
+
+      if (tickerErr || !tickerData) {
+        console.error("[research /run] TICKER UPSERT FAILED:", tickerErr);
+        res
+          .status(500)
+          .json({ error: "Failed to create ticker", code: "DB_ERROR" });
+        return;
+      }
+
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+      res.flushHeaders();
+
+      const keepAlive = setInterval(() => {
+        res.write(": ping\n\n");
+      }, 30000);
+
+      const emit: EmitFn = (event: SSEEvent) => {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      };
+
+      void logAudit("research_triggered", req, { ticker_symbol: normalised });
+
+      let pipelineResult: PipelineResult;
+      try {
+        pipelineResult = await runFromCheckpoint(
+          normalised,
+          runId,
+          provider,
+          emit,
+        );
+      } catch (pipelineErr) {
+        const message =
+          pipelineErr instanceof Error
+            ? pipelineErr.message
+            : "Pipeline failed";
+        emit({ step: 0, label: "Error", status: "error", data: { message } });
+        clearInterval(keepAlive);
+        res.end();
+        return;
+      }
+
+      const { report, diagram, runId: completedRunId } = pipelineResult;
+
+      const rawScore = report.score;
+      const score =
+        typeof rawScore === "number"
+          ? rawScore
+          : parseFloat(String(rawScore ?? "")) || null;
+
+      emit({ step: 8, label: "Saving Report", status: "saving" });
+
+      const { data: savedReport, error: reportErr } = await adminClient
+        .from("research_reports")
+        .insert({
+          ticker_id: tickerData.id,
+          ticker_symbol: normalised,
+          score,
+          report_json: report as unknown as Json,
+          diagram_json: diagram as unknown as Json,
+          version: 1,
+          researched_by: req.user?.id ?? null,
+        })
+        .select("id")
+        .single();
+
+      if (reportErr) {
+        emit({
+          step: 0,
+          label: "Error",
+          status: "error",
+          data: { message: `Failed to save report: ${reportErr.message}` },
+        });
+        clearInterval(keepAlive);
+        res.end();
+        return;
+      }
+      if (!savedReport) {
+        emit({
+          step: 0,
+          label: "Error",
+          status: "error",
+          data: { message: "Failed to save report: no data returned" },
+        });
+        clearInterval(keepAlive);
+        res.end();
+        return;
+      }
+
+      const { error: versionsErr } = await adminClient
+        .from("research_versions")
+        .insert({
+          ticker_id: tickerData.id,
+          ticker_symbol: normalised,
+          version: 1,
+          score,
+          report_json: report as unknown as Json,
+          diagram_json: diagram as unknown as Json,
+          diff_json: null,
+          researched_by: req.user?.id ?? null,
+        });
+      if (versionsErr) {
+        emit({
+          step: 0,
+          label: "Error",
+          status: "error",
+          data: { message: `Failed to save version: ${versionsErr.message}` },
+        });
+        clearInterval(keepAlive);
+        res.end();
+        return;
+      }
+
+      await adminClient
+        .from("tickers")
+        .update({
+          research_count: tickerData.research_count + 1,
+          last_researched_at: new Date().toISOString(),
+        })
+        .eq("id", tickerData.id);
+
+      void clearCheckpoints(normalised, completedRunId);
+      clearInterval(keepAlive);
+      emit({
+        step: 8,
+        label: "Saved",
+        status: "complete",
+        data: { id: savedReport.id },
+      });
+      res.end();
+    } catch {
+      if (!res.headersSent) {
+        res
+          .status(500)
+          .json({ error: "Internal server error", code: "INTERNAL_ERROR" });
+      } else {
+        res.end();
+      }
+    }
+  },
+);
 
 // ─── POST /api/v1/research/:ticker ───────────────────────────────────────────
 
@@ -670,38 +974,6 @@ router.put(
     }
   },
 );
-
-// ─── POST /api/v1/research/:ticker/confirm ───────────────────────────────────
-
-router.post("/:ticker/confirm", authenticate, async (req, res) => {
-  const { runId, confirmed, correction } = req.body as {
-    runId?: string;
-    confirmed?: boolean;
-    correction?: string;
-  };
-
-  if (typeof runId !== "string" || typeof confirmed !== "boolean") {
-    res
-      .status(400)
-      .json({ error: "runId and confirmed are required", code: "BAD_REQUEST" });
-    return;
-  }
-
-  const resolved = resolveConfirmation(runId, {
-    confirmed,
-    correction: typeof correction === "string" ? correction : undefined,
-  });
-
-  if (!resolved) {
-    res.status(404).json({
-      error: "No pipeline waiting for this runId",
-      code: "NOT_FOUND",
-    });
-    return;
-  }
-
-  res.json({ ok: true });
-});
 
 // ─── DELETE /api/v1/research/:ticker ─────────────────────────────────────────
 

@@ -51,9 +51,7 @@ export async function saveCheckpoint(
  * Returns the runId and a Map of step_number → output for all completed steps in that run.
  * Returns null if no checkpoints exist.
  */
-export async function loadCheckpoints(
-  tickerSymbol: string,
-): Promise<{
+export async function loadCheckpoints(tickerSymbol: string): Promise<{
   runId: string;
   steps: Map<number, Record<string, unknown>>;
 } | null> {
@@ -126,6 +124,34 @@ export async function deleteStepCheckpoint(
       `[checkpoint] Deleted step ${stepNumber} checkpoint for ${tickerSymbol} run ${runId}`,
     );
   }
+}
+
+/**
+ * Load completed steps for a specific runId (as opposed to the most recent run).
+ * Used by runFromCheckpoint to resume from a known run started by /discover.
+ */
+export async function loadCheckpointsByRunId(
+  tickerSymbol: string,
+  runId: string,
+): Promise<Map<number, Record<string, unknown>> | null> {
+  const { data, error } = await adminClient
+    .from("research_checkpoints")
+    .select("step_number, output_json")
+    .eq("ticker_symbol", tickerSymbol)
+    .eq("run_id", runId)
+    .eq("status", "complete");
+
+  if (error) {
+    console.error("[checkpoint] Failed to load steps by runId:", error.message);
+    return null;
+  }
+  if (!data || data.length === 0) return null;
+
+  const steps = new Map<number, Record<string, unknown>>();
+  for (const cp of data) {
+    steps.set(cp.step_number, cp.output_json as Record<string, unknown>);
+  }
+  return steps;
 }
 
 /**
