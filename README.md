@@ -343,65 +343,7 @@ from the existing report. Only Steps 1, 3, 5, 6, and 7 run — reducing API cost
 
 ## Changelog
 
-### v0.6.0
-
-- **Management rating backfill**: update pipeline detects reports missing `management_rating` and forces a fresh Step 2 re-run to generate one. New research pipeline also invalidates any stale Step 2 checkpoint missing the field.
-- **Enriched list API**: `GET /api/v1/research` now returns `upside_percent`, `target_price`, `hot_sector_match`, `sector_heat`, `thesis`, `company_name`, and `sector` — no extra API calls needed on the frontend.
-- **Napkin math on home cards**: target price (gold) and upside (green/red) shown on every stock card. First hot-sector match tag shown as a muted pill.
-- **Filter & sort bar**: above the researched-tickers grid — filter by Score ≥, Upside ≥, Sector (substring), and sort by date/score/upside. Client-side only, instant. "Showing X of Y stocks" count.
-
-### v0.5.2
-
-- **Management Rating**: independent A–F management quality assessment generated in Step 2 (Deep Dive). Covers CEO track record, recent leadership changes, and capital allocation. Injected into the report after Step 7 synthesis — the scoring LLM never sees it, so it cannot influence the 1–10 investment score. New `ManagementRating.tsx` sidebar card with subtitle "Independent assessment — not included in investment score". Field `report_json.management_rating` is optional; absent in pre-v0.5.2 reports.
-
-### v0.5.1
-
-- **BusinessDiagram RiskZone readability**: KEY RISKS zone had red text on a red-tinted background. Fixed to `border-l-4 border-red-500` left accent with dark navy surface, `text-white` titles, `text-slate-300` body text.
-
-### v0.5.0
-
-- **Stripe design system**: full frontend restyle. Navy palette remapped to purple-tinted indigo. Purple (`#533afd`) replaces green/gold for all UI chrome. Gold (`#d4a853`) reserved for financial data. Stripe blue-tinted shadow on hero sections. Hero sections use `bg-gradient-to-br from-navy-800 via-[#1f2170] to-navy-950`.
-- **Font replacement**: proprietary Söhne replaced with Plus Jakarta Sans (Google Fonts). Playfair Display and Inter removed. Global `font-weight: 300` default with heading overrides. JetBrains Mono kept for financial data.
-- **BearCase readability**: Key Risks section fixed from red-on-red to left-border-only accent with readable dark surface.
-- **NapkinMath layout**: Target Price and Upside now stack vertically (`flex-col gap-2`) instead of side-by-side, eliminating overflow at all viewport widths.
-
-### v0.3.0
-
-- **Multi-LLM support**: new `llm.ts` abstraction layer routes research to Claude (`claude-sonnet-4-6` + `web_search` tool) or Gemini (`gemini-2.5-flash-lite` + `googleSearch` grounding), selectable per run
-- **LLM selector**: provider dropdown (Claude / Gemini) in the research confirm modal; defaults to Claude
-- **LLM badge**: small `✦ Claude` or `◆ Gemini` badge shown in the report header
-- **Provider persistence**: `report_json.llm_provider` and `report_json.llm_model` recorded for every report; update research automatically re-uses the same provider
-- **New env vars**: `GEMINI_API_KEY` (optional, Railway) and `DEFAULT_LLM=claude` (optional)
-
-### v0.2.2
-
-- **Trust proxy**: `app.set('trust proxy', 1)` added as the first line after `express()` — fixes `express-rate-limit` `ValidationError` behind Cloudflare + Railway proxy layers that was crashing SSE connections before reports could save
-- **Step 7 JSON hardening**: strengthened system prompt to forbid prose responses; added `extractJSON()` with fence-stripping and outermost `{…}` search; try/catch deletes only the Step 7 checkpoint on parse failure so Steps 1–6 survive for the next retry
-- **Score field**: Step 7 now explicitly outputs `score` (1.0–10.0) in the JSON schema; `report.score` correctly used instead of `sector_heat` for the Supabase `score` column
-- **Save reliability**: `tickerData` null guard tightened; explicit `console.error` on every Supabase write failure; verification read-back after PUT version insert; `(existingReport.version ?? 1) + 1` guards missing version field
-
-### v0.2.1
-
-- **Constraint & value chain analysis**: Step 2 (Deep Dive) now performs a full 8-point bottleneck analysis — classifies the primary constraint (supply chain / technology / regulatory / capital / none), tests whether the company OWNS the constraint (not just adjacent to it), assesses durability, value chain position, rent capture, investability, who can relieve it, and the investable window before consensus prices it in
-- **Scoring update**: Step 7 applies a +0.5 constraint premium when `investable=true`, `controls_constraint=true`, and `durability=durable`; applies a constraint penalty if the company is adjacent to a bottleneck but does not capture the rent
-- **Bug fix — update pipeline token waste**: `runUpdatePipeline` was incorrectly running Steps 2 and 4 via an empty cache map, causing unnecessary Claude API calls and false `error` SSE events that made the frontend show a failure state. Fixed by calling only Steps 3, 5, 6 directly
-
-### v0.2.0
-
-- **Hosting migration**: Vercel → Cloudflare Workers (frontend), Render → Railway (backend)
-- **Backend containerised**: Docker multi-stage build on `node:22-alpine`
-- **Frontend updated**: React 18 → 19, Tailwind v3 → v4, React Router v6 → v7, Vite v8
-- **Pipeline v2**: platform classification, 3-scenario napkin math, bear case rebuttal,
-  comp selection rules, platform premium scoring, temp-overhang scoring protection
-- **CI/CD**: GitHub Actions workflow for automated deploys
-- **Security**: Content Security Policy hardening for Cloudflare Workers headers
-- **Tailwind v4**: migrated to `@import "tailwindcss"` + `@theme {}` syntax
-
-### v0.1.0
-
-- Initial release: React + Express + Supabase + Anthropic 7-step pipeline
-- Vercel (frontend) + Render (backend) hosting
-- Role-based auth, diff-tracked versioning, SSE streaming progress
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ---
 
