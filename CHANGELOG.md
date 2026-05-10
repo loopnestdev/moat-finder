@@ -4,6 +4,20 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
+### v0.8.2
+
+- **YoY growth filter**: filter bar on home page now includes
+  "YoY ≥ %" input. Filters stocks by YoY revenue growth from
+  `valuation_table[0].yoy_growth`.
+- **YoY growth on cards**: stock cards show YoY growth rate
+  (emerald ≥50%, amber 0–49%, red negative) below upside %.
+- **Mobile report layout**: report page now fully responsive on
+  iPhone 16 Plus — no horizontal scroll. Two-column layout
+  stacks to single column on mobile. Valuation table gets
+  horizontal scroll wrapper. Business model diagram contained.
+
+---
+
 ### v0.8.1
 
 - **Two-phase discovery flow (stateless)**: replaced fragile shared-Map `/confirm` endpoint with clean `/discover` + `/run` pattern. Step 1 runs first via SSE, emits `confirm_required` with company name and `run_id`. User confirms, frontend opens a second SSE stream to `/run` with the saved `run_id` — no server-side state sharing, Railway-safe.

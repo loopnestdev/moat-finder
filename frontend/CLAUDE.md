@@ -162,6 +162,15 @@ VITE_SUPABASE_ANON_KEY=
 VITE_API_BASE_URL=http://localhost:3001
 ```
 
+## Mobile Rules (iPhone 16 Plus — 430px)
+
+- Root page containers: `overflow-x-hidden w-full`
+- Multi-column layouts: `grid-cols-1` default, `lg:grid-cols-N` for wide
+- Tables: always wrap in `overflow-x-auto` with `min-w-[Npx]` on table
+- Canvas/diagram: wrap in `overflow-x-auto max-w-full`
+- Buttons: `w-full sm:w-auto` for primary CTAs
+- Padding: `px-4` default, `sm:px-6 lg:px-8`
+
 ## Testing Rules
 
 - Test every custom hook with React Testing Library

@@ -100,8 +100,10 @@ pipelines resume from the last saved step.
 
 ### Home Page
 
-- Filter bar: Score ≥, Upside ≥ %, Sector (substring), Sort
-- Stock cards show: ticker, score gauge, target price, upside %,
+- Filter bar: Score ≥, Upside ≥ %, YoY ≥ %, Sector (substring), Sort
+- YoY growth filter (from valuation_table[0].yoy_growth)
+- YoY growth shown on stock cards (colour-coded: emerald ≥50%, amber 0–49%, red negative)
+- Stock cards show: ticker, score gauge, target price, upside %, YoY growth,
   first sector tag, LLM badge (✦ Claude / ◆ Gemini), date
 - Count: "Showing X of Y stocks"
 
@@ -128,6 +130,9 @@ pipelines resume from the last saved step.
 - Stripe-inspired dark theme: deep navy/purple backgrounds,
   gold `#d4a853` for financial accents
 - Score colours: emerald (8–10), amber (5–7.9), red (1–4.9)
+- Report page is fully responsive to 430px (iPhone 16 Plus).
+  Two-column layout collapses to single column below lg breakpoint.
+  Valuation table uses overflow-x-auto scroll wrapper on mobile.
 
 ### Database (Supabase/PostgreSQL)
 

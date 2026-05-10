@@ -56,12 +56,14 @@ export default function Home() {
   // Filter & sort state
   const [minScore, setMinScore] = useState<number | null>(null);
   const [minUpside, setMinUpside] = useState<number | null>(null);
+  const [minYoy, setMinYoy] = useState<number | null>(null);
   const [sectorFilter, setSectorFilter] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "score" | "upside">("date");
 
   const isFiltered =
     minScore !== null ||
     minUpside !== null ||
+    minYoy !== null ||
     sectorFilter !== "" ||
     sortBy !== "date";
 
@@ -70,6 +72,7 @@ export default function Home() {
     .filter(
       (r) => minUpside === null || (r.upside_percent ?? -999) >= minUpside,
     )
+    .filter((r) => minYoy === null || (r.yoy_growth ?? -999) >= minYoy)
     .filter(
       (r) =>
         !sectorFilter ||
@@ -263,6 +266,27 @@ export default function Home() {
               </div>
             </div>
 
+            {/* YoY ≥ */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-cream-subtle font-mono uppercase tracking-wider">
+                YoY ≥
+              </label>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  placeholder="50"
+                  value={minYoy ?? ""}
+                  onChange={(e) =>
+                    setMinYoy(
+                      e.target.value !== "" ? Number(e.target.value) : null,
+                    )
+                  }
+                  className="w-20 rounded border border-navy-700 bg-navy-800 text-cream font-mono text-sm px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple focus:border-purple"
+                />
+                <span className="text-xs text-cream-subtle font-mono">%</span>
+              </div>
+            </div>
+
             {/* Sector */}
             <div className="flex flex-col gap-1">
               <label className="text-[10px] text-cream-subtle font-mono uppercase tracking-wider">
@@ -301,6 +325,7 @@ export default function Home() {
                 onClick={() => {
                   setMinScore(null);
                   setMinUpside(null);
+                  setMinYoy(null);
                   setSectorFilter("");
                   setSortBy("date");
                 }}
@@ -369,6 +394,25 @@ export default function Home() {
                         {formatUpside(report.upside_percent)}
                       </span>
                     )}
+                  </div>
+                )}
+
+                {/* YoY growth */}
+                {report.yoy_growth != null && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-slate-400 text-xs">YoY</span>
+                    <span
+                      className={`font-mono text-sm font-semibold ${
+                        report.yoy_growth >= 50
+                          ? "text-emerald-400"
+                          : report.yoy_growth >= 0
+                            ? "text-amber-400"
+                            : "text-red-400"
+                      }`}
+                    >
+                      {report.yoy_growth >= 0 ? "+" : ""}
+                      {report.yoy_growth.toFixed(1)}%
+                    </span>
                   </div>
                 )}
 

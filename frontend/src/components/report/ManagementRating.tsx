@@ -54,7 +54,7 @@ export default function ManagementRating({
 }: ManagementRatingProps) {
   if (!rating) {
     return (
-      <div className="rounded bg-navy-950 border border-navy-700 p-5">
+      <div className="rounded bg-navy-950 border border-navy-700 p-5 w-full min-w-0">
         <p className="font-mono text-xs text-cream-subtle/60 uppercase tracking-[0.2em] mb-2">
           Management Quality
         </p>
@@ -71,7 +71,7 @@ export default function ManagementRating({
   const totalScore = rating?.total_score ?? rating?.score ?? 0;
 
   return (
-    <div className="rounded bg-navy-950 border border-navy-700 p-5 overflow-hidden">
+    <div className="rounded bg-navy-950 border border-navy-700 p-5 overflow-hidden w-full min-w-0">
       {/* Header */}
       <div className="mb-4">
         <p className="font-mono text-xs text-cream-subtle/60 uppercase tracking-[0.2em]">

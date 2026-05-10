@@ -296,7 +296,7 @@ export default function Report() {
   const sentimentBullets = parseBullets(rj.sentiment_summary ?? "");
 
   return (
-    <div className="space-y-0">
+    <div className="space-y-0 overflow-x-hidden w-full">
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <div className="rounded-xl bg-gradient-to-br from-navy-800 via-[#1f2170] to-navy-950 border border-navy-700 shadow-[rgba(50,50,93,0.25)_0px_30px_45px_-30px,rgba(0,0,0,0.1)_0px_18px_36px_-18px] px-6 py-8 sm:px-10 sm:py-10 mb-8">
         <div className="flex flex-col sm:flex-row sm:items-start gap-6">
@@ -390,7 +390,11 @@ export default function Report() {
                   </div>
                 </div>
               ) : (
-                <Button variant="primary" onClick={handleUpdateClick}>
+                <Button
+                  variant="primary"
+                  onClick={handleUpdateClick}
+                  className="w-full sm:w-auto"
+                >
                   Update Research
                 </Button>
               ))}
@@ -425,14 +429,16 @@ export default function Report() {
       )}
 
       {/* ── Two-column body ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* ── Left column — narrative ─────────────────────────────────────── */}
-        <div className="space-y-10 min-w-0">
+        <div className="space-y-10 min-w-0 lg:col-span-2">
           {/* Business Model Canvas (pure React) */}
           <section>
             <SectionHeading>Business Model</SectionHeading>
             <ErrorBoundary>
-              <BusinessDiagram diagram={report.diagram_json} />
+              <div className="overflow-x-auto w-full">
+                <BusinessDiagram diagram={report.diagram_json} />
+              </div>
             </ErrorBoundary>
           </section>
 
@@ -530,7 +536,7 @@ export default function Report() {
         </div>
 
         {/* ── Right column — data cards ────────────────────────────────────── */}
-        <div className="space-y-6 lg:sticky lg:top-6">
+        <div className="space-y-6 lg:sticky lg:top-6 lg:col-span-1">
           {/* NapkinMath with hierarchical revenue guidance */}
           <NapkinMath data={rj.napkin_math} />
 
@@ -547,7 +553,9 @@ export default function Report() {
               </p>
             </div>
             <div className="p-3">
-              <ValuationTable rows={rj.valuation_table} ticker={ticker} />
+              <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+                <ValuationTable rows={rj.valuation_table} ticker={ticker} />
+              </div>
             </div>
           </div>
 

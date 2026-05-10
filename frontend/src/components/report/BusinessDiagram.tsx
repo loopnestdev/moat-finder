@@ -281,7 +281,7 @@ export default function BusinessDiagram({ diagram }: BusinessDiagramProps) {
     <div className="relative">
       <div
         ref={containerRef}
-        className="rounded-xl border border-navy-700 bg-navy-900 p-4 space-y-2 min-h-[400px]"
+        className="rounded-xl border border-navy-700 bg-navy-900 p-4 space-y-2 min-h-[400px] max-w-full"
       >
         <MoatZone nodes={moatNodes} />
 

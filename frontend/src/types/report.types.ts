@@ -217,6 +217,7 @@ export interface ResearchListItem {
   llm_provider: "claude" | "gemini";
   sector_heat: number | null;
   thesis: string;
+  yoy_growth: number | null;
 }
 
 export interface AuditLog {

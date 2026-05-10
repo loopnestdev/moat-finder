@@ -83,6 +83,7 @@ router.get("/", async (_req, res) => {
         sector_heat: rj?.sector_heat ?? null,
         thesis:
           typeof rj?.thesis === "string" ? rj.thesis.substring(0, 150) : "",
+        yoy_growth: rj?.valuation_table?.[0]?.yoy_growth ?? null,
       };
     });
 
