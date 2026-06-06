@@ -37,7 +37,7 @@ export type Database = {
       [_ in never]: never
     }
   }
-  public: {
+  moat: {
     Tables: {
       research_checkpoints: {
         Row: {
@@ -308,7 +308,7 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "moat">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
@@ -427,7 +427,7 @@ export const Constants = {
   graphql_public: {
     Enums: {},
   },
-  public: {
+  moat: {
     Enums: {},
   },
 } as const

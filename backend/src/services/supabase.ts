@@ -14,8 +14,11 @@ const serviceRoleKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
 /**
  * Anon client — uses the public anon key.
  * Respects Row Level Security. Use for all public-facing reads.
+ * All queries target the `moat` schema in coredb.
  */
-export const anonClient = createClient<Database>(supabaseUrl, anonKey);
+export const anonClient = createClient<Database, 'moat'>(supabaseUrl, anonKey, {
+  db: { schema: 'moat' },
+});
 
 /**
  * Admin client — uses the service role key.
@@ -23,7 +26,8 @@ export const anonClient = createClient<Database>(supabaseUrl, anonKey);
  * Use ONLY for: audit log writes, admin operations, pipeline result writes.
  * NEVER expose this client or its key to user-facing route handlers directly.
  */
-export const adminClient = createClient<Database>(supabaseUrl, serviceRoleKey, {
+export const adminClient = createClient<Database, 'moat'>(supabaseUrl, serviceRoleKey, {
+  db: { schema: 'moat' },
   auth: {
     autoRefreshToken: false,
     persistSession: false,
