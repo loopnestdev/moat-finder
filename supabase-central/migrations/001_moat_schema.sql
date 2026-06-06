@@ -1,7 +1,8 @@
 -- ============================================================
 -- moat-finder schema migration for coredb (lcqsatefkutiakhgexue)
 -- Run this in the coredb Supabase Dashboard → SQL Editor
--- All moat-finder tables live in the `moat` schema.
+-- Safe to re-run: tables use IF NOT EXISTS, policies use
+-- DROP IF EXISTS before CREATE.
 -- ============================================================
 
 -- ── Schema ───────────────────────────────────────────────────
@@ -48,12 +49,12 @@ CREATE OR REPLACE TRIGGER set_users_updated_at
 
 ALTER TABLE moat.users ENABLE ROW LEVEL SECURITY;
 
--- Authenticated user: can read own row only
+DROP POLICY IF EXISTS "moat_users_select_own" ON moat.users;
 CREATE POLICY "moat_users_select_own" ON moat.users
   FOR SELECT TO authenticated
   USING (auth.uid() = id);
 
--- Admin: full read/write on all rows
+DROP POLICY IF EXISTS "moat_users_admin_all" ON moat.users;
 CREATE POLICY "moat_users_admin_all" ON moat.users
   FOR ALL TO authenticated
   USING (
@@ -86,11 +87,11 @@ CREATE INDEX IF NOT EXISTS idx_moat_tickers_symbol ON moat.tickers(symbol);
 
 ALTER TABLE moat.tickers ENABLE ROW LEVEL SECURITY;
 
--- Public: SELECT only
+DROP POLICY IF EXISTS "moat_tickers_public_select" ON moat.tickers;
 CREATE POLICY "moat_tickers_public_select" ON moat.tickers
   FOR SELECT USING (true);
 
--- Authenticated approved: INSERT
+DROP POLICY IF EXISTS "moat_tickers_approved_insert" ON moat.tickers;
 CREATE POLICY "moat_tickers_approved_insert" ON moat.tickers
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -100,7 +101,7 @@ CREATE POLICY "moat_tickers_approved_insert" ON moat.tickers
     )
   );
 
--- Admin: full access
+DROP POLICY IF EXISTS "moat_tickers_admin_all" ON moat.tickers;
 CREATE POLICY "moat_tickers_admin_all" ON moat.tickers
   FOR ALL TO authenticated
   USING (
@@ -144,9 +145,11 @@ CREATE OR REPLACE TRIGGER set_research_reports_updated_at
 
 ALTER TABLE moat.research_reports ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "moat_research_reports_public_select" ON moat.research_reports;
 CREATE POLICY "moat_research_reports_public_select" ON moat.research_reports
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "moat_research_reports_approved_insert" ON moat.research_reports;
 CREATE POLICY "moat_research_reports_approved_insert" ON moat.research_reports
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -156,6 +159,7 @@ CREATE POLICY "moat_research_reports_approved_insert" ON moat.research_reports
     )
   );
 
+DROP POLICY IF EXISTS "moat_research_reports_approved_update" ON moat.research_reports;
 CREATE POLICY "moat_research_reports_approved_update" ON moat.research_reports
   FOR UPDATE TO authenticated
   USING (
@@ -171,6 +175,7 @@ CREATE POLICY "moat_research_reports_approved_update" ON moat.research_reports
     )
   );
 
+DROP POLICY IF EXISTS "moat_research_reports_admin_all" ON moat.research_reports;
 CREATE POLICY "moat_research_reports_admin_all" ON moat.research_reports
   FOR ALL TO authenticated
   USING (
@@ -208,9 +213,11 @@ CREATE INDEX IF NOT EXISTS idx_moat_versions_ticker ON moat.research_versions(ti
 
 ALTER TABLE moat.research_versions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "moat_research_versions_public_select" ON moat.research_versions;
 CREATE POLICY "moat_research_versions_public_select" ON moat.research_versions
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "moat_research_versions_approved_insert" ON moat.research_versions;
 CREATE POLICY "moat_research_versions_approved_insert" ON moat.research_versions
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -220,6 +227,7 @@ CREATE POLICY "moat_research_versions_approved_insert" ON moat.research_versions
     )
   );
 
+DROP POLICY IF EXISTS "moat_research_versions_admin_all" ON moat.research_versions;
 CREATE POLICY "moat_research_versions_admin_all" ON moat.research_versions
   FOR ALL TO authenticated
   USING (
@@ -267,7 +275,7 @@ CREATE INDEX IF NOT EXISTS idx_moat_audit_metadata_gin  ON moat.audit_log USING 
 
 ALTER TABLE moat.audit_log ENABLE ROW LEVEL SECURITY;
 
--- Admin: SELECT only (read-only even for admin)
+DROP POLICY IF EXISTS "moat_audit_log_admin_select" ON moat.audit_log;
 CREATE POLICY "moat_audit_log_admin_select" ON moat.audit_log
   FOR SELECT TO authenticated
   USING (
@@ -277,7 +285,7 @@ CREATE POLICY "moat_audit_log_admin_select" ON moat.audit_log
     )
   );
 
--- Service role writes audit rows (bypasses RLS). Safety-net policy below:
+DROP POLICY IF EXISTS "moat_audit_log_service_insert" ON moat.audit_log;
 CREATE POLICY "moat_audit_log_service_insert" ON moat.audit_log
   FOR INSERT WITH CHECK (true);
 
@@ -304,5 +312,6 @@ CREATE INDEX IF NOT EXISTS idx_moat_checkpoints_run    ON moat.research_checkpoi
 
 ALTER TABLE moat.research_checkpoints ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "moat_checkpoints_service_role_only" ON moat.research_checkpoints;
 CREATE POLICY "moat_checkpoints_service_role_only" ON moat.research_checkpoints
   FOR ALL TO service_role USING (true);
