@@ -4,6 +4,19 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
+### [Unreleased]
+
+- **Migrate database to coredb**: moat-finder tables moved from standalone
+  Supabase project (`lvjchkrynqxareueyvbp`) to shared coredb instance
+  (`lcqsatefkutiakhgexue`). All tables now live in the `moat` schema.
+  Both Supabase clients use `createClient<Database, 'moat'>` with
+  `db: { schema: 'moat' }`. `database.types.ts` schema key renamed
+  `public` → `moat`. Migration SQL in `supabase-central/migrations/001_moat_schema.sql`.
+  **Requires manual steps**: run migration on coredb, migrate data from old project,
+  update Railway + Cloudflare env vars, add moat-finder redirect URIs to coredb OAuth.
+
+---
+
 ### v0.8.2
 
 - **YoY growth filter**: filter bar on home page now includes

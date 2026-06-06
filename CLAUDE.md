@@ -19,7 +19,7 @@ report about the company — focused on finding asymmetric risk/reward opportuni
 | Backend hosting  | Railway                                     | Docker multi-stage build (railway.toml + Dockerfile)                            |
 | Security layer   | CloudFlare                                  | DDoS, rate limiting, SSL, CF-Connecting-IP                                      |
 | Auth             | Supabase Auth (Google OAuth)                | Role-based: admin / approved / pending / rejected                               |
-| Database         | Supabase (Postgres) with RLS                |                                                                                 |
+| Database         | Supabase **coredb** (`lcqsatefkutiakhgexue`) — `moat` schema | Shared instance; tables: moat.users, moat.tickers, moat.research_reports, moat.research_versions, moat.research_checkpoints, moat.audit_log |
 | Diagram          | Pure React / Tailwind (React Flow removed)  | 4-zone stacked canvas                                                           |
 | AI               | Claude claude-sonnet-4-6 + web_search tool  | 7-step pipeline (v2)                                                            |
 
@@ -157,7 +157,7 @@ npm run deploy     # wrangler deploy (Cloudflare Workers production deploy)
 - **Pipeline execution**: Step 1 (Discovery) runs first; Steps 2-6 run concurrently via `Promise.allSettled`; Step 7 synthesises. Smart updates (`runUpdatePipeline`) skip Steps 2 and 4, reusing cached report data.
 - **Prompt caching**: Steps 2-6 send Step 1 output as a cached content block (`cache_control: { type: "ephemeral" }`), reducing input tokens by ~60-70% across parallel calls.
 - **SSE streaming**: Progress events streamed to frontend as each step completes. Step status can be `complete`, `error`, or `cached`.
-- **Supabase clients**: `anonClient` for user-facing reads (RLS enforced). `adminClient` (service role) for writes and admin operations only.
+- **Supabase clients**: `anonClient` for user-facing reads (RLS enforced). `adminClient` (service role) for writes and admin operations only. Both use `createClient<Database, 'moat'>` with `db: { schema: 'moat' }` — all `.from('table')` calls automatically target the `moat` schema in coredb.
 - **API keys**: `.env` files only — never hardcoded, never committed.
 - **All backend routes**: prefixed `/api/v1/`.
 - **CF-Connecting-IP**: used for real IP in audit logs — never `req.ip`.
