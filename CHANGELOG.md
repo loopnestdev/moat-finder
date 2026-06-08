@@ -4,7 +4,7 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
-### [Unreleased]
+### [v0.8.3] — 2026-06-08
 
 - **Migrate database to coredb**: moat-finder tables moved from standalone
   Supabase project (`lvjchkrynqxareueyvbp`) to shared coredb instance
