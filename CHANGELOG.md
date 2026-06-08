@@ -14,6 +14,13 @@ All notable changes to moat-finder are listed here in reverse chronological orde
   `public` → `moat`. Migration SQL in `supabase-central/migrations/001_moat_schema.sql`.
   **Requires manual steps**: run migration on coredb, migrate data from old project,
   update Railway + Cloudflare env vars, add moat-finder redirect URIs to coredb OAuth.
+- **Auto-create user on first login**: new trigger (`002_auto_create_user.sql`) on
+  `auth.users` INSERT automatically creates a `moat.users` row with `role='pending'`
+  on first OAuth login. Previously new users received 401 until manually inserted.
+  Admin approval via Admin panel (or SQL) still required to grant research access.
+- **Fix pipeline error visibility**: research errors (API failures, JSON parse errors)
+  now stay visible on the PipelineProgress screen instead of silently navigating to
+  a 404 report page. Navigation only occurs after step 8 saves successfully.
 
 ---
 
