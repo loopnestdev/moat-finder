@@ -124,9 +124,16 @@ export default function Home() {
   const handleConfirmResearch = () => {
     setShowConfirm(false);
     setPipelineActive(true);
-    void pipeline.startResearch(pendingTicker, selectedProvider).then(() => {
-      void queryClient.invalidateQueries({ queryKey: ["research"] });
-      void navigate(`/research/${pendingTicker}`);
+    void pipeline.startResearch(pendingTicker, selectedProvider).then((events) => {
+      // Only navigate to the report page on a successful pipeline completion
+      // (step 8 "complete" event present). If there was an error or the user
+      // cancelled at the confirmation step, stay on the PipelineProgress screen
+      // so the error message remains visible.
+      const saved = events.some((e) => e.step === 8 && e.status === "complete");
+      if (saved) {
+        void queryClient.invalidateQueries({ queryKey: ["research"] });
+        void navigate(`/research/${pendingTicker}`);
+      }
     });
   };
 
