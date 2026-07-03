@@ -31,18 +31,26 @@ describe('validateTicker', () => {
     expect(validateTicker('TOOLONGTICKER').valid).toBe(false);
   });
 
-  it('rejects ticker containing digits', () => {
-    expect(validateTicker('A1B').valid).toBe(false);
+  it('accepts ticker containing digits (international tickers, e.g. Tokyo/Korea)', () => {
+    expect(validateTicker('A1B')).toEqual({ valid: true, normalised: 'A1B' });
   });
 
-  it('rejects ticker with special characters', () => {
-    expect(validateTicker('BRK.A').valid).toBe(false);
+  it('accepts a dot-suffixed ticker (exchange suffix, e.g. BRK.A / EOS.AX)', () => {
+    expect(validateTicker('BRK.A')).toEqual({ valid: true, normalised: 'BRK.A' });
   });
 
-  it('returns a normalised value even when invalid', () => {
-    const result = validateTicker('  brk.a  ');
+  it('rejects a ticker with a suffix longer than 3 letters', () => {
+    expect(validateTicker('ABCD.LONG').valid).toBe(false);
+  });
+
+  it('rejects ticker with invalid special characters', () => {
+    expect(validateTicker('BRK#A').valid).toBe(false);
+  });
+
+  it('normalises lowercase dot-suffixed input even when invalid', () => {
+    const result = validateTicker('  toolongticker.long  ');
     expect(result.valid).toBe(false);
-    expect(result.normalised).toBe('BRK.A');
+    expect(result.normalised).toBe('TOOLONGTICKER.LONG');
   });
 });
 
@@ -59,8 +67,12 @@ describe('tickerSchema (Zod)', () => {
     expect(tickerSchema.parse('  skyt  ')).toBe('SKYT');
   });
 
-  it('throws for a ticker with digits', () => {
-    expect(() => tickerSchema.parse('123')).toThrow();
+  it('accepts a purely numeric ticker (e.g. Japanese/Korean exchange codes)', () => {
+    expect(tickerSchema.parse('7203')).toBe('7203');
+  });
+
+  it('accepts a numeric ticker with an exchange suffix', () => {
+    expect(tickerSchema.parse('7203.t')).toBe('7203.T');
   });
 
   it('throws for an empty string', () => {

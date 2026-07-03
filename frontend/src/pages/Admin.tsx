@@ -6,7 +6,8 @@ import { apiFetch, ApiError } from "../lib/api";
 import Badge from "../components/ui/Badge";
 import Button from "../components/ui/Button";
 import Spinner from "../components/ui/Spinner";
-import type { User, AuditLog } from "../types/report.types";
+import Modal from "../components/ui/Modal";
+import type { User, AuditLog, ResearchListItem } from "../types/report.types";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString("en-AU", {
@@ -387,9 +388,150 @@ function AuditTab() {
   );
 }
 
+// ─── Research Tab ─────────────────────────────────────────────────────────────
+
+function ResearchTab() {
+  const queryClient = useQueryClient();
+  const [pendingDelete, setPendingDelete] = useState<ResearchListItem | null>(
+    null,
+  );
+  const [deleteError, setDeleteError] = useState("");
+
+  const { data: reports, isLoading } = useQuery({
+    queryKey: ["research"],
+    queryFn: async () => {
+      const res = await apiFetch("/api/v1/research");
+      return ((await res.json()) as { data: ResearchListItem[] }).data;
+    },
+    staleTime: 30_000,
+  });
+
+  const { mutate: deleteTicker, isPending: isDeleting } = useMutation({
+    mutationFn: async (ticker: string) => {
+      await apiFetch(`/api/v1/research/${ticker}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["research"] });
+      setPendingDelete(null);
+      setDeleteError("");
+    },
+    onError: (err) => {
+      setDeleteError(
+        err instanceof ApiError ? err.message : "Failed to delete ticker",
+      );
+    },
+  });
+
+  return (
+    <div>
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
+      ) : !reports || reports.length === 0 ? (
+        <p className="text-sm text-cream-subtle">No researched tickers.</p>
+      ) : (
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="min-w-full divide-y divide-navy-700 text-sm">
+            <thead className="bg-navy-800">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-cream-subtle uppercase tracking-wider">
+                  Ticker
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-cream-subtle uppercase tracking-wider">
+                  Score
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-cream-subtle uppercase tracking-wider">
+                  Version
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-cream-subtle uppercase tracking-wider">
+                  Updated
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-cream-subtle uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-navy-900 divide-y divide-navy-700/50">
+              {reports.map((r) => (
+                <tr
+                  key={r.ticker_symbol}
+                  className="hover:bg-navy-800 transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <div className="font-mono font-medium text-gold">
+                      {r.ticker_symbol}
+                    </div>
+                    {r.company_name && (
+                      <div className="text-xs text-cream-subtle truncate max-w-48">
+                        {r.company_name}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-cream-muted">
+                    {r.score ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-cream-muted">v{r.version}</td>
+                  <td className="px-4 py-3 text-cream-subtle whitespace-nowrap">
+                    {formatDate(r.updated_at)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      onClick={() => {
+                        setDeleteError("");
+                        setPendingDelete(r);
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Modal
+        isOpen={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        title={`Delete ${pendingDelete?.ticker_symbol ?? ""}?`}
+      >
+        <p className="text-sm text-cream-muted mb-4">
+          This permanently deletes the report, all version history, and any
+          in-progress checkpoints for{" "}
+          <strong className="font-mono text-gold">
+            {pendingDelete?.ticker_symbol}
+          </strong>
+          . This cannot be undone.
+        </p>
+        {deleteError && (
+          <p className="text-sm text-red-400 mb-4">{deleteError}</p>
+        )}
+        <div className="flex gap-3 justify-end">
+          <Button variant="secondary" onClick={() => setPendingDelete(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            isLoading={isDeleting}
+            onClick={() => {
+              if (pendingDelete) deleteTicker(pendingDelete.ticker_symbol);
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
 // ─── Admin Page ───────────────────────────────────────────────────────────────
 
-type Tab = "users" | "audit";
+type Tab = "users" | "audit" | "research";
 
 export default function Admin() {
   const { isAdmin, isLoading } = useAuth();
@@ -413,7 +555,7 @@ export default function Admin() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-navy-700">
-        {(["users", "audit"] as Tab[]).map((t) => (
+        {(["users", "audit", "research"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -424,12 +566,22 @@ export default function Admin() {
                 : "border-transparent text-cream-subtle hover:text-cream",
             ].join(" ")}
           >
-            {t === "users" ? "User Management" : "Audit Log"}
+            {t === "users"
+              ? "User Management"
+              : t === "audit"
+                ? "Audit Log"
+                : "Research"}
           </button>
         ))}
       </div>
 
-      {tab === "users" ? <UsersTab /> : <AuditTab />}
+      {tab === "users" ? (
+        <UsersTab />
+      ) : tab === "audit" ? (
+        <AuditTab />
+      ) : (
+        <ResearchTab />
+      )}
     </div>
   );
 }

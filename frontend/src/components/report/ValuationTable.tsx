@@ -1,4 +1,5 @@
 import type { ValuationRow } from "../../types/report.types";
+import { normPct } from "../../lib/normPct";
 
 interface ValuationTableProps {
   rows: ValuationRow[];
@@ -8,14 +9,6 @@ interface ValuationTableProps {
 function fmt(value: number | null, suffix = ""): string {
   if (value === null) return "—";
   return `${value.toFixed(1)}${suffix}`;
-}
-
-/** Normalise a decimal or already-percentage value to a display percentage. */
-function normPct(value: number): number {
-  const asPct = value * 100;
-  // If multiplying by 100 gives an absurd result (>200%), the value was
-  // already stored as a percentage — use it directly.
-  return Math.abs(asPct) > 200 ? value : asPct;
 }
 
 function fmtGrowth(value: number | null): { text: string; colour: string } {

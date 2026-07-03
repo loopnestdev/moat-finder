@@ -6,6 +6,7 @@ import { usePipeline } from "../hooks/usePipeline";
 import { useReportList } from "../hooks/useResearch";
 import { tickerSchema } from "../lib/validation";
 import { apiFetch, ApiError } from "../lib/api";
+import { normPct } from "../lib/normPct";
 import ScoreBadge from "../components/report/ScoreBadge";
 import PipelineProgress from "../components/research/PipelineProgress";
 import Modal from "../components/ui/Modal";
@@ -72,7 +73,11 @@ export default function Home() {
     .filter(
       (r) => minUpside === null || (r.upside_percent ?? -999) >= minUpside,
     )
-    .filter((r) => minYoy === null || (r.yoy_growth ?? -999) >= minYoy)
+    .filter(
+      (r) =>
+        minYoy === null ||
+        (r.yoy_growth === null ? -999 : normPct(r.yoy_growth)) >= minYoy,
+    )
     .filter(
       (r) =>
         !sectorFilter ||
@@ -410,15 +415,15 @@ export default function Home() {
                     <span className="text-slate-400 text-xs">YoY</span>
                     <span
                       className={`font-mono text-sm font-semibold ${
-                        report.yoy_growth >= 50
+                        normPct(report.yoy_growth) >= 50
                           ? "text-emerald-400"
-                          : report.yoy_growth >= 0
+                          : normPct(report.yoy_growth) >= 0
                             ? "text-amber-400"
                             : "text-red-400"
                       }`}
                     >
-                      {report.yoy_growth >= 0 ? "+" : ""}
-                      {report.yoy_growth.toFixed(1)}%
+                      {normPct(report.yoy_growth) >= 0 ? "+" : ""}
+                      {normPct(report.yoy_growth).toFixed(1)}%
                     </span>
                   </div>
                 )}

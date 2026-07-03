@@ -12,6 +12,7 @@ import {
 } from "../services/pipeline";
 import type { LLMProvider } from "../services/llm";
 import { clearCheckpoints } from "../services/checkpoint";
+import { saveNewReport } from "../services/saveResearch";
 import { generateDiff } from "../services/diff";
 import { validateTicker } from "../utils/ticker";
 import type {
@@ -377,91 +378,18 @@ router.post(
 
       const { report, diagram, runId: completedRunId } = pipelineResult;
 
-      const rawScore = report.score;
-      const score =
-        typeof rawScore === "number"
-          ? rawScore
-          : parseFloat(String(rawScore ?? "")) || null;
-
-      emit({ step: 8, label: "Saving Report", status: "saving" });
-
-      const { data: savedReport, error: reportErr } = await adminClient
-        .from("research_reports")
-        .insert({
-          ticker_id: tickerData.id,
-          ticker_symbol: normalised,
-          score,
-          report_json: report as unknown as Json,
-          diagram_json: diagram as unknown as Json,
-          version: 1,
-          researched_by: req.user?.id ?? null,
-        })
-        .select("id")
-        .single();
-
-      if (reportErr) {
-        emit({
-          step: 0,
-          label: "Error",
-          status: "error",
-          data: { message: `Failed to save report: ${reportErr.message}` },
-        });
-        clearInterval(keepAlive);
-        res.end();
-        return;
-      }
-      if (!savedReport) {
-        emit({
-          step: 0,
-          label: "Error",
-          status: "error",
-          data: { message: "Failed to save report: no data returned" },
-        });
-        clearInterval(keepAlive);
-        res.end();
-        return;
-      }
-
-      const { error: versionsErr } = await adminClient
-        .from("research_versions")
-        .insert({
-          ticker_id: tickerData.id,
-          ticker_symbol: normalised,
-          version: 1,
-          score,
-          report_json: report as unknown as Json,
-          diagram_json: diagram as unknown as Json,
-          diff_json: null,
-          researched_by: req.user?.id ?? null,
-        });
-      if (versionsErr) {
-        emit({
-          step: 0,
-          label: "Error",
-          status: "error",
-          data: { message: `Failed to save version: ${versionsErr.message}` },
-        });
-        clearInterval(keepAlive);
-        res.end();
-        return;
-      }
-
-      await adminClient
-        .from("tickers")
-        .update({
-          research_count: tickerData.research_count + 1,
-          last_researched_at: new Date().toISOString(),
-        })
-        .eq("id", tickerData.id);
-
-      void clearCheckpoints(normalised, completedRunId);
-      clearInterval(keepAlive);
-      emit({
-        step: 8,
-        label: "Saved",
-        status: "complete",
-        data: { id: savedReport.id },
+      await saveNewReport({
+        tickerId: tickerData.id,
+        tickerSymbol: normalised,
+        researchCount: tickerData.research_count,
+        report,
+        diagram,
+        researchedBy: req.user?.id ?? null,
+        runId: completedRunId,
+        emit,
       });
+
+      clearInterval(keepAlive);
       res.end();
     } catch {
       if (!res.headersSent) {
@@ -580,110 +508,18 @@ router.post(
         `[research POST] pipeline complete for ${normalised} — report keys: ${Object.keys(report).join(", ")}`,
       );
 
-      const rawScore = report.score;
-      const score =
-        typeof rawScore === "number"
-          ? rawScore
-          : parseFloat(String(rawScore ?? "")) || null;
-      console.log(
-        `[research POST] SAVING REPORT — ticker: ${normalised}, score: ${String(score)}, score_type: ${typeof rawScore}`,
-      );
-
-      // Signal save in progress — keeps SSE connection alive during DB write
-      emit({ step: 8, label: "Saving Report", status: "saving" });
-      console.log(`[research POST] saving report for ${normalised}...`);
-
-      const { data: savedReport, error: reportErr } = await adminClient
-        .from("research_reports")
-        .insert({
-          ticker_id: tickerData.id,
-          ticker_symbol: normalised,
-          score,
-          report_json: report as unknown as Json,
-          diagram_json: diagram as unknown as Json,
-          version: 1,
-          researched_by: req.user?.id ?? null,
-        })
-        .select("id")
-        .single();
-
-      if (reportErr) {
-        console.error(
-          "[research POST] research_reports insert failed:",
-          JSON.stringify(reportErr),
-        );
-        emit({
-          step: 0,
-          label: "Error",
-          status: "error",
-          data: { message: `Failed to save report: ${reportErr.message}` },
-        });
-        clearInterval(keepAlive);
-        res.end();
-        return;
-      }
-      if (!savedReport) {
-        console.error(
-          "[research POST] research_reports insert returned no data",
-        );
-        emit({
-          step: 0,
-          label: "Error",
-          status: "error",
-          data: { message: "Failed to save report: no data returned" },
-        });
-        clearInterval(keepAlive);
-        res.end();
-        return;
-      }
-
-      const { error: versionsErr } = await adminClient
-        .from("research_versions")
-        .insert({
-          ticker_id: tickerData.id,
-          ticker_symbol: normalised,
-          version: 1,
-          score,
-          report_json: report as unknown as Json,
-          diagram_json: diagram as unknown as Json,
-          diff_json: null,
-          researched_by: req.user?.id ?? null,
-        });
-      if (versionsErr) {
-        console.error(
-          "[research POST] research_versions insert failed:",
-          JSON.stringify(versionsErr),
-        );
-        emit({
-          step: 0,
-          label: "Error",
-          status: "error",
-          data: { message: `Failed to save version: ${versionsErr.message}` },
-        });
-        clearInterval(keepAlive);
-        res.end();
-        return;
-      }
-
-      await adminClient
-        .from("tickers")
-        .update({
-          research_count: tickerData.research_count + 1,
-          last_researched_at: new Date().toISOString(),
-        })
-        .eq("id", tickerData.id);
-
-      console.log(
-        `[research POST] report saved — id: ${savedReport.id}, ticker: ${normalised}`,
-      );
-      void clearCheckpoints(normalised, runId);
-      clearInterval(keepAlive);
-      emit({
-        step: 8,
-        label: "Saved",
-        status: "complete",
-        data: { id: savedReport.id },
+      await saveNewReport({
+        tickerId: tickerData.id,
+        tickerSymbol: normalised,
+        researchCount: tickerData.research_count,
+        report,
+        diagram,
+        researchedBy: req.user?.id ?? null,
+        runId,
+        emit,
       });
+
+      clearInterval(keepAlive);
       res.end();
     } catch {
       if (!res.headersSent) {

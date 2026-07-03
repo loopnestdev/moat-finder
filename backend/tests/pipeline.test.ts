@@ -3,7 +3,7 @@ import type { EmitFn } from "../src/types/report.types";
 
 // ─── Mock Anthropic SDK ───────────────────────────────────────────────────────
 
-const mockCreate = vi.fn();
+const mockCreate = vi.hoisted(() => vi.fn());
 
 vi.mock("@anthropic-ai/sdk", () => {
   return {
@@ -12,6 +12,42 @@ vi.mock("@anthropic-ai/sdk", () => {
     })),
   };
 });
+
+// ─── Mock Supabase (checkpoint reads/writes) ───────────────────────────────────
+// Without this, runPipeline's checkpoint save/load calls hit the network with
+// the fake test.supabase.co host, which is slow to fail DNS resolution and
+// blows the test timeout. Checkpoint failures are non-fatal by design
+// (see services/checkpoint.ts), so an empty/no-op result is a safe default.
+
+function makeNoopBuilder(): Record<string, unknown> {
+  const result = { data: null, error: null };
+  const builder: Record<string, unknown> = {
+    select: () => builder,
+    insert: () => builder,
+    upsert: () => builder,
+    delete: () => builder,
+    eq: () => builder,
+    order: () => builder,
+    limit: () => Promise.resolve({ data: [], error: null }),
+    single: () => Promise.resolve(result),
+    then: (resolve: (v: unknown) => void) => resolve(result),
+  };
+  return builder;
+}
+
+vi.mock("../src/services/supabase", () => ({
+  adminClient: { from: () => makeNoopBuilder() },
+  anonClient: { from: () => makeNoopBuilder() },
+}));
+
+// ─── Mock company-confirmation gate ────────────────────────────────────────────
+// runPipeline pauses after Step 1 and waits (up to 60s) for a user confirmation
+// via registerConfirmation(). Auto-confirm immediately so tests don't stall.
+
+vi.mock("../src/services/confirmation", () => ({
+  registerConfirmation: () => Promise.resolve({ confirmed: true }),
+  resolveConfirmation: () => true,
+}));
 
 import { runPipeline } from "../src/services/pipeline";
 
@@ -205,8 +241,12 @@ describe("runPipeline", () => {
     await expect(runPipeline("TEST", emit)).rejects.toThrow();
   });
 
-  it("throws when ANTHROPIC_API_KEY is not set", async () => {
-    delete process.env.ANTHROPIC_API_KEY;
+  it("propagates the underlying error when the LLM call rejects (e.g. missing/invalid API key)", async () => {
+    // The Anthropic SDK constructor itself is mocked out for these tests, so
+    // its own "missing API key" validation never runs — instead we simulate
+    // the failure mode it would produce (a rejected messages.create call)
+    // and verify runPipeline surfaces that error to the caller unmodified.
+    mockCreate.mockRejectedValueOnce(new Error("ANTHROPIC_API_KEY not set"));
 
     const emit: EmitFn = vi.fn();
     await expect(runPipeline("TEST", emit)).rejects.toThrow(

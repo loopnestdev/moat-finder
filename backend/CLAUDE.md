@@ -28,6 +28,7 @@ backend/
 │   │   └── admin.ts          # Admin-only routes (user management)
 │   ├── services/
 │   │   ├── pipeline.ts       # AI research pipeline (7 steps)
+│   │   ├── saveResearch.ts   # Shared save-new-report DB write helper
 │   │   ├── supabase.ts       # Supabase client initialisation
 │   │   └── diff.ts           # Report diff/changelog generator
 │   ├── middleware/
@@ -113,7 +114,9 @@ FRONTEND_ORIGIN=http://localhost:5173
 
 ## Testing Rules
 
-- One test file per service: `pipeline.test.ts`, `diff.test.ts`
-- Mock Anthropic SDK and Supabase client — never call live APIs in tests
+- One test file per service: `pipeline.test.ts`, `diff.test.ts`, `saveResearch.test.ts`
+- Mock Anthropic SDK and Supabase client — never call live APIs in tests. `SUPABASE_URL` in `vitest.config.ts` is a fake host (`test.supabase.co`) — any unmocked Supabase call will hit real DNS and hang/timeout, it will not fail fast.
+- Any test touching `pipeline.ts`'s `runPipeline()` must also mock `services/confirmation.ts` (`registerConfirmation` → resolve `{ confirmed: true }` immediately) — otherwise the post-Discovery confirmation gate (added v0.7.1) stalls the test for up to 60s.
+- `vi.mock(...)` factories are hoisted above the file — a plain `const mockFn = vi.fn()` referenced inside one throws a TDZ `ReferenceError` under vitest 3.2.x. Use `vi.hoisted(() => vi.fn())` instead.
 - Every Zod schema tested for valid and invalid inputs
 - Every util function at 100% branch coverage

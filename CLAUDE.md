@@ -61,6 +61,7 @@ moat-finder/
 │       │   └── admin.ts         # Admin user management
 │       ├── services/
 │       │   ├── pipeline.ts      # 7-step AI research pipeline (v2)
+│       │   ├── saveResearch.ts  # Shared save-new-report DB write helper
 │       │   ├── diff.ts          # Report diff/changelog generator
 │       │   └── supabase.ts      # anon + service-role clients
 │       └── types/
@@ -68,12 +69,13 @@ moat-finder/
 ├── frontend/
 │   ├── CLAUDE.md                # Frontend-specific rules
 │   ├── wrangler.jsonc           # Cloudflare Workers deploy config
+│   ├── vitest.config.ts         # Vitest config (pure-function unit tests)
 │   └── src/
 │       ├── pages/
 │       │   ├── Home.tsx         # Ticker search + grid
 │       │   ├── Report.tsx       # Full report page (two-column layout)
 │       │   ├── Versions.tsx     # Version history
-│       │   └── Admin.tsx        # Admin panel
+│       │   └── Admin.tsx        # Admin panel (Users, Audit Log, Research tabs)
 │       ├── components/
 │       │   ├── layout/          # Nav.tsx, Layout.tsx
 │       │   ├── report/          # ScoreBadge, SectorHeat, ValuationTable,
@@ -83,6 +85,11 @@ moat-finder/
 │       │   ├── research/        # PipelineProgress, DiffModal
 │       │   ├── ui/              # Button, Input, Modal, Badge, Spinner
 │       │   └── ErrorBoundary.tsx
+│       ├── lib/
+│       │   ├── parsers.ts       # parseNumberedList, parseMoatPoints, parseBullets
+│       │   ├── normPct.ts       # Shared decimal-or-percentage normaliser
+│       │   ├── validation.ts    # tickerSchema (Zod)
+│       │   └── api.ts           # fetch/SSE wrapper
 │       └── types/
 │           └── report.types.ts  # Frontend mirrors of backend types
 └── .claude/
@@ -235,6 +242,20 @@ The AI research pipeline was upgraded based on real backtest results from resear
 ---
 
 ## Changelog
+
+### v0.8.4
+
+- **YoY growth normalisation fix** (`lib/normPct.ts`, `Home.tsx`, `ValuationTable.tsx`): `ResearchListItem.yoy_growth` may be a decimal (`0.25`) or an already-multiplied percentage (`25`) depending on what the LLM returned. The home page cards and "YoY ≥" filter previously used the raw value directly, silently mis-rendering and mis-filtering decimal values. `normPct()` — previously private to `ValuationTable.tsx` — was extracted to a shared `frontend/src/lib/normPct.ts` and is now applied in both places.
+- **`saveNewReport()` extraction** (`backend/src/services/saveResearch.ts`): the duplicated ~80-line DB-save block (insert `research_reports` + `research_versions`, bump `tickers`, clear checkpoints, emit SSE `saving`/`complete`/`error`) shared by `POST /:ticker` and `POST /:ticker/run` was extracted into one helper, now unit-tested directly (`backend/tests/saveResearch.test.ts`).
+- **Admin Research tab** (`Admin.tsx`): new tab lists all researched tickers with a Delete button + confirmation modal, wired to the existing admin-only `DELETE /api/v1/research/:ticker` endpoint (previously backend-only, no UI).
+- **Frontend test infrastructure**: added Vitest to `frontend/` for the first time. Extracted `parseNumberedList`, `parseMoatPoints`, `parseBullets` out of `Report.tsx` into `frontend/src/lib/parsers.ts` so they're independently testable. New test files: `lib/parsers.test.ts`, `lib/normPct.test.ts`, `lib/validation.test.ts` (30 tests total).
+- **Backend test suite fixes** (`backend/tests/pipeline.test.ts`, `ticker.test.ts`): fixed a `vi.mock` hoisting TDZ bug (`vi.fn()` → `vi.hoisted(() => vi.fn())`), mocked the Supabase client to stop checkpoint saves from hitting a real (fake) network host during tests, mocked the post-Discovery `registerConfirmation()` gate (added in v0.7.1) so tests don't wait up to 60s, and updated stale `ticker.test.ts` assertions that predated the v0.8.0 international-ticker regex (digits and dot-suffixed tickers like `BRK.A` are valid).
+
+### v0.8.3
+
+- **Migrate database to coredb** (`services/supabase.ts`, `database.types.ts`, `supabase-central/migrations/001_moat_schema.sql`): moat-finder tables moved from a standalone Supabase project to the shared `coredb` instance (`lcqsatefkutiakhgexue`), all under the `moat` schema. Both clients now use `createClient<Database, 'moat'>` with `db: { schema: 'moat' }`.
+- **Auto-create user on first login** (`supabase-central/migrations/002_auto_create_user.sql`): a trigger on `auth.users` INSERT auto-creates a `moat.users` row with `role='pending'` on first OAuth login — previously new users got a 401 until manually inserted. Admin approval is still required for research access.
+- **Fix pipeline error visibility** (`research.ts`, `usePipeline.ts`): research errors now stay visible on the `PipelineProgress` screen instead of silently navigating to a 404 report page; navigation only happens after step 8 saves successfully.
 
 ### v0.8.2
 

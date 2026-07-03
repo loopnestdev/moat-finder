@@ -59,12 +59,15 @@ frontend/
 │   ├── lib/
 │   │   ├── supabase.ts       # Supabase client (anon key only)
 │   │   ├── api.ts            # fetch wrapper for backend API calls
-│   │   └── validation.ts     # Zod schemas (ticker, etc.)
+│   │   ├── validation.ts     # Zod schemas (ticker, etc.)
+│   │   ├── parsers.ts        # parseNumberedList, parseMoatPoints, parseBullets
+│   │   └── normPct.ts        # Shared decimal-or-percentage normaliser
 │   └── types/
 │       └── report.types.ts   # Mirrors backend report types
 ├── public/
 │   └── favicon.svg           # Moat-finder icon mark (navy + gold rings)
 ├── tailwind.config.ts
+├── vitest.config.ts
 └── tsconfig.json
 ```
 
@@ -178,4 +181,4 @@ VITE_API_BASE_URL=http://localhost:3001
 - Test role-based rendering: components that hide/show based on role
 - Mock Supabase client and API calls in all tests
 - No snapshot tests — test behaviour not markup
-- Test all parser functions (`parseNumberedList`, `parseBullets`, `normPct`, `extractGuideNumbers`) for edge cases
+- Test all parser functions (`parseNumberedList`, `parseMoatPoints`, `parseBullets` in `lib/parsers.ts`; `normPct` in `lib/normPct.ts`) for edge cases — currently covered, hook/component tests with React Testing Library are not yet set up (only pure-function unit tests exist so far)

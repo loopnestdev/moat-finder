@@ -4,6 +4,42 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
+### [v0.8.4] — 2026-07-04
+
+- **Fix YoY growth display/filter bug**: `ResearchListItem.yoy_growth` is sourced
+  from `valuation_table[0].yoy_growth`, which the LLM may return as a decimal
+  (`0.25`) or an already-multiplied percentage (`25`). Home page cards and the
+  "YoY ≥" filter previously rendered/compared the raw value directly, so decimal
+  values showed as e.g. `0.3%` instead of `25.0%` and always failed the filter.
+  Extracted the existing `normPct()` guard (previously private to
+  `ValuationTable.tsx`) into a shared `frontend/src/lib/normPct.ts` and applied
+  it in both `Home.tsx`'s filter comparator and card display.
+- **Extract shared `saveNewReport()` helper**: `POST /:ticker` (single-phase) and
+  `POST /:ticker/run` (two-phase) each duplicated ~80 lines of report/version
+  insert + ticker bump + checkpoint clear + SSE emit logic. Extracted into
+  `backend/src/services/saveResearch.ts`, now covered by its own unit tests
+  (`backend/tests/saveResearch.test.ts`).
+- **Admin panel: Research tab with ticker delete**: new "Research" tab in the
+  Admin panel lists all researched tickers (ticker, score, version, updated
+  date) with a Delete button + confirmation modal, wired to the existing
+  admin-only `DELETE /api/v1/research/:ticker` endpoint (previously backend-only
+  with no UI).
+- **Frontend test infrastructure**: added Vitest to `frontend/` (none existed
+  previously). Extracted `parseNumberedList`, `parseMoatPoints`, `parseBullets`
+  out of `Report.tsx` into `frontend/src/lib/parsers.ts` for testability. Added
+  unit tests for `lib/parsers.ts`, `lib/normPct.ts`, and `lib/validation.ts`
+  (`tickerSchema`) — 30 tests total.
+- **Backend test suite fixes**: fixed three pre-existing broken tests in
+  `pipeline.test.ts` — a `vi.mock` hoisting TDZ bug (`vi.fn()` → `vi.hoisted(()
+  => vi.fn())`), an unmocked Supabase client causing real network calls to a
+  fake host (blew the test timeout), and a missing mock for the post-Discovery
+  confirmation gate (`registerConfirmation`, added in v0.7.1) that made the
+  pipeline wait up to 60s per test. Also updated `ticker.test.ts` assertions
+  that were stale relative to the international-ticker regex from v0.8.0
+  (digits and dot-suffixed tickers like `BRK.A` are valid, not rejected).
+
+---
+
 ### [v0.8.3] — 2026-06-08
 
 - **Migrate database to coredb**: moat-finder tables moved from standalone
