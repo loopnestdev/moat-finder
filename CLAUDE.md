@@ -79,7 +79,7 @@ moat-finder/
 │       ├── components/
 │       │   ├── layout/          # Nav.tsx, Layout.tsx
 │       │   ├── report/          # ScoreBadge, SectorHeat, ValuationTable,
-│       │   │                    # NapkinMath, BearCase, Changelog,
+│       │   │                    # NapkinMath, Scenarios, BearCase, Changelog,
 │       │   │                    # BusinessDiagram, QuarterlyResults,
 │       │   │                    # ManagementRating
 │       │   ├── research/        # PipelineProgress, DiffModal
@@ -242,6 +242,11 @@ The AI research pipeline was upgraded based on real backtest results from resear
 ---
 
 ## Changelog
+
+### v0.8.5
+
+- **Render v2 fields that were generated but never displayed** (`BearCase.tsx`, `Scenarios.tsx`, `Report.tsx`): three Step 1/Step 4 fields have existed in `ReportJson` since the v2 pipeline but were dropped on the floor by the frontend. `bear_case_rebuttal` now renders as an emerald "Bull Rebuttal" block inside `BearCase.tsx`. New `Scenarios.tsx` sidebar card renders the full `scenarios[]` array (Bear/Base/Bull — comp ticker, comp multiple, target price, upside %, rationale), null-safe for rows without a revenue-based valuation (e.g. closed-end funds). `rerating_catalyst` renders as a gold callout under "Why Now — Catalysts"; `platform_optionality` gets its own "Platform Optionality" section after "Moat & Competitors". All three guarded for pre-v2 reports.
+- **Macro & Policy content investigation**: queried all 98 live production reports — zero exact-duplicate `macro_summary` values; spot-checked content contains genuine, current, company-specific facts (Fed rates, country-specific tariff %, named contracts). No bug found. The perceived "cloned" impression is most likely Step 5's fixed 4-topic prompt structure producing similarly-shaped paragraphs, amplified by many current reports sharing overlapping hot-sector (AI/semiconductor/space) macro exposure. No code change made — flagged as a possible future prompt-diversity improvement.
 
 ### v0.8.4
 

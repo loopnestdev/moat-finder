@@ -37,7 +37,8 @@ frontend/
 │   │   │   ├── SectorHeat.tsx       # SVG flame icons + sector chips
 │   │   │   ├── ValuationTable.tsx   # 2-col card grid (subject highlighted)
 │   │   │   ├── NapkinMath.tsx       # Target price + upside (stacked vertically)
-│   │   │   ├── BearCase.tsx         # Numbered dark card, red left border
+│   │   │   ├── Scenarios.tsx        # Bear/Base/Bull scenario sidebar card
+│   │   │   ├── BearCase.tsx         # Numbered dark card, red left border + Bull Rebuttal
 │   │   │   ├── Changelog.tsx        # Dark navy version history accordion
 │   │   │   ├── BusinessDiagram.tsx  # 4-zone pure-React canvas (no React Flow)
 │   │   │   ├── QuarterlyResults.tsx # Last 4 quarters earnings card
@@ -145,6 +146,7 @@ Global default weight: `300`. Heading overrides: `h1–h3 → 700`, `h4–h6 →
 - **Purple vs gold rule**: purple (`text-purple`, `border-purple`, etc.) for all interactive chrome. Gold (`text-gold`) for financial data display only — never on buttons, tabs, or nav elements.
 - **`ResearchListItem` vs `ResearchReport`**: `useReportList()` returns `ResearchListItem[]` — a flat, enriched shape from the list API. It has `upside_percent`, `target_price`, `hot_sector_match`, `company_name`, `sector` as top-level fields (no nested `tickers`). `ResearchReport` is for single-report fetches only. Never use `report.tickers?.company_name` on list items.
 - **Filter bar state lives in Home.tsx**: `minScore`, `minUpside`, `sectorFilter`, `sortBy` — all client-side, no query key changes. `filtered` is a derived array from `reportList`. The "Clear Filters" button is only shown when `isFiltered` is true (any non-default filter active).
+- **v2-only optional fields** (`scenarios`, `platform_optionality`, `rerating_catalyst`, `bear_case_rebuttal`): all absent in pre-v2 reports. Each is gated with `{rj.field && <... />}` in `Report.tsx` — no fallback render. `Scenarios.tsx` additionally null-guards `target_price`/`upside_percent` within each scenario row (e.g. closed-end funds have no revenue-based valuation) — render `—`, never `$null`.
 
 ## Commands
 

@@ -1,6 +1,7 @@
 interface BearCaseProps {
   bearCase: string;
   riskFactors: string[];
+  bearCaseRebuttal?: string;
 }
 
 /** Split bear case narrative into numbered points on sentence boundaries */
@@ -45,9 +46,29 @@ function WarningIcon() {
   );
 }
 
+function ShieldIcon() {
+  return (
+    <svg
+      className="h-4 w-4 text-emerald-400 flex-shrink-0 mt-0.5"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+      />
+    </svg>
+  );
+}
+
 export default function BearCase({
   bearCase,
   riskFactors = [],
+  bearCaseRebuttal,
 }: BearCaseProps) {
   const points = splitToPoints(bearCase ?? "");
 
@@ -107,6 +128,23 @@ export default function BearCase({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Bull rebuttal — counter-argument to the bear case above */}
+      {bearCaseRebuttal && (
+        <div className="px-5 py-4 border-t border-white/5">
+          <div className="flex gap-3 border-l-2 border-emerald-500 px-3 py-2.5">
+            <ShieldIcon />
+            <div>
+              <p className="font-mono text-xs text-emerald-400 uppercase tracking-widest mb-1.5">
+                Bull Rebuttal
+              </p>
+              <p className="font-body text-sm text-slate-300 font-light leading-relaxed">
+                {bearCaseRebuttal}
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>

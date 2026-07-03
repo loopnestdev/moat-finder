@@ -8,6 +8,7 @@ import ScoreBadge from "../components/report/ScoreBadge";
 import SectorHeat from "../components/report/SectorHeat";
 import ValuationTable from "../components/report/ValuationTable";
 import NapkinMath from "../components/report/NapkinMath";
+import Scenarios from "../components/report/Scenarios";
 import BearCase from "../components/report/BearCase";
 import Changelog from "../components/report/Changelog";
 import BusinessDiagram from "../components/report/BusinessDiagram";
@@ -387,6 +388,16 @@ export default function Report() {
                 </li>
               ))}
             </ol>
+            {rj.rerating_catalyst && (
+              <div className="mt-5 rounded border-l-2 border-gold bg-navy-800/60 px-4 py-3">
+                <p className="font-mono text-xs text-gold/80 uppercase tracking-widest mb-1.5">
+                  Re-Rating Catalyst
+                </p>
+                <p className="font-body text-sm text-cream-muted leading-relaxed">
+                  {rj.rerating_catalyst}
+                </p>
+              </div>
+            )}
           </section>
 
           {/* Moat — consistent numbered or plain paragraph */}
@@ -429,12 +440,23 @@ export default function Report() {
             )}
           </section>
 
+          {/* Platform Optionality — adjacent markets the core tech/moat could expand into */}
+          {rj.platform_optionality && (
+            <section>
+              <SectionHeading>Platform Optionality</SectionHeading>
+              <p className="font-body text-cream-muted leading-relaxed">
+                {rj.platform_optionality}
+              </p>
+            </section>
+          )}
+
           {/* Bear Case */}
           <section>
             <SectionHeading>Bear Case</SectionHeading>
             <BearCase
               bearCase={rj.bear_case}
               riskFactors={rj.risk_factors ?? []}
+              bearCaseRebuttal={rj.bear_case_rebuttal}
             />
           </section>
 
@@ -463,6 +485,9 @@ export default function Report() {
         <div className="space-y-6 lg:sticky lg:top-6 lg:col-span-1">
           {/* NapkinMath with hierarchical revenue guidance */}
           <NapkinMath data={rj.napkin_math} />
+
+          {/* Bear/Base/Bull scenarios */}
+          {rj.scenarios && <Scenarios scenarios={rj.scenarios} />}
 
           {/* Quarterly Results card */}
           <ErrorBoundary>
