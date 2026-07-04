@@ -983,6 +983,13 @@ Remember: respond with a flat JSON object. The first property must be "thesis" o
     report.management_rating = step2.management_rating;
   }
 
+  // Carry the plain-English tech explanation from Step 2 — used only as
+  // Step 7 context (never part of its output schema), injected here so it
+  // reaches the saved report.
+  if (step2.technological_advantage) {
+    report.technological_advantage = step2.technological_advantage;
+  }
+
   await saveCheckpoint(ticker, runId, {
     step_number: 7,
     step_label: "Synthesis & Diagram",
@@ -1438,7 +1445,10 @@ export async function runUpdatePipeline(
     step2 = {
       business_model: existingReport.business_model ?? "",
       moat: existingReport.moat ?? "",
-      technological_advantage: rawStep2?.technological_advantage ?? "",
+      technological_advantage:
+        existingReport.technological_advantage ??
+        rawStep2?.technological_advantage ??
+        "",
       catalysts: existingReport.catalysts ?? [],
       platform_type: rawStep2?.platform_type ?? undefined,
       platform_optionality:

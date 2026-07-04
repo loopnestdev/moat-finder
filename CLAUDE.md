@@ -223,6 +223,8 @@ The AI research pipeline was upgraded based on real backtest results from resear
 - **Provider is stored per-report**: `report_json.llm_provider` records which LLM generated the report. Update research re-uses the same provider automatically (read from the existing report in `Report.tsx → handleUpdate`).
 - **LLM abstraction layer**: all pipeline steps call `callLLM(prompt, provider)` in `backend/src/services/llm.ts`. Add new providers there; pipeline.ts stays provider-agnostic.
 - **management_rating in old reports**: absent in reports generated before v0.5.2. Always guard with optional chaining (`rj.management_rating && <ManagementRating ...>`). Do NOT add a fallback render — just don't show it. The update pipeline will regenerate it on next update.
+- **technological_advantage in old reports**: absent in reports generated before v0.8.7 (same pattern as `management_rating` — carried from Step 2 into the final report post-synthesis in `runStep7()`, and via `runUpdatePipeline()`'s cached-Step-2 reconstruction). Guard with `{rj.technological_advantage && <div>...}` — no fallback render.
+- **BusinessDiagram has no distinct "product" node type**: `DiagramNode.type` is `"revenue" | "customer" | "moat" | "business_unit" | "risk"` — any node with an unrecognised type is folded into the Business Units column (`BusinessDiagram.tsx`) rather than dropped. This only catches malformed/hallucinated LLM output, not a real category, so don't reintroduce a separate "Key Products" column expecting it to be populated by design.
 - **`ResearchListItem` vs `ResearchReport`**: the list API (`GET /api/v1/research`) returns `ResearchListItem[]` (flat, enriched). Individual report fetches (`GET /api/v1/research/:ticker`) still return `ResearchReport` (full). Do not use `ResearchReport` in the home page cards — it does not have `upside_percent`, `target_price`, etc.
 - **All report page layouts must be mobile-first.** Use `lg:` prefix for any multi-column grid. Wrap wide tables in `overflow-x-auto` containers. Never use fixed pixel widths on containers.
 - **`hot_sector_match` null entries**: the LLM may return null inside the `hot_sector_match` array even though the type says `string[]`. Always use `s?.toLowerCase()` (not `s.toLowerCase()`) when iterating, and `(report.hot_sector_match ?? [])` before `.length` or index access.
@@ -245,6 +247,11 @@ The AI research pipeline was upgraded based on real backtest results from resear
 ---
 
 ## Changelog
+
+### v0.8.7
+
+- **"In Plain English" callout** (`technological_advantage`, `Report.tsx`): Step 2 already generates a plain-English, real-world-analogy explanation of the company's core technology, but it was discarded after being used as Step 7 synthesis context — never rendered. Now carried into the saved report post-synthesis (same pattern as `management_rating`) and shown as a callout in Moat & Competitors. Absent in reports predating this version.
+- **Business Model diagram redesign** (`BusinessDiagram.tsx`): added zone/card icons (shield/building/dollar/people/warning) and consolidated the 3-column business zone into 2 columns (Business Units | Revenue Streams) — "Key Products" was almost always empty since the diagram schema has no distinct product node type. Grid stacks to 1 column on mobile.
 
 ### v0.8.6
 

@@ -4,6 +4,29 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
+### [v0.8.7] — 2026-07-04
+
+- **"In Plain English" callout** (`ReportJson.technological_advantage`,
+  `Report.tsx`): Step 2 (Deep Dive) already generates a plain-English,
+  real-world-analogy explanation of the company's core technology, but it was
+  only ever used as internal context for Step 7 synthesis and discarded
+  afterward — never rendered anywhere. `technological_advantage` is now
+  carried into the saved report post-synthesis (mirroring the existing
+  `management_rating` injection pattern) and displayed as a callout in the
+  Moat & Competitors section. Absent in reports generated before this
+  version — only populates on new research or a fresh "Update Research" run.
+- **Business Model diagram visual redesign** (`BusinessDiagram.tsx`): added
+  icons to every zone header and card (shield/building/dollar/people/warning)
+  to break up the text-heavy layout. Consolidated the old 3-column business
+  zone (Business Units | Revenue Streams | Key Products) into 2 columns —
+  the diagram schema has no distinct "product" node type, so "Key Products"
+  was almost always an empty column in practice (verified against real
+  production data); any node with an unrecognised type now folds into
+  Business Units instead of a rarely-populated third column. The 2-column
+  grid stacks to 1 column on mobile (`grid-cols-1 sm:grid-cols-2`).
+
+---
+
 ### [v0.8.6] — 2026-07-04
 
 - **Interactive Napkin Math comp selector**: the Napkin Math card's target

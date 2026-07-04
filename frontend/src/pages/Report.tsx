@@ -423,6 +423,32 @@ export default function Report() {
                 </p>
               )}
             </div>
+            {rj.technological_advantage && (
+              <div className="mb-5 rounded border border-purple/30 bg-navy-800/60 px-4 py-3 flex gap-3">
+                <svg
+                  className="h-5 w-5 text-purple-light flex-shrink-0 mt-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.472V15a1 1 0 001 1h6a1 1 0 001-1v-1.528A6 6 0 0012 3z"
+                  />
+                </svg>
+                <div>
+                  <p className="font-mono text-xs text-purple-light uppercase tracking-widest mb-1.5">
+                    In Plain English
+                  </p>
+                  <p className="font-body text-sm text-cream-muted leading-relaxed">
+                    {rj.technological_advantage}
+                  </p>
+                </div>
+              </div>
+            )}
             {(rj.competitors ?? []).length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {(rj.competitors ?? []).map((c) => (
