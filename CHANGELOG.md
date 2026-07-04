@@ -4,6 +4,25 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
+### [v0.8.8] — 2026-07-04
+
+- **Sector filter is now a dropdown** (`Home.tsx`): replaced the free-text
+  substring-match Sector input with a `<select>` populated from the actual
+  distinct `hot_sector_match` values across the loaded reports (deduped,
+  sorted alphabetically). Filtering changed from fuzzy `.includes()`
+  substring matching to exact match. `tickers.sector`/`company_name`/
+  `industry` remain unpopulated in production (separately tracked) — the
+  dropdown is built from `hot_sector_match` since that's the only reliable
+  categorical signal currently available.
+- **One-click quick-filter presets** (`Home.tsx`): added three toggleable
+  chips above the detailed filter bar — "🔥 Hot Sectors" (new `sector_heat
+  ≥ 4` filter), "📈 Top Upside" and "⭐ Highest Score" (both just flip the
+  existing `sortBy` state). Chips share state with the detailed filter
+  inputs, so the Sort dropdown stays in sync and clicking one sort-based
+  chip cleanly deactivates the other.
+
+---
+
 ### [v0.8.7] — 2026-07-04
 
 - **"In Plain English" callout** (`ReportJson.technological_advantage`,

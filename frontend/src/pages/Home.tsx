@@ -59,6 +59,7 @@ export default function Home() {
   const [minUpside, setMinUpside] = useState<number | null>(null);
   const [minYoy, setMinYoy] = useState<number | null>(null);
   const [sectorFilter, setSectorFilter] = useState("");
+  const [minSectorHeat, setMinSectorHeat] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<"date" | "score" | "upside">("date");
 
   const isFiltered =
@@ -66,7 +67,19 @@ export default function Home() {
     minUpside !== null ||
     minYoy !== null ||
     sectorFilter !== "" ||
+    minSectorHeat !== null ||
     sortBy !== "date";
+
+  // Distinct sector tags actually present in the data — hot_sector_match is
+  // free text from the LLM (not a fixed enum), so this is derived rather
+  // than hardcoded, and stays in sync as new sectors show up.
+  const sectorOptions = Array.from(
+    new Set(
+      (reportList ?? [])
+        .flatMap((r) => r.hot_sector_match ?? [])
+        .filter((s): s is string => Boolean(s)),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
 
   const filtered: ResearchListItem[] = (reportList ?? [])
     .filter((r) => minScore === null || (r.score ?? 0) >= minScore)
@@ -79,11 +92,10 @@ export default function Home() {
         (r.yoy_growth === null ? -999 : normPct(r.yoy_growth)) >= minYoy,
     )
     .filter(
-      (r) =>
-        !sectorFilter ||
-        r.hot_sector_match?.some((s) =>
-          s?.toLowerCase()?.includes(sectorFilter.toLowerCase()),
-        ),
+      (r) => !sectorFilter || r.hot_sector_match?.includes(sectorFilter),
+    )
+    .filter(
+      (r) => minSectorHeat === null || (r.sector_heat ?? 0) >= minSectorHeat,
     )
     .sort((a, b) => {
       if (sortBy === "score") return (b.score ?? 0) - (a.score ?? 0);
@@ -304,13 +316,18 @@ export default function Home() {
               <label className="text-[10px] text-cream-subtle font-mono uppercase tracking-wider">
                 Sector
               </label>
-              <input
-                type="text"
-                placeholder="AI, Energy…"
+              <select
                 value={sectorFilter}
                 onChange={(e) => setSectorFilter(e.target.value)}
-                className="w-28 rounded border border-navy-700 bg-navy-800 text-cream font-body text-sm px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple focus:border-purple"
-              />
+                className="max-w-[9.5rem] rounded border border-navy-700 bg-navy-800 text-cream font-body text-sm px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple focus:border-purple"
+              >
+                <option value="">All Sectors</option>
+                {sectorOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Sort */}
@@ -339,6 +356,7 @@ export default function Home() {
                   setMinUpside(null);
                   setMinYoy(null);
                   setSectorFilter("");
+                  setMinSectorHeat(null);
                   setSortBy("date");
                 }}
                 className="rounded border border-navy-700 text-cream-subtle font-mono text-xs px-3 py-1.5 hover:border-purple/50 hover:text-cream transition-all self-end"
@@ -346,6 +364,40 @@ export default function Home() {
                 Clear Filters
               </button>
             )}
+          </div>
+        )}
+
+        {/* Quick filter presets — one-click toggles over the detailed filters above */}
+        {!listLoading && reportList && reportList.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(
+              [
+                { label: "🔥 Hot Sectors", active: minSectorHeat !== null },
+                { label: "📈 Top Upside", active: sortBy === "upside" },
+                { label: "⭐ Highest Score", active: sortBy === "score" },
+              ] as const
+            ).map((preset) => (
+              <button
+                key={preset.label}
+                onClick={() => {
+                  if (preset.label === "🔥 Hot Sectors") {
+                    setMinSectorHeat(minSectorHeat !== null ? null : 4);
+                  } else if (preset.label === "📈 Top Upside") {
+                    setSortBy(sortBy === "upside" ? "date" : "upside");
+                  } else {
+                    setSortBy(sortBy === "score" ? "date" : "score");
+                  }
+                }}
+                className={[
+                  "rounded-full border font-mono text-xs px-3 py-1.5 transition-all",
+                  preset.active
+                    ? "border-purple bg-purple/20 text-purple-light"
+                    : "border-navy-700 text-cream-subtle hover:border-purple/50 hover:text-cream",
+                ].join(" ")}
+              >
+                {preset.label}
+              </button>
+            ))}
           </div>
         )}
 

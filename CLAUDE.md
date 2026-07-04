@@ -248,6 +248,10 @@ The AI research pipeline was upgraded based on real backtest results from resear
 
 ## Changelog
 
+### v0.8.8
+
+- **Sector filter dropdown + quick-filter presets** (`Home.tsx`): Sector filter changed from free-text substring match to a `<select>` populated from distinct `hot_sector_match` values actually present in the data (exact match now, not fuzzy). Added three toggleable preset chips — "Hot Sectors" (new `sector_heat ≥ 4` filter), "Top Upside" and "Highest Score" (both flip the existing `sortBy` state, staying in sync with the Sort dropdown).
+
 ### v0.8.7
 
 - **"In Plain English" callout** (`technological_advantage`, `Report.tsx`): Step 2 already generates a plain-English, real-world-analogy explanation of the company's core technology, but it was discarded after being used as Step 7 synthesis context — never rendered. Now carried into the saved report post-synthesis (same pattern as `management_rating`) and shown as a callout in Moat & Competitors. Absent in reports predating this version.
