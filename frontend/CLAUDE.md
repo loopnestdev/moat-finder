@@ -62,7 +62,8 @@ frontend/
 │   │   ├── api.ts            # fetch wrapper for backend API calls
 │   │   ├── validation.ts     # Zod schemas (ticker, etc.)
 │   │   ├── parsers.ts        # parseNumberedList, parseMoatPoints, parseBullets
-│   │   └── normPct.ts        # Shared decimal-or-percentage normaliser
+│   │   ├── normPct.ts        # Shared decimal-or-percentage normaliser
+│   │   └── napkinMath.ts     # buildCompOptions — Napkin Math comp selector logic
 │   └── types/
 │       └── report.types.ts   # Mirrors backend report types
 ├── public/
@@ -147,6 +148,7 @@ Global default weight: `300`. Heading overrides: `h1–h3 → 700`, `h4–h6 →
 - **`ResearchListItem` vs `ResearchReport`**: `useReportList()` returns `ResearchListItem[]` — a flat, enriched shape from the list API. It has `upside_percent`, `target_price`, `hot_sector_match`, `company_name`, `sector` as top-level fields (no nested `tickers`). `ResearchReport` is for single-report fetches only. Never use `report.tickers?.company_name` on list items.
 - **Filter bar state lives in Home.tsx**: `minScore`, `minUpside`, `sectorFilter`, `sortBy` — all client-side, no query key changes. `filtered` is a derived array from `reportList`. The "Clear Filters" button is only shown when `isFiltered` is true (any non-default filter active).
 - **v2-only optional fields** (`scenarios`, `platform_optionality`, `rerating_catalyst`, `bear_case_rebuttal`): all absent in pre-v2 reports. Each is gated with `{rj.field && <... />}` in `Report.tsx` — no fallback render. `Scenarios.tsx` additionally null-guards `target_price`/`upside_percent` within each scenario row (e.g. closed-end funds have no revenue-based valuation) — render `—`, never `$null`.
+- **`NapkinMath` comp selector assumes P/S-driven scenarios**: `buildCompOptions()` (`lib/napkinMath.ts`) derives a constant `k = target_price ÷ comp_multiple` from the primary napkin_math figures and applies it to any OTHER valuation-table peer's `ps_ratio` to extrapolate a target price. This is only valid because the backend (since v0.8.6) enforces `comp_multiple === valuation_table[peer].ps_ratio` for every scenario. Never assume this holds for reports generated before that fix — the selector only extrapolates for peers not already covered by a scenario, so old inconsistent data doesn't surface visibly wrong numbers, but don't build new features on top of this assumption without re-checking it.
 
 ## Commands
 
@@ -183,4 +185,4 @@ VITE_API_BASE_URL=http://localhost:3001
 - Test role-based rendering: components that hide/show based on role
 - Mock Supabase client and API calls in all tests
 - No snapshot tests — test behaviour not markup
-- Test all parser functions (`parseNumberedList`, `parseMoatPoints`, `parseBullets` in `lib/parsers.ts`; `normPct` in `lib/normPct.ts`) for edge cases — currently covered, hook/component tests with React Testing Library are not yet set up (only pure-function unit tests exist so far)
+- Test all parser functions (`parseNumberedList`, `parseMoatPoints`, `parseBullets` in `lib/parsers.ts`; `normPct` in `lib/normPct.ts`; `buildCompOptions` in `lib/napkinMath.ts`) for edge cases — currently covered, hook/component tests with React Testing Library are not yet set up (only pure-function unit tests exist so far)

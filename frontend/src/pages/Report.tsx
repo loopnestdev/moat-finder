@@ -484,7 +484,12 @@ export default function Report() {
         {/* ── Right column — data cards ────────────────────────────────────── */}
         <div className="space-y-6 lg:sticky lg:top-6 lg:col-span-1">
           {/* NapkinMath with hierarchical revenue guidance */}
-          <NapkinMath data={rj.napkin_math} />
+          <NapkinMath
+            data={rj.napkin_math}
+            scenarios={rj.scenarios}
+            valuationTable={rj.valuation_table}
+            ticker={ticker}
+          />
 
           {/* Bear/Base/Bull scenarios */}
           {rj.scenarios && <Scenarios scenarios={rj.scenarios} />}

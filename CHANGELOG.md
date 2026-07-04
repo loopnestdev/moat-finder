@@ -4,6 +4,39 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
+### [v0.8.6] — 2026-07-04
+
+- **Interactive Napkin Math comp selector**: the Napkin Math card's target
+  price/upside was previously locked to whichever comp the LLM chose for the
+  Base scenario. A new dropdown lets users switch between the LLM's own
+  Bear/Base/Bull scenarios (authoritative numbers, no recomputation) or any
+  other peer from the valuation table — extrapolated client-side by scaling
+  that peer's P/S ratio against the Base scenario's implied revenue/share
+  baseline (`target_price ÷ comp_multiple` verified constant across all three
+  scenarios for a given report). Extrapolated picks are clearly labelled
+  "(est.)" with an inline disclaimer so they're never confused with an
+  AI-computed number. Logic extracted to `frontend/src/lib/napkinMath.ts`
+  (`buildCompOptions`), unit tested for null P/S, zero-multiple, dedup, and
+  case-insensitivity edge cases.
+- **Competitor/peer selection accuracy** (`pipeline.ts` Step 1 + Step 3
+  prompts): fixed a real-world data quality issue — Micron (MU) was compared
+  against Western Digital, Intel, and AMD, none of which are true memory-chip
+  peers (WDC is storage/HDD, Intel exited NAND years ago, AMD is CPU/GPU).
+  Both prompts now require competitors/peers to be selected by matching the
+  subject company's PRIMARY REVENUE-GENERATING product/service line — not
+  merely a shared broad sector or theme (e.g. "space company",
+  "semiconductor company") — and explicitly encourage foreign-listed tickers
+  (Korean, Japanese, Taiwanese, etc.) when they are the true industry leaders,
+  rather than defaulting to familiar US-listed names. Step 3's prompt also now
+  requires each scenario's `comp_multiple` to exactly equal that peer's
+  `ps_ratio` in the `valuation_table` — this consistency is what makes the new
+  frontend comp-selector's P/S scaling reliable for future reports (older
+  reports may still have the inconsistency the LLM previously introduced).
+  No live re-run was triggered on existing reports (e.g. MU) — this only
+  affects new research and future updates.
+
+---
+
 ### [v0.8.5] — 2026-07-04
 
 - **Render `bear_case_rebuttal`**: `BearCase.tsx` now accepts a

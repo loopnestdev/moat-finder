@@ -102,7 +102,12 @@ export default function Versions() {
         </section>
 
         <section>
-          <NapkinMath data={rj.napkin_math} />
+          <NapkinMath
+            data={rj.napkin_math}
+            scenarios={rj.scenarios}
+            valuationTable={rj.valuation_table}
+            ticker={ticker}
+          />
         </section>
 
         <section>

@@ -303,8 +303,15 @@ ${
 }
 IMPORTANT: Search specifically for the company trading under ticker '${ticker}' on the exchange listed in STOCK CONTEXT above. Verify the company name matches this exact exchange listing. Do NOT research a company with a similar ticker on a different exchange.
 
-Identify: company name, industry, top 3 competitors (with their tickers), top 3 known customers,
-primary product/service, and primary operating region.
+Identify: company name, industry, top 3 known customers, primary product/service, and primary operating region.
+
+COMPETITOR SELECTION — CRITICAL, read carefully:
+1. First determine what SPECIFIC product or service line generates the MAJORITY of this company's revenue — not just its broad industry or theme.
+2. Then identify the top 3 companies that compete DIRECTLY in that same specific revenue-driving business — i.e. companies a customer would actually choose between for that product/service.
+3. Do NOT select a company merely because it shares a broad sector or theme (e.g. "space company", "semiconductor company") if that company does not derive the majority of ITS OWN revenue from the same specific product/service line. A shared theme is not the same as a shared business.
+4. Actively consider foreign-listed companies (Korean, Japanese, Taiwanese, etc.) if they are the true leaders in that specific product line — do not default to familiar US-listed names just because they are better known. Use the ticker.SUFFIX format matching STOCK CONTEXT's exchange map for any foreign competitor (e.g. 000660.KS for SK Hynix, 005930.KS for Samsung Electronics — both real DRAM/NAND memory competitors, not Western Digital, Intel, or AMD, which do not compete in memory chips despite being "semiconductor" companies).
+5. Example: a rocket-launch company's true competitors are other companies that generate the majority of THEIR revenue from launching rockets — not every company that is loosely labelled a "space company" (many space companies make satellites, provide ground services, or invest in space startups without ever launching a rocket themselves).
+
 Use web search for current information. Return only the JSON object.`;
   const finalPrompt =
     provider === "gemini"
@@ -514,8 +521,9 @@ ${exchangeContext}
 ${ctx}
 
 Provide valuation and financial analysis for the company above:
-1. Relative valuation table including ALL major peers (minimum 3, ideally 4–5): P/S ratio, EV/EBITDA, gross margin %, YoY revenue growth %.
-   COMP SELECTION RULE: Match comparables by GROWTH STAGE first, then industry. If the subject company is growing >50% YoY, at least 2 of your comps must also be growing >30% YoY. Never use a mature low-growth peer as the primary anchor for a hypergrowth company.
+1. Relative valuation table including ALL major TRUE PRODUCT-LINE peers (minimum 3, ideally 4–5): P/S ratio, EV/EBITDA, gross margin %, YoY revenue growth %.
+   PEER SELECTION RULE: a peer must derive the MAJORITY of ITS OWN revenue from the same specific product/service line as the subject company — not merely operate in the same broad sector or theme. Actively include foreign-listed peers (Korean, Japanese, Taiwanese, etc.) with the correct ticker.SUFFIX format when they are the true industry leaders in that specific product line, even if less familiar than a US-listed name in an adjacent sector.
+   GROWTH-STAGE RULE: match comparables by growth stage first. If the subject company is growing >50% YoY, at least 2 of your comps must also be growing >30% YoY. Never use a mature low-growth peer as the primary anchor for a hypergrowth company.
 2. Revenue segment breakdown as percentages of total revenue — use the most recent filing. Include in the financial_summary.
 3. Customer metrics: total active customer count, new customers in most recent quarter, top customer concentration (% of revenue). Include in the financial_summary.
 4. Three valuation scenarios using the comp table above:
@@ -523,6 +531,7 @@ Provide valuation and financial analysis for the company above:
    - Base: apply the MEDIAN multiple of your comp set to next-12-month revenue guidance.
    - Bull: apply the HIGHEST-multiple hypergrowth comparable (must have >30% YoY growth) to next-12-month revenue guidance. If pipeline optionality exists (platform company, multiple indications), add a platform premium of 20–40%.
    napkin_math should mirror the Base scenario.
+   CONSISTENCY RULE — CRITICAL: each scenario's comp_multiple MUST exactly equal that same peer's ps_ratio value from the valuation_table array above (plus the stated platform premium for Bull, if applied). Do not invent a different multiple for the scenario than what you already reported for that ticker in the table — the frontend recomputes prices from these numbers and requires them to match exactly.
 5. Gross margin trajectory: state whether margin has been IMPROVING, STABLE, or DETERIORATING over the last 4 quarters and by how many percentage points. Include in financial_summary.
 6. Brief financial summary (3–4 sentences) covering: revenue growth rate, gross margin trend, path to profitability, dilution risk.
 7. Last 4 reported quarters (most recent first): quarter, revenue estimate, revenue actual, YoY growth %, EPS estimate, EPS actual. Use null for unknown values.

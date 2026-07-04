@@ -88,6 +88,7 @@ moat-finder/
 │       ├── lib/
 │       │   ├── parsers.ts       # parseNumberedList, parseMoatPoints, parseBullets
 │       │   ├── normPct.ts       # Shared decimal-or-percentage normaliser
+│       │   ├── napkinMath.ts    # buildCompOptions — Napkin Math comp selector logic
 │       │   ├── validation.ts    # tickerSchema (Zod)
 │       │   └── api.ts           # fetch/SSE wrapper
 │       └── types/
@@ -228,6 +229,8 @@ The AI research pipeline was upgraded based on real backtest results from resear
 - **Claude `max_tokens`**: synthesis (Step 7) produces large JSON. `max_tokens` in `llm.ts` is set to `16000` — do not lower it or synthesis will truncate mid-JSON for complex reports.
 - **Stripe color token remapping**: navy scale was remapped in-place (same token names, new values). `navy-800` is now `#1c1e54` (Stripe brand dark), `navy-900` is `#0d1b38`. Components did not need class name changes — only the token values changed.
 - **Gold vs purple rule**: gold (`#d4a853`) is for financial data only (ticker symbols, target price, valuation labels, timing data). Purple (`#533afd`) is for all UI chrome (buttons, focus rings, borders, accents, spinners). Never use gold for navigation, buttons, or interactive elements.
+- **Scenario `comp_multiple` must equal the matching `valuation_table` peer's `ps_ratio`**: enforced in the Step 3 prompt since v0.8.6 so the frontend's Napkin Math comp selector (`lib/napkinMath.ts`) can reliably extrapolate a target price for ANY valuation-table peer via P/S scaling, not just the 3 LLM-picked scenarios. Reports generated before this prompt fix may have a mismatched `comp_multiple` (verified on a real MU report: scenario multiple 21.44 vs that same peer's own `ps_ratio` of 2.9) — the frontend only extrapolates for peers NOT already covered by a scenario, so this doesn't produce visibly wrong numbers, but don't assume the two fields are interchangeable in old data.
+- **Competitor/peer selection must match revenue-driving product line, not broad sector**: Step 1 and Step 3 prompts (since v0.8.6) require competitors to derive the MAJORITY of their own revenue from the same specific product/service as the subject company — sharing a broad theme (e.g. "space company", "semiconductor company") is not sufficient. Foreign-listed tickers (Korean, Japanese, Taiwanese, etc.) are explicitly encouraged when they're the true industry leaders. Reports generated before this fix may have generic/wrong competitors (e.g. MU listed WDC/Intel/AMD instead of true memory-chip peers SK Hynix/Samsung).
 
 ---
 
@@ -242,6 +245,11 @@ The AI research pipeline was upgraded based on real backtest results from resear
 ---
 
 ## Changelog
+
+### v0.8.6
+
+- **Interactive Napkin Math comp selector** (`NapkinMath.tsx`, `lib/napkinMath.ts`): a dropdown now lets users switch the headline target price/upside between the LLM's own Bear/Base/Bull scenarios (used directly, no recomputation) or any other valuation-table peer — extrapolated client-side by scaling that peer's P/S ratio against the Base scenario's implied revenue/share constant (`target_price ÷ comp_multiple`, verified constant across all three scenarios per report). Extrapolated picks render a disclaimer and an "(est.)" suffix. `buildCompOptions()` is unit tested in `lib/napkinMath.test.ts`.
+- **Competitor/peer selection accuracy** (`pipeline.ts` Step 1 + Step 3): found via a real report (MU compared to WDC/Intel/AMD instead of true memory-chip peers SK Hynix/Samsung) that neither prompt instructed the LLM to match competitors by actual revenue-driving product line rather than broad sector/theme, nor explicitly encouraged foreign-listed tickers. Both prompts rewritten accordingly. Step 3 also now requires each scenario's `comp_multiple` to exactly equal that peer's `ps_ratio` in `valuation_table` — required for the new comp-selector's P/S scaling to be reliable on future reports.
 
 ### v0.8.5
 

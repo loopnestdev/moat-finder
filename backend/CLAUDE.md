@@ -77,6 +77,8 @@ backend/
 
 10. **Score calculation** — Step 7 uses a weighted rubric (sector momentum 20%, growth velocity 25%, valuation vs peers 20%, moat quality 20%, execution risk 15%). A company with >100% YoY growth in a hot sector must score ≥ 5.0. `management_rating` is NOT a scoring factor — it is injected into `parsed.report` after Step 7 synthesis so the scoring LLM never sees it.
 
+11. **Competitor/peer selection must match revenue-driving product line** (since v0.8.6) — Step 1 (`competitors`) and Step 3 (`valuation_table` peers) prompts both require the model to match companies by the SAME specific product/service line that generates the MAJORITY of the subject company's revenue, not merely a shared broad sector or theme. Foreign-listed tickers (Korean, Japanese, Taiwanese, etc.) must be actively considered when they are the true industry leaders — do not let the model default to familiar US-listed names. Step 3 additionally requires each scenario's `comp_multiple` to exactly equal that peer's `ps_ratio` in `valuation_table` (needed for the frontend's Napkin Math comp selector, `frontend/src/lib/napkinMath.ts`, to reliably extrapolate a price for any peer).
+
 ## Pipeline Types (report.types.ts)
 
 - `SSEEvent.status`: `'complete' | 'error' | 'cached'`
