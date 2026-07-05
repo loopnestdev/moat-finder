@@ -3,16 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../hooks/useAuth";
 import { usePipeline } from "../hooks/usePipeline";
-import { useReportList } from "../hooks/useResearch";
+import { useReportList, useSectorOptions } from "../hooks/useResearch";
+import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { tickerSchema } from "../lib/validation";
 import { apiFetch, ApiError } from "../lib/api";
-import { normPct } from "../lib/normPct";
 import ScoreBadge from "../components/report/ScoreBadge";
 import PipelineProgress from "../components/research/PipelineProgress";
 import Modal from "../components/ui/Modal";
 import Button from "../components/ui/Button";
 import Spinner from "../components/ui/Spinner";
-import type { ResearchListItem } from "../types/report.types";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-AU", {
@@ -41,7 +40,6 @@ export default function Home() {
   const queryClient = useQueryClient();
   const { user, isApproved, isAdmin } = useAuth();
   const pipeline = usePipeline();
-  const { data: reportList, isLoading: listLoading } = useReportList();
 
   const [input, setInput] = useState("");
   const [inputError, setInputError] = useState("");
@@ -54,7 +52,7 @@ export default function Home() {
     "claude",
   );
 
-  // Filter & sort state
+  // Filter & sort state — drives server-side filtering/sorting/pagination
   const [minScore, setMinScore] = useState<number | null>(null);
   const [minUpside, setMinUpside] = useState<number | null>(null);
   const [minYoy, setMinYoy] = useState<number | null>(null);
@@ -70,42 +68,32 @@ export default function Home() {
     minSectorHeat !== null ||
     sortBy !== "date";
 
-  // Distinct sector tags actually present in the data — hot_sector_match is
-  // free text from the LLM (not a fixed enum), so this is derived rather
-  // than hardcoded, and stays in sync as new sectors show up.
-  const sectorOptions = Array.from(
-    new Set(
-      (reportList ?? [])
-        .flatMap((r) => r.hot_sector_match ?? [])
-        .filter((s): s is string => Boolean(s)),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
+  // Debounce the free-typed numeric inputs so each keystroke doesn't fire a
+  // new server request — sector/sectorHeat/sort are discrete selections and
+  // don't need it.
+  const debouncedMinScore = useDebouncedValue(minScore, 400);
+  const debouncedMinUpside = useDebouncedValue(minUpside, 400);
+  const debouncedMinYoy = useDebouncedValue(minYoy, 400);
 
-  const filtered: ResearchListItem[] = (reportList ?? [])
-    .filter((r) => minScore === null || (r.score ?? 0) >= minScore)
-    .filter(
-      (r) => minUpside === null || (r.upside_percent ?? -999) >= minUpside,
-    )
-    .filter(
-      (r) =>
-        minYoy === null ||
-        (r.yoy_growth === null ? -999 : normPct(r.yoy_growth)) >= minYoy,
-    )
-    .filter(
-      (r) => !sectorFilter || r.hot_sector_match?.includes(sectorFilter),
-    )
-    .filter(
-      (r) => minSectorHeat === null || (r.sector_heat ?? 0) >= minSectorHeat,
-    )
-    .sort((a, b) => {
-      if (sortBy === "score") return (b.score ?? 0) - (a.score ?? 0);
-      if (sortBy === "upside")
-        return (b.upside_percent ?? -999) - (a.upside_percent ?? -999);
-      return (
-        new Date(b.updated_at ?? 0).getTime() -
-        new Date(a.updated_at ?? 0).getTime()
-      );
-    });
+  const { data: sectorOptions } = useSectorOptions();
+
+  const {
+    data,
+    isLoading: listLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useReportList({
+    minScore: debouncedMinScore,
+    minUpside: debouncedMinUpside,
+    minYoy: debouncedMinYoy,
+    sector: sectorFilter,
+    minSectorHeat,
+    sortBy,
+  });
+
+  const reportList = data?.pages.flatMap((p) => p.data) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -246,7 +234,7 @@ export default function Home() {
         </h2>
 
         {/* Filter & sort bar */}
-        {!listLoading && reportList && reportList.length > 0 && (
+        {!listLoading && (total > 0 || isFiltered) && (
           <div className="mb-4 flex flex-wrap gap-3 items-end">
             {/* Score ≥ */}
             <div className="flex flex-col gap-1">
@@ -322,7 +310,7 @@ export default function Home() {
                 className="max-w-[9.5rem] rounded border border-navy-700 bg-navy-800 text-cream font-body text-sm px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple focus:border-purple"
               >
                 <option value="">All Sectors</option>
-                {sectorOptions.map((s) => (
+                {(sectorOptions ?? []).map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
@@ -368,7 +356,7 @@ export default function Home() {
         )}
 
         {/* Quick filter presets — one-click toggles over the detailed filters above */}
-        {!listLoading && reportList && reportList.length > 0 && (
+        {!listLoading && (total > 0 || isFiltered) && (
           <div className="mb-4 flex flex-wrap gap-2">
             {(
               [
@@ -402,10 +390,10 @@ export default function Home() {
         )}
 
         {/* Count */}
-        {!listLoading && reportList && reportList.length > 0 && (
+        {!listLoading && total > 0 && (
           <p className="text-xs text-cream-subtle font-mono mb-4">
-            Showing {filtered.length} of {reportList.length} stock
-            {reportList.length !== 1 ? "s" : ""}
+            Showing {reportList.length} of {total} stock
+            {total !== 1 ? "s" : ""}
           </p>
         )}
 
@@ -413,9 +401,9 @@ export default function Home() {
           <div className="flex justify-center py-8">
             <Spinner size="lg" />
           </div>
-        ) : filtered.length > 0 ? (
+        ) : reportList.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filtered.map((report) => (
+            {reportList.map((report) => (
               <button
                 key={report.ticker_symbol}
                 onClick={() => {
@@ -461,21 +449,21 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* YoY growth */}
+                {/* YoY growth — pre-normalized server-side (moat.research_reports.yoy_growth generated column) */}
                 {report.yoy_growth != null && (
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-slate-400 text-xs">YoY</span>
                     <span
                       className={`font-mono text-sm font-semibold ${
-                        normPct(report.yoy_growth) >= 50
+                        report.yoy_growth >= 50
                           ? "text-emerald-400"
-                          : normPct(report.yoy_growth) >= 0
+                          : report.yoy_growth >= 0
                             ? "text-amber-400"
                             : "text-red-400"
                       }`}
                     >
-                      {normPct(report.yoy_growth) >= 0 ? "+" : ""}
-                      {normPct(report.yoy_growth).toFixed(1)}%
+                      {report.yoy_growth >= 0 ? "+" : ""}
+                      {report.yoy_growth.toFixed(1)}%
                     </span>
                   </div>
                 )}
@@ -501,7 +489,7 @@ export default function Home() {
               </button>
             ))}
           </div>
-        ) : reportList && reportList.length > 0 ? (
+        ) : isFiltered ? (
           <p className="text-cream-subtle text-sm font-body">
             No stocks match the current filters.
           </p>
@@ -509,6 +497,21 @@ export default function Home() {
           <p className="text-cream-subtle text-sm font-body">
             No research yet. Be the first to research a ticker.
           </p>
+        )}
+
+        {/* Load more */}
+        {hasNextPage && (
+          <div className="flex justify-center mt-6">
+            <Button
+              variant="secondary"
+              isLoading={isFetchingNextPage}
+              onClick={() => {
+                void fetchNextPage();
+              }}
+            >
+              Load More
+            </Button>
+          </div>
         )}
       </div>
 

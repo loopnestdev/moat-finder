@@ -46,16 +46,100 @@ function getTickerParam(ticker: string | string[] | undefined): string {
   return ticker ?? "";
 }
 
-// ─── GET /api/v1/research ─────────────────────────────────────────────────────
+/** Parses a query-string value into a finite number, or null if absent/invalid. */
+function parseOptionalFloat(value: unknown): number | null {
+  if (typeof value !== "string" || value === "") return null;
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
-router.get("/", async (_req, res) => {
+const SORT_OPTIONS = ["date", "score", "upside"] as const;
+type SortOption = (typeof SORT_OPTIONS)[number];
+
+function parseSortBy(value: unknown): SortOption {
+  return SORT_OPTIONS.includes(value as SortOption)
+    ? (value as SortOption)
+    : "date";
+}
+
+// ─── GET /api/v1/research/sectors ────────────────────────────────────────────
+// Declared before /:ticker to prevent 'sectors' being matched as a ticker symbol.
+// Returns the distinct hot_sector_match tags across all reports, for the
+// frontend's Sector filter dropdown.
+
+router.get("/sectors", async (_req, res) => {
   try {
     const { data, error } = await anonClient
       .from("research_reports")
+      .select("hot_sector_match");
+
+    if (error) {
+      res
+        .status(500)
+        .json({ error: "Failed to fetch sectors", code: "DB_ERROR" });
+      return;
+    }
+
+    const sectors = Array.from(
+      new Set((data ?? []).flatMap((r) => r.hot_sector_match ?? [])),
+    ).sort((a, b) => a.localeCompare(b));
+
+    res.json({ data: sectors });
+  } catch {
+    res
+      .status(500)
+      .json({ error: "Internal server error", code: "INTERNAL_ERROR" });
+  }
+});
+
+// ─── GET /api/v1/research ─────────────────────────────────────────────────────
+
+router.get("/", async (req, res) => {
+  try {
+    const page = Math.max(
+      1,
+      parseInt(String(req.query.page ?? "1"), 10) || 1,
+    );
+    const limit = Math.min(
+      200,
+      Math.max(1, parseInt(String(req.query.limit ?? "24"), 10) || 24),
+    );
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const minScore = parseOptionalFloat(req.query.minScore);
+    const minUpside = parseOptionalFloat(req.query.minUpside);
+    const minYoy = parseOptionalFloat(req.query.minYoy);
+    const minSectorHeat = parseOptionalFloat(req.query.minSectorHeat);
+    const sector =
+      typeof req.query.sector === "string" ? req.query.sector : "";
+    const sortBy = parseSortBy(req.query.sortBy);
+
+    let query = anonClient
+      .from("research_reports")
       .select(
-        "ticker_symbol, score, updated_at, version, report_json, tickers(company_name, sector)",
-      )
-      .order("updated_at", { ascending: false });
+        "ticker_symbol, score, updated_at, version, upside_percent, target_price, sector_heat, yoy_growth, hot_sector_match, thesis:report_json->thesis, llm_provider:report_json->>llm_provider, tickers(company_name, sector)",
+        { count: "exact" },
+      );
+
+    if (minScore !== null) query = query.gte("score", minScore);
+    if (minUpside !== null) query = query.gte("upside_percent", minUpside);
+    if (minYoy !== null) query = query.gte("yoy_growth", minYoy);
+    if (minSectorHeat !== null) query = query.gte("sector_heat", minSectorHeat);
+    if (sector) query = query.contains("hot_sector_match", [sector]);
+
+    if (sortBy === "score") {
+      query = query.order("score", { ascending: false, nullsFirst: false });
+    } else if (sortBy === "upside") {
+      query = query.order("upside_percent", {
+        ascending: false,
+        nullsFirst: false,
+      });
+    } else {
+      query = query.order("updated_at", { ascending: false });
+    }
+
+    const { data, error, count } = await query.range(from, to);
 
     if (error) {
       res
@@ -65,11 +149,16 @@ router.get("/", async (_req, res) => {
     }
 
     const enriched = (data ?? []).map((r) => {
-      const rj = r.report_json as unknown as ReportJson | null;
       const tickers = r.tickers as {
         company_name: string | null;
         sector: string | null;
       } | null;
+      const rawThesis = r.thesis as unknown;
+      const thesisText = Array.isArray(rawThesis)
+        ? (rawThesis as unknown[]).map(String).join(" ")
+        : typeof rawThesis === "string"
+          ? rawThesis
+          : "";
       return {
         ticker_symbol: r.ticker_symbol,
         company_name: tickers?.company_name ?? null,
@@ -77,18 +166,24 @@ router.get("/", async (_req, res) => {
         score: r.score ?? null,
         updated_at: r.updated_at,
         version: r.version,
-        upside_percent: rj?.napkin_math?.upside_percent ?? null,
-        target_price: rj?.napkin_math?.target_price ?? null,
-        hot_sector_match: rj?.hot_sector_match ?? [],
-        llm_provider: rj?.llm_provider ?? "claude",
-        sector_heat: rj?.sector_heat ?? null,
-        thesis:
-          typeof rj?.thesis === "string" ? rj.thesis.substring(0, 150) : "",
-        yoy_growth: rj?.valuation_table?.[0]?.yoy_growth ?? null,
+        upside_percent: r.upside_percent ?? null,
+        target_price: r.target_price ?? null,
+        hot_sector_match: r.hot_sector_match ?? [],
+        llm_provider: r.llm_provider ?? "claude",
+        sector_heat: r.sector_heat ?? null,
+        thesis: thesisText.substring(0, 150),
+        yoy_growth: r.yoy_growth ?? null,
       };
     });
 
-    res.json({ data: enriched });
+    const total = count ?? 0;
+    res.json({
+      data: enriched,
+      total,
+      page,
+      limit,
+      hasMore: from + limit < total,
+    });
   } catch {
     res
       .status(500)
@@ -707,6 +802,7 @@ router.put(
             version: newVersion,
             researched_by: req.user?.id ?? null,
             updated_at: new Date().toISOString(),
+            hot_sector_match: report.hot_sector_match ?? [],
           })
           .eq("id", existingReport.id);
 

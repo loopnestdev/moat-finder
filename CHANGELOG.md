@@ -4,6 +4,36 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
+### [v0.8.9] — 2026-07-05
+
+- **Server-side pagination + filtering for the home page list**: `GET
+  /api/v1/research` no longer returns every row on every visit — it now
+  accepts `page`, `limit` (default 24, max 200), `minScore`, `minUpside`,
+  `minYoy`, `sector`, `minSectorHeat`, and `sortBy` query params and does
+  real filtering/sorting/pagination in Postgres, returning `{ data, total,
+  page, limit, hasMore }`. New `GET /api/v1/research/sectors` endpoint
+  returns the distinct sector tags for the filter dropdown.
+- **DB migration** (`supabase-central/migrations/003_research_reports_filter_columns.sql`):
+  added `upside_percent`, `target_price`, `sector_heat`, `yoy_growth`
+  as `GENERATED ALWAYS AS ... STORED` columns derived from `report_json`
+  (each cast regex-guarded so one malformed LLM value can't fail the
+  migration for every row), plus a plain `hot_sector_match text[]` column
+  (generated columns can't use the subquery `jsonb_array_elements_text()`
+  needs, so this one is written explicitly by the app and was backfilled
+  once in the migration). All five are indexed. `yoy_growth`'s generated
+  expression bakes in the same normPct() decimal-vs-percentage guard used
+  on the frontend, so it's pre-normalized at the source now.
+- **Frontend**: `useReportList()` is now a `useInfiniteQuery` keyed by
+  filter state, with a new `useSectorOptions()` hook for the dropdown.
+  `Home.tsx`'s three free-typed numeric filters (Score/Upside/YoY) are
+  debounced 400ms (new `useDebouncedValue` hook) so typing doesn't fire a
+  request per keystroke. Added a "Load More" button. All client-side
+  filter/sort logic removed — the server does it now. Admin's Research tab
+  requests `?limit=200` since it needs the full list for ticker management,
+  not the home page's paginated browsing view.
+
+---
+
 ### [v0.8.8] — 2026-07-04
 
 - **Sector filter is now a dropdown** (`Home.tsx`): replaced the free-text

@@ -57,6 +57,7 @@ export async function saveNewReport(
       diagram_json: diagram as unknown as Json,
       version: 1,
       researched_by: researchedBy,
+      hot_sector_match: report.hot_sector_match ?? [],
     })
     .select("id")
     .single();

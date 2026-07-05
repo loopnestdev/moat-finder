@@ -233,6 +233,8 @@ The AI research pipeline was upgraded based on real backtest results from resear
 - **Gold vs purple rule**: gold (`#d4a853`) is for financial data only (ticker symbols, target price, valuation labels, timing data). Purple (`#533afd`) is for all UI chrome (buttons, focus rings, borders, accents, spinners). Never use gold for navigation, buttons, or interactive elements.
 - **Scenario `comp_multiple` must equal the matching `valuation_table` peer's `ps_ratio`**: enforced in the Step 3 prompt since v0.8.6 so the frontend's Napkin Math comp selector (`lib/napkinMath.ts`) can reliably extrapolate a target price for ANY valuation-table peer via P/S scaling, not just the 3 LLM-picked scenarios. Reports generated before this prompt fix may have a mismatched `comp_multiple` (verified on a real MU report: scenario multiple 21.44 vs that same peer's own `ps_ratio` of 2.9) — the frontend only extrapolates for peers NOT already covered by a scenario, so this doesn't produce visibly wrong numbers, but don't assume the two fields are interchangeable in old data.
 - **Competitor/peer selection must match revenue-driving product line, not broad sector**: Step 1 and Step 3 prompts (since v0.8.6) require competitors to derive the MAJORITY of their own revenue from the same specific product/service as the subject company — sharing a broad theme (e.g. "space company", "semiconductor company") is not sufficient. Foreign-listed tickers (Korean, Japanese, Taiwanese, etc.) are explicitly encouraged when they're the true industry leaders. Reports generated before this fix may have generic/wrong competitors (e.g. MU listed WDC/Intel/AMD instead of true memory-chip peers SK Hynix/Samsung).
+- **`research_reports` filter columns are generated, never write to them directly** (since v0.8.9): `upside_percent`, `target_price`, `sector_heat`, `yoy_growth` are `GENERATED ALWAYS AS ... STORED` — Postgres rejects any INSERT/UPDATE that tries to set them explicitly. They recompute automatically whenever `report_json` changes, so no app code needs to touch them. `hot_sector_match` is the one exception — a plain column, because generated columns can't use the subquery `jsonb_array_elements_text()` needs — it must be written explicitly on every insert/update (see `saveResearch.ts` and the PUT `/:ticker` route) or it'll silently stay stale.
+- **`tickers.sector`/`company_name`/`industry` are always null in production** (pre-existing, not yet fixed): the ticker upsert only ever sets `symbol`, even though Step 1 discovers all three every research run. The home page list's `sector` field is always `null` as a result — sector filtering uses `hot_sector_match` instead, which is real data. Don't build new features assuming `tickers.sector` is populated.
 
 ---
 
@@ -247,6 +249,10 @@ The AI research pipeline was upgraded based on real backtest results from resear
 ---
 
 ## Changelog
+
+### v0.8.9
+
+- **Server-side pagination + filtering** (`research.ts`, `useResearch.ts`, `Home.tsx`): `GET /api/v1/research` now takes `page`/`limit`/`minScore`/`minUpside`/`minYoy`/`sector`/`minSectorHeat`/`sortBy` query params and does real filtering/sorting/pagination in Postgres instead of returning every row for client-side filtering. New `GET /api/v1/research/sectors` for the filter dropdown. DB migration `supabase-central/migrations/003_research_reports_filter_columns.sql` adds generated columns (`upside_percent`, `target_price`, `sector_heat`, `yoy_growth` — pre-normalized via the same normPct logic as the frontend) plus a plain `hot_sector_match text[]` column, all indexed. `useReportList()` is now a `useInfiniteQuery`; new `useDebouncedValue` hook debounces the free-typed numeric filters.
 
 ### v0.8.8
 

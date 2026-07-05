@@ -147,9 +147,12 @@ FRONTEND_ORIGIN=             # CORS allowlist (Cloudflare Workers URL)
 ```
 GET    /api/v1/health                    # health check (public)
 GET    /api/v1/research/:ticker          # fetch cached report (public)
-GET    /api/v1/research                  # list all researched tickers (public)
+GET    /api/v1/research                  # paginated + filtered/sorted list (public)
+                                          #   ?page&limit&minScore&minUpside&minYoy&sector&minSectorHeat&sortBy
+GET    /api/v1/research/sectors          # distinct hot_sector_match tags, for the filter dropdown (public)
 POST   /api/v1/research/:ticker          # trigger new research (auth required)
 PUT    /api/v1/research/:ticker          # trigger update + diff (auth required)
+DELETE /api/v1/research/:ticker          # hard-delete a ticker + all versions/checkpoints (admin only)
 GET    /api/v1/research/:ticker/versions # list version history (public)
 GET    /api/v1/audit                     # fetch audit log (admin only)
 GET    /api/v1/admin/users               # list users pending approval (admin only)

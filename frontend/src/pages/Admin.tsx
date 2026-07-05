@@ -398,9 +398,11 @@ function ResearchTab() {
   const [deleteError, setDeleteError] = useState("");
 
   const { data: reports, isLoading } = useQuery({
-    queryKey: ["research"],
+    queryKey: ["research", "admin-list"],
     queryFn: async () => {
-      const res = await apiFetch("/api/v1/research");
+      // Admin management needs the full list, not the home page's paginated
+      // view — request the max page size (200; bump if the table outgrows it).
+      const res = await apiFetch("/api/v1/research?limit=200");
       return ((await res.json()) as { data: ResearchListItem[] }).data;
     },
     staleTime: 30_000,

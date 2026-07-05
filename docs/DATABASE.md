@@ -87,6 +87,19 @@ CREATE TABLE public.research_reports (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
+  -- v0.8.9 — generated columns for server-side filter/sort on the home page
+  -- list, derived from report_json so they can never drift out of sync.
+  -- yoy_growth bakes in the same normPct() decimal-vs-percentage guard used
+  -- on the frontend (frontend/src/lib/normPct.ts).
+  upside_percent  NUMERIC GENERATED ALWAYS AS (...) STORED,
+  target_price    NUMERIC GENERATED ALWAYS AS (...) STORED,
+  sector_heat     NUMERIC GENERATED ALWAYS AS (...) STORED,
+  yoy_growth      NUMERIC GENERATED ALWAYS AS (...) STORED,
+  -- Plain (non-generated) column — Postgres generated columns disallow the
+  -- subquery jsonb_array_elements_text() needs. Written explicitly by the
+  -- app on every insert/update (see saveResearch.ts, PUT /:ticker route).
+  hot_sector_match TEXT[],
+
   UNIQUE (ticker_id)  -- one current report per ticker
 );
 
@@ -94,10 +107,16 @@ CREATE TABLE public.research_reports (
 CREATE INDEX idx_research_ticker_symbol ON public.research_reports(ticker_symbol);
 CREATE INDEX idx_research_score ON public.research_reports(score DESC);
 CREATE INDEX idx_research_updated ON public.research_reports(updated_at DESC);
+CREATE INDEX idx_research_upside      ON public.research_reports(upside_percent DESC NULLS LAST);
+CREATE INDEX idx_research_sector_heat ON public.research_reports(sector_heat DESC NULLS LAST);
+CREATE INDEX idx_research_yoy_growth  ON public.research_reports(yoy_growth DESC NULLS LAST);
+CREATE INDEX idx_research_hot_sector  ON public.research_reports USING GIN (hot_sector_match);
 
 -- GIN index for full-text search on report_json
 CREATE INDEX idx_research_report_gin ON public.research_reports USING GIN (report_json);
 ```
+
+See `supabase-central/migrations/003_research_reports_filter_columns.sql` for the exact generated-column expressions (each cast is regex-guarded so a malformed LLM value can't fail the migration for every row).
 
 **report_json shape:**
 

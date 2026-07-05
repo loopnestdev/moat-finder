@@ -123,18 +123,24 @@ export type Database = {
         Row: {
           created_at: string
           diagram_json: Json
+          hot_sector_match: string[] | null
           id: string
           report_json: Json
           researched_by: string | null
           score: number | null
+          sector_heat: number | null
+          target_price: number | null
           ticker_id: string
           ticker_symbol: string
           updated_at: string
+          upside_percent: number | null
           version: number
+          yoy_growth: number | null
         }
         Insert: {
           created_at?: string
           diagram_json: Json
+          hot_sector_match?: string[] | null
           id?: string
           report_json: Json
           researched_by?: string | null
@@ -147,6 +153,7 @@ export type Database = {
         Update: {
           created_at?: string
           diagram_json?: Json
+          hot_sector_match?: string[] | null
           id?: string
           report_json?: Json
           researched_by?: string | null
