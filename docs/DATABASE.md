@@ -91,8 +91,13 @@ CREATE TABLE public.research_reports (
   -- list, derived from report_json so they can never drift out of sync.
   -- yoy_growth bakes in the same normPct() decimal-vs-percentage guard used
   -- on the frontend (frontend/src/lib/normPct.ts).
-  upside_percent  NUMERIC GENERATED ALWAYS AS (...) STORED,
-  target_price    NUMERIC GENERATED ALWAYS AS (...) STORED,
+  -- v0.9.0 — target_price/upside_percent redefined to mirror the BULL
+  -- scenario (report_json.scenarios), not Base/napkin_math — these are the
+  -- "headline" numbers shown on home page cards and used for Top Upside
+  -- sort/filter. Falls back to napkin_math (Base) for pre-v2 reports with
+  -- no scenarios array. napkin_math itself is untouched (still Base).
+  upside_percent  NUMERIC GENERATED ALWAYS AS (...) STORED,  -- mirrors scenarios[Bull], falls back to napkin_math
+  target_price    NUMERIC GENERATED ALWAYS AS (...) STORED,  -- mirrors scenarios[Bull], falls back to napkin_math
   sector_heat     NUMERIC GENERATED ALWAYS AS (...) STORED,
   yoy_growth      NUMERIC GENERATED ALWAYS AS (...) STORED,
   -- Plain (non-generated) column — Postgres generated columns disallow the

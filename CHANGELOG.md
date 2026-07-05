@@ -4,6 +4,26 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
+### [v0.9.0] — 2026-07-05
+
+- **Headline numbers now default to the Bull scenario, not Base**: both the
+  home page cards (target price, upside %, "Top Upside" sort/filter) and the
+  Report page's Napkin Math dropdown now default to the Bull scenario
+  instead of Base. Migration
+  (`supabase-central/migrations/004_default_bull_scenario.sql`) redefines
+  the `target_price`/`upside_percent` generated columns on
+  `research_reports` to derive from the Bull entry in `report_json.scenarios`
+  (checking all 3 array positions for `label = 'Bull'`, not assuming order),
+  falling back to `napkin_math` (Base) for pre-v2 reports with no scenarios
+  array. Applied retroactively — no re-research needed, all existing reports
+  picked up the new values immediately. `napkin_math` itself and the Step 3
+  pipeline prompt are unchanged; only these two summary columns and the
+  frontend's default dropdown selection changed. New `moat.safe_numeric()`
+  helper function added for the regex-guarded numeric cast (reused across
+  both columns instead of duplicating the regex check).
+
+---
+
 ### [v0.8.9] — 2026-07-05
 
 - **Server-side pagination + filtering for the home page list**: `GET

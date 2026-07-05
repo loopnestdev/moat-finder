@@ -40,7 +40,10 @@ export default function NapkinMath({
     [data, scenarios, valuationTable, ticker],
   );
 
+  // Defaults to Bull — falls back to Base for pre-v2 reports with no
+  // scenarios array, then the first available option.
   const defaultKey =
+    options.find((o) => o.scenarioLabel === "Bull")?.key ??
     options.find((o) => o.scenarioLabel === "Base")?.key ??
     options[0]?.key ??
     "";
