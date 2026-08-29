@@ -4,6 +4,20 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
+### [v0.9.2] — 2026-08-29
+
+- **Fix pipeline crash on `null` Step 1 competitors/customers**
+  (`backend/src/services/pipeline.ts`): new research on tickers such as `VIST`
+  (Vista Energy) failed right after Discovery with
+  `Cannot read properties of null (reading 'join')`. The Discovery LLM returns
+  `null` rather than `[]` for `competitors`/`customers` on companies with no
+  identifiable "top customers" (commodity producers especially), and
+  `formatStep1Context()` — called first by every downstream step — ran `.join()`
+  straight on the null. Added `normaliseStep1()` to coerce the raw Step 1 JSON
+  (arrays defaulted, nameless competitors dropped, null string fields → `""`)
+  before it is returned and checkpointed, plus `?? []` guards inside
+  `formatStep1Context()`. Regression test added in `backend/tests/pipeline.test.ts`.
+
 ### [v0.9.0] — 2026-07-05
 
 - **Headline numbers now default to the Bull scenario, not Base**: both the

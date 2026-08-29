@@ -236,6 +236,7 @@ The AI research pipeline was upgraded based on real backtest results from resear
 - **`research_reports` filter columns are generated, never write to them directly** (since v0.8.9): `upside_percent`, `target_price`, `sector_heat`, `yoy_growth` are `GENERATED ALWAYS AS ... STORED` — Postgres rejects any INSERT/UPDATE that tries to set them explicitly. They recompute automatically whenever `report_json` changes, so no app code needs to touch them. `hot_sector_match` is the one exception — a plain column, because generated columns can't use the subquery `jsonb_array_elements_text()` needs — it must be written explicitly on every insert/update (see `saveResearch.ts` and the PUT `/:ticker` route) or it'll silently stay stale.
 - **`target_price`/`upside_percent` mean Bull, not Base** (since v0.9.0): these two generated columns mirror the Bull entry in `report_json.scenarios`, not `napkin_math` (which is still Base and unchanged). This is what home page cards, "Top Upside" sort/filter, and the Napkin Math dropdown's default selection all show. Don't assume these match `napkin_math.target_price`/`upside_percent` — they're deliberately different since v0.9.0. See `supabase-central/migrations/004_default_bull_scenario.sql`.
 - **`tickers.sector`/`company_name`/`industry` are always null in production** (pre-existing, not yet fixed): the ticker upsert only ever sets `symbol`, even though Step 1 discovers all three every research run. The home page list's `sector` field is always `null` as a result — sector filtering uses `hot_sector_match` instead, which is real data. Don't build new features assuming `tickers.sector` is populated.
+- **Step 1 `competitors`/`customers` can come back `null`** (since v0.9.2): the Discovery LLM returns `null` (not `[]`) for these fields for companies with no identifiable "top customers" — commodity producers especially (oil & gas, mining, e.g. `VIST`). `formatStep1Context()` runs first in every downstream step and used to call `.join()` straight on the value, crashing the whole pipeline right after Discovery with `Cannot read properties of null (reading 'join')`. Fixed by `normaliseStep1()` in `pipeline.ts` (coerces the raw Step 1 JSON — arrays defaulted, null string fields → `""` — before it's returned or checkpointed) plus `?? []` guards inside `formatStep1Context()` itself. Keep both — old checkpoints reconstructed in `runFromCheckpoint()` bypass `normaliseStep1()`.
 
 ---
 
@@ -250,6 +251,10 @@ The AI research pipeline was upgraded based on real backtest results from resear
 ---
 
 ## Changelog
+
+### v0.9.2
+
+- **Fix pipeline crash on `null` Step 1 competitors/customers** (`backend/src/services/pipeline.ts`, `backend/tests/pipeline.test.ts`): new research on tickers like `VIST` (Vista Energy) failed immediately after Discovery with `Cannot read properties of null (reading 'join')`. The Discovery LLM returns `null` — not `[]` — for `competitors`/`customers` on companies with no identifiable "top customers" (commodity producers especially), and `formatStep1Context()`, which every downstream step calls first, ran `.join()` straight on the null. Added `normaliseStep1()` to coerce the raw Step 1 JSON (arrays defaulted to `[]`, `competitors` entries without a `name` dropped, null string fields → `""`) before it is returned from `runStep1()` and written to the checkpoint, and hardened `formatStep1Context()` with `?? []` guards + an `n/a` placeholder (matching the existing guarded pattern in `buildSynthesisContext`). Regression test added.
 
 ### v0.9.1
 

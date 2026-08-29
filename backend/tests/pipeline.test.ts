@@ -241,6 +241,36 @@ describe("runPipeline", () => {
     await expect(runPipeline("TEST", emit)).rejects.toThrow();
   });
 
+  it("survives Step 1 returning null competitors/customers (commodity producers, e.g. oil & gas)", async () => {
+    // Regression: the model returns `null` for these fields for companies with
+    // no identifiable "top customers". formatStep1Context ran `.join()` on the
+    // null straight after Discovery, crashing every downstream step with
+    // "Cannot read properties of null (reading 'join')".
+    const step1NullLists = JSON.stringify({
+      company_name: "Vista Energy",
+      industry: "Oil & Gas E&P",
+      sector: "Energy",
+      competitors: null,
+      customers: null,
+      primary_product: "Shale oil production",
+      primary_region: "Argentina (Vaca Muerta)",
+    });
+
+    mockCreate
+      .mockResolvedValueOnce(makeEndTurnResponse(step1NullLists))
+      .mockResolvedValueOnce(makeEndTurnResponse(step2Json))
+      .mockResolvedValueOnce(makeEndTurnResponse(step3Json))
+      .mockResolvedValueOnce(makeEndTurnResponse(step4Json))
+      .mockResolvedValueOnce(makeEndTurnResponse(step5Json))
+      .mockResolvedValueOnce(makeEndTurnResponse(step6Json))
+      .mockResolvedValueOnce(makeEndTurnResponse(step7Json));
+
+    const emit: EmitFn = vi.fn();
+    const result = await runPipeline("VIST", emit);
+
+    expect(result.report.thesis).toBe("Strong AI play with durable moat");
+  });
+
   it("propagates the underlying error when the LLM call rejects (e.g. missing/invalid API key)", async () => {
     // The Anthropic SDK constructor itself is mocked out for these tests, so
     // its own "missing API key" validation never runs — instead we simulate

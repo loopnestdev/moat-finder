@@ -8,6 +8,7 @@ import type {
   ReportJson,
   DiagramJson,
   Step1Output,
+  Competitor,
   Step2Output,
   Step3Output,
   Step4Output,
@@ -218,12 +219,39 @@ function buildExchangeContext(
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/**
+ * Coerce a raw Step 1 LLM response into a safe Step1Output.
+ * The model sometimes returns `null` for `competitors` / `customers` (common for
+ * commodity producers with no identifiable "top customers", e.g. oil & gas) —
+ * every downstream step calls formatStep1Context first, so an unguarded null
+ * here crashes the whole pipeline right after Discovery.
+ */
+function normaliseStep1(raw: Step1Output): Step1Output {
+  return {
+    company_name: raw.company_name ?? "",
+    industry: raw.industry ?? "",
+    sector: raw.sector ?? "",
+    primary_product: raw.primary_product ?? "",
+    primary_region: raw.primary_region ?? "",
+    competitors: Array.isArray(raw.competitors)
+      ? raw.competitors.filter((c): c is Competitor => !!c && !!c.name)
+      : [],
+    customers: Array.isArray(raw.customers)
+      ? raw.customers.filter((c): c is string => typeof c === "string" && !!c)
+      : [],
+  };
+}
+
 /** Format Step 1 output as a context string passed to steps 2-6. */
 function formatStep1Context(step1: Step1Output): string {
+  const competitors = (step1.competitors ?? [])
+    .map((c) => `${c.name} (${c.ticker})`)
+    .join(", ");
+  const customers = (step1.customers ?? []).join(", ");
   return `Company: ${step1.company_name} (${step1.primary_product}, ${step1.industry})
 Sector: ${step1.sector} | Region: ${step1.primary_region}
-Competitors: ${step1.competitors.map((c) => `${c.name} (${c.ticker})`).join(", ")}
-Top Customers: ${step1.customers.join(", ")}`;
+Competitors: ${competitors || "n/a"}
+Top Customers: ${customers || "n/a"}`;
 }
 
 /** Prefix injected into Gemini prompts to enforce googleSearch usage. */
@@ -321,7 +349,7 @@ Use web search for current information. Return only the JSON object.`;
   const { text } = await callLLM(finalPrompt, provider);
 
   const duration = Date.now() - startTime;
-  const result = extractJSON(text, provider) as Step1Output;
+  const result = normaliseStep1(extractJSON(text, provider) as Step1Output);
   emit({
     step: 1,
     label: "Discovery",
