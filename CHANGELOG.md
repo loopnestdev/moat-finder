@@ -16,7 +16,9 @@ All notable changes to moat-finder are listed here in reverse chronological orde
   straight on the null. Added `normaliseStep1()` to coerce the raw Step 1 JSON
   (arrays defaulted, nameless competitors dropped, null string fields → `""`)
   before it is returned and checkpointed, plus `?? []` guards inside
-  `formatStep1Context()`. Regression test added in `backend/tests/pipeline.test.ts`.
+  `formatStep1Context()`. Also guarded the Step 5 completion log's
+  `hot_sector_match.join()` against null (second source of the same error, hit
+  on `AGX`). Regression tests added in `backend/tests/pipeline.test.ts`.
 
 ### [v0.9.0] — 2026-07-05
 

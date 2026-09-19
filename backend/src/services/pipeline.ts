@@ -709,7 +709,7 @@ Use web search for current macro context. Return only the JSON object.`;
   );
   emit({ step: 5, label: "Macro & Sector", status: "complete", duration });
   console.log(
-    `[Step 5] complete — sector_heat: ${result.sector_heat}/5, hot_matches: ${result.hot_sector_match.join(", ") || "none"} (${duration}ms)`,
+    `[Step 5] complete — sector_heat: ${result.sector_heat}/5, hot_matches: ${(result.hot_sector_match ?? []).join(", ") || "none"} (${duration}ms)`,
   );
   return result;
 }

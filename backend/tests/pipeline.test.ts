@@ -271,6 +271,32 @@ describe("runPipeline", () => {
     expect(result.report.thesis).toBe("Strong AI play with durable moat");
   });
 
+  it("survives Step 5 returning null hot_sector_match", async () => {
+    // Regression: the Step 5 completion log ran .join() on hot_sector_match
+    // without a guard, so a null value threw the same
+    // "Cannot read properties of null (reading 'join')" error.
+    const step5NullMatch = JSON.stringify({
+      macro_summary: "Neutral",
+      sector_heat: 3,
+      hot_sector_match: null,
+      tariff_exposure: "Minimal",
+    });
+
+    mockCreate
+      .mockResolvedValueOnce(makeEndTurnResponse(step1Json))
+      .mockResolvedValueOnce(makeEndTurnResponse(step2Json))
+      .mockResolvedValueOnce(makeEndTurnResponse(step3Json))
+      .mockResolvedValueOnce(makeEndTurnResponse(step4Json))
+      .mockResolvedValueOnce(makeEndTurnResponse(step5NullMatch))
+      .mockResolvedValueOnce(makeEndTurnResponse(step6Json))
+      .mockResolvedValueOnce(makeEndTurnResponse(step7Json));
+
+    const emit: EmitFn = vi.fn();
+    const result = await runPipeline("AGX", emit);
+
+    expect(result.report.thesis).toBe("Strong AI play with durable moat");
+  });
+
   it("propagates the underlying error when the LLM call rejects (e.g. missing/invalid API key)", async () => {
     // The Anthropic SDK constructor itself is mocked out for these tests, so
     // its own "missing API key" validation never runs — instead we simulate
