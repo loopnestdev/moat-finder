@@ -1,4 +1,4 @@
-# DATABASE.md — moat-finder
+# DATABASE.md - moat-finder
 
 ## Provider
 
@@ -87,12 +87,12 @@ CREATE TABLE public.research_reports (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-  -- v0.8.9 — generated columns for server-side filter/sort on the home page
+  -- v0.8.9 - generated columns for server-side filter/sort on the home page
   -- list, derived from report_json so they can never drift out of sync.
   -- yoy_growth bakes in the same normPct() decimal-vs-percentage guard used
   -- on the frontend (frontend/src/lib/normPct.ts).
-  -- v0.9.0 — target_price/upside_percent redefined to mirror the BULL
-  -- scenario (report_json.scenarios), not Base/napkin_math — these are the
+  -- v0.9.0 - target_price/upside_percent redefined to mirror the BULL
+  -- scenario (report_json.scenarios), not Base/napkin_math - these are the
   -- "headline" numbers shown on home page cards and used for Top Upside
   -- sort/filter. Falls back to napkin_math (Base) for pre-v2 reports with
   -- no scenarios array. napkin_math itself is untouched (still Base).
@@ -100,7 +100,7 @@ CREATE TABLE public.research_reports (
   target_price    NUMERIC GENERATED ALWAYS AS (...) STORED,  -- mirrors scenarios[Bull], falls back to napkin_math
   sector_heat     NUMERIC GENERATED ALWAYS AS (...) STORED,
   yoy_growth      NUMERIC GENERATED ALWAYS AS (...) STORED,
-  -- Plain (non-generated) column — Postgres generated columns disallow the
+  -- Plain (non-generated) column - Postgres generated columns disallow the
   -- subquery jsonb_array_elements_text() needs. Written explicitly by the
   -- app on every insert/update (see saveResearch.ts, PUT /:ticker route).
   hot_sector_match TEXT[],
@@ -151,7 +151,7 @@ See `supabase-central/migrations/003_research_reports_filter_columns.sql` for th
   "llm_model": "claude-sonnet-4-6 | gemini-2.5-flash-lite",
   "management_rating": {
     "grade": "A | B | C | D | F",
-    "score": "number (0–100)",
+    "score": "number (0-100)",
     "summary": "string",
     "ceo_assessment": "string",
     "recent_changes": "string",
@@ -327,7 +327,7 @@ $$ LANGUAGE plpgsql;
 ## Migration Strategy
 
 - All schema changes via Supabase migration files in `supabase/migrations/`
-- Never alter tables manually in the dashboard — always write a migration file
+- Never alter tables manually in the dashboard - always write a migration file
 - Migration file naming: `YYYYMMDDHHMMSS_description.sql`
 - Run locally with Supabase CLI: `supabase db push`
 

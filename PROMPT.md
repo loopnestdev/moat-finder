@@ -1,4 +1,4 @@
-# moat-finder — Rebuild Prompt
+# moat-finder - Rebuild Prompt
 
 This document contains the high-level prompt needed to recreate
 moat-finder from scratch using an AI coding agent (e.g. Claude Code).
@@ -9,9 +9,9 @@ moat-finder from scratch using an AI coding agent (e.g. Claude Code).
 
 An AI-powered stock research web application that takes a stock ticker
 as input and generates a structured investment research report in
-3–8 minutes. The report scores the stock 1–10 on asymmetric
+3-8 minutes. The report scores the stock 1-10 on asymmetric
 risk/reward and provides moat analysis, valuation, macro context,
-and sentiment — all grounded in real-time web search.
+and sentiment - all grounded in real-time web search.
 
 The target user is an individual investor who wants institutional-grade
 analysis without paying for Bloomberg or hiring an analyst.
@@ -20,16 +20,16 @@ analysis without paying for Bloomberg or hiring an analyst.
 
 ## Architecture
 
-User → Cloudflare (WAF + CDN + geo-block)
-→ Cloudflare Pages (React SPA frontend)
-→ Railway (Node.js/Express backend, Docker/Alpine)
-→ Supabase (PostgreSQL + Auth + RLS)
-→ Anthropic API (Claude with web_search)
-→ Google Gemini API (Gemini with googleSearch)
+User --> Cloudflare (WAF + CDN + geo-block)
+--> Cloudflare Pages (React SPA frontend)
+--> Railway (Node.js/Express backend, Docker/Alpine)
+--> Supabase (PostgreSQL + Auth + RLS)
+--> Anthropic API (Claude with web_search)
+--> Google Gemini API (Gemini with googleSearch)
 
 **Frontend**: React + Vite + Tailwind CSS v4, hosted on Cloudflare Pages  
 **Backend**: Node.js + Express + TypeScript, hosted on Railway  
-**Database + Auth**: Supabase — Google OAuth, RLS on all tables  
+**Database + Auth**: Supabase - Google OAuth, RLS on all tables  
 **AI**: Claude (primary) + Gemini (secondary), user selects per run  
 **Infrastructure**: Cloudflare for CDN/security, Railway for compute
 
@@ -39,26 +39,26 @@ User → Cloudflare (WAF + CDN + geo-block)
 
 ### Research Pipeline (7 steps)
 
-1. **Discovery** — company overview, sector, exchange, key facts
-2. **Deep Dive** — business model, moat analysis, management rating
-   (100-point A–F scorecard), technology assessment
-3. **Valuation & Financials** — quarterly results, napkin math
+1. **Discovery** - company overview, sector, exchange, key facts
+2. **Deep Dive** - business model, moat analysis, management rating
+   (100-point A-F scorecard), technology assessment
+3. **Valuation & Financials** - quarterly results, napkin math
    (3-scenario Bear/Base/Bull), peer comp table
-4. **Risk Red Team** — bear case, key risks, short thesis
-5. **Macro & Sector** — policy tailwinds/headwinds, sector heat
-6. **Sentiment & Technicals** — insider activity, short interest,
+4. **Risk Red Team** - bear case, key risks, short thesis
+5. **Macro & Sector** - policy tailwinds/headwinds, sector heat
+6. **Sentiment & Technicals** - insider activity, short interest,
    technical signals
-7. **Synthesis** — final report JSON, investment score 1–10
+7. **Synthesis** - final report JSON, investment score 1-10
 
-Steps 2–6 run in **parallel** via `Promise.allSettled()`.  
-Step 7 runs after all of 2–6 complete.  
-Each completed step is **checkpointed** immediately — interrupted
+Steps 2-6 run in **parallel** via `Promise.allSettled()`.  
+Step 7 runs after all of 2-6 complete.  
+Each completed step is **checkpointed** immediately - interrupted
 pipelines resume from the last saved step.
 
 ### Multi-LLM Support
 
-- Claude (Anthropic) — default, uses `web_search` tool
-- Gemini (Google) — opt-in per run, uses `googleSearch` grounding
+- Claude (Anthropic) - default, uses `web_search` tool
+- Gemini (Google) - opt-in per run, uses `googleSearch` grounding
 - Provider stored in `report_json.llm_provider` per report
 - Model names configurable via env vars `CLAUDE_MODEL`, `GEMINI_MODEL`
 - Full cross-provider checkpoint clearing on provider switch
@@ -76,35 +76,35 @@ pipelines resume from the last saved step.
 ### Report Sections
 
 - Investment thesis (italic blockquote)
-- Investment score gauge (1–10, colour-coded)
+- Investment score gauge (1-10, colour-coded)
 - Sector heat tags + emoji flames
 - Business model diagram (custom canvas zones)
 - Moat & competitors (parsed numbered list)
-- Why Now — Catalysts (numbered cards)
+- Why Now - Catalysts (numbered cards)
 - Napkin Math (target price + upside %, 3 scenarios)
 - Quarterly earnings table
 - Key Risks (red accent, white text)
 - Bear case + rebuttal
 - Macro & sector summary
 - Sentiment & technicals
-- Management Rating (independent A–F scorecard, 5 categories)
+- Management Rating (independent A-F scorecard, 5 categories)
 - Version history with diff + target price change
 
 ### Authentication & Access Control
 
 - Google OAuth via Supabase (implicit flow, browser SPA)
 - Role system: `admin`, `approved`, `pending`, `rejected`
-- New users land as `pending` — admin approves via dashboard
-- RLS on all tables — users can only read their own reports
+- New users land as `pending` - admin approves via dashboard
+- RLS on all tables - users can only read their own reports
 - Admins can read all reports and delete any report
 
 ### Home Page
 
-- Filter bar: Score ≥, Upside ≥ %, YoY ≥ %, Sector (substring), Sort
+- Filter bar: Score >=, Upside >= %, YoY >= %, Sector (substring), Sort
 - YoY growth filter (from valuation_table[0].yoy_growth)
-- YoY growth shown on stock cards (colour-coded: emerald ≥50%, amber 0–49%, red negative)
+- YoY growth shown on stock cards (colour-coded: emerald >=50%, amber 0-49%, red negative)
 - Stock cards show: ticker, score gauge, target price, upside %, YoY growth,
-  first sector tag, LLM badge (✦ Claude / ◆ Gemini), date
+  first sector tag, LLM badge (star icon = Claude, diamond icon = Gemini), date
 - Count: "Showing X of Y stocks"
 
 ---
@@ -129,7 +129,7 @@ pipelines resume from the last saved step.
 - JetBrains Mono for all financial numbers
 - Stripe-inspired dark theme: deep navy/purple backgrounds,
   gold `#d4a853` for financial accents
-- Score colours: emerald (8–10), amber (5–7.9), red (1–4.9)
+- Score colours: emerald (8-10), amber (5-7.9), red (1-4.9)
 - Report page is fully responsive to 430px (iPhone 16 Plus).
   Two-column layout collapses to single column below lg breakpoint.
   Valuation table uses overflow-x-auto scroll wrapper on mobile.
@@ -141,10 +141,10 @@ Tables: `users`, `tickers`, `research_reports`, `research_versions`,
 
 Key schema decisions:
 
-- `research_reports.report_json` — full JSONB blob (all report data)
-- `research_checkpoints` — per-step output saved immediately on completion
-- `research_versions` — every update creates a new version with diff_json
-- RLS reads role from `auth.jwt()` app_metadata (not a subquery — avoids
+- `research_reports.report_json` - full JSONB blob (all report data)
+- `research_checkpoints` - per-step output saved immediately on completion
+- `research_versions` - every update creates a new version with diff_json
+- RLS reads role from `auth.jwt()` app_metadata (not a subquery - avoids
   infinite recursion)
 
 ### Infrastructure
@@ -196,12 +196,12 @@ VITE_API_BASE_URL=https://your-backend.railway.app
 - **SSE + Cloudflare**: set `X-Accel-Buffering: no` header to prevent
   Cloudflare from buffering SSE. Send keepalive pings every 30s.
 - **Railway trust proxy**: set `app.set('trust proxy', 1)` before any
-  middleware — required for `express-rate-limit` behind Cloudflare.
+  middleware - required for `express-rate-limit` behind Cloudflare.
 - **JSON extraction**: Claude/Gemini sometimes wrap output in
   `{"report": {...}}` or include `{TICKER}` in prose before JSON.
   Use depth-tracking brace matching, not `indexOf('{')`.
 - **Checkpoint clearing on provider switch**: when updating a Gemini
-  report with Claude (or vice versa), clear ALL checkpoints first —
+  report with Claude (or vice versa), clear ALL checkpoints first -
   mixed provider data in synthesis produces inconsistent JSON.
 - **Management rating schema**: strictly enforce the 5-category schema
   in the Step 2 prompt. Gemini will invent alternative schemas if not
@@ -211,9 +211,9 @@ VITE_API_BASE_URL=https://your-backend.railway.app
 
 ## Spec Documents (in repo)
 
-- `CLAUDE.md` — master briefing for Claude Code autonomous operation
-- `docs/ARCHITECTURE.md` — system design, pipeline detail, SSE protocol
-- `docs/DATABASE.md` — all table schemas, RLS policies, report_json shape
-- `docs/FEATURES.md` — product requirements
-- `backend/CLAUDE.md` — backend subsystem rules
-- `frontend/CLAUDE.md` — frontend subsystem rules
+- `CLAUDE.md` - master briefing for Claude Code autonomous operation
+- `docs/ARCHITECTURE.md` - system design, pipeline detail, SSE protocol
+- `docs/DATABASE.md` - all table schemas, RLS policies, report_json shape
+- `docs/FEATURES.md` - product requirements
+- `backend/CLAUDE.md` - backend subsystem rules
+- `frontend/CLAUDE.md` - frontend subsystem rules
