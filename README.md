@@ -236,6 +236,10 @@ npm run deploy      # runs: wrangler deploy
 SPA routing is handled by `not_found_handling: "single-page-application"` in `wrangler.jsonc` -
 all 404s return `index.html` so React Router handles client-side navigation.
 
+`wrangler.jsonc` also sets `workers_dev: false` and `preview_urls: false` and routes the Worker to
+`moat-finder.ailab.build`, so the app is never served on a `*.workers.dev` address that would bypass the
+zone's WAF rules (IP / country blocks). Leave them set: a deploy without them turns the `workers.dev` address back on.
+
 ### Cloudflare (WAF / DNS)
 
 1. Add your domain to Cloudflare with the DNS record proxied (orange cloud ON)

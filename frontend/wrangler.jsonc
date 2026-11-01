@@ -2,6 +2,14 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "moat-finder",
   "compatibility_date": "2026-04-11",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "moat-finder.ailab.build",
+      "custom_domain": true
+    }
+  ],
   "observability": {
     "enabled": true
   },
