@@ -175,6 +175,7 @@ ANTHROPIC_API_KEY=
 GEMINI_API_KEY=           # optional - required only if using Gemini provider
 DEFAULT_LLM=claude        # claude | gemini (default: claude)
 FRONTEND_ORIGIN=http://localhost:5173
+ORIGIN_AUTH_SECRET=       # Railway only - must match Cloudflare's X-Origin-Auth header; leave unset locally
 ```
 
 **`frontend/.env.local`**
@@ -219,6 +220,18 @@ restartPolicyMaxRetries = 3
 ```
 
 The backend binds to `0.0.0.0:$PORT` - Railway injects `PORT` at runtime.
+
+#### Cloudflare origin lock (API domain)
+
+The frontend calls the backend at `moat-finder-api.ailab.build`, a proxied Cloudflare record pointing at the Railway service, so the zone's WAF rules (IP / country) cover the API too:
+
+1. **Railway > service > Settings > Networking > Custom Domain:** `moat-finder-api.ailab.build`; add the CNAME (proxied) and TXT records it shows in Cloudflare DNS. SSL/TLS mode must be Full or Full (strict), never Flexible.
+2. **Cloudflare > Rules > Transform Rules > Modify Request Header:** for `moat-finder-api.ailab.build`, set `X-Origin-Auth` to a random secret (`openssl rand -hex 32`).
+3. **Frontend** `VITE_API_BASE_URL=https://moat-finder-api.ailab.build`, rebuild and deploy.
+4. **Railway variable** `ORIGIN_AUTH_SECRET` = the same secret. From then on, requests that reach Railway without passing Cloudflare get 403 (`/api/v1/health` stays open for Railway's health check). See `backend/src/middleware/originAuth.ts`.
+5. Remove the Railway-generated `*.up.railway.app` domain.
+
+`frontend/public/_headers` allows `https://moat-finder-api.ailab.build` in `connect-src`.
 
 ### Frontend - Cloudflare Workers
 

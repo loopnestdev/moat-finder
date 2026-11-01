@@ -8,12 +8,15 @@ import healthRouter from "./routes/health";
 import researchRouter from "./routes/research";
 import adminRouter from "./routes/admin";
 import { adminClient } from "./services/supabase";
+import { requireOriginAuth } from "./middleware/originAuth";
 
 const app = express();
 app.set("trust proxy", 1);
 
 // ─── Global middleware ────────────────────────────────────────────────────────
 
+// Only requests that passed Cloudflare (WAF IP / country rules) reach the routes
+app.use(requireOriginAuth);
 app.use(helmet());
 app.use(
   cors({

@@ -4,6 +4,16 @@ All notable changes to moat-finder are listed here in reverse chronological orde
 
 ---
 
+### [Unreleased]
+
+- **Backend reachable only through Cloudflare** (`backend/src/middleware/originAuth.ts`,
+  `backend/src/index.ts`, `frontend/public/_headers`): new optional `ORIGIN_AUTH_SECRET`. When set,
+  every request except `/api/v1/health` needs a matching `X-Origin-Auth` header, which a Cloudflare
+  Transform Rule adds on `moat-finder-api.ailab.build`; anything else gets 403, so requests that skip
+  Cloudflare's WAF rules (IP / country blocks) are refused. The frontend CSP allows the new API domain.
+
+---
+
 ### [v0.9.2] — 2026-08-29
 
 - **Fix pipeline crash on `null` Step 1 competitors/customers**
